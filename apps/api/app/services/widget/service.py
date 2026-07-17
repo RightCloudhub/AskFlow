@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -18,16 +19,24 @@ from app.utils.ids import new_id
 GUEST_TOKEN_MINUTES = 60 * 12
 USERNAME_PREFIX = "guest_"
 EMAIL_DOMAIN = "guest.askflow.local"
-VISITOR_KEY_MAX = 48
+# sha256 hex prefix — collision-resistant, email/username-safe charset
+VISITOR_ID_HEX_LEN = 32
 TITLE_MAX = 40
 
 
 def sanitize_visitor_key(raw: str | None) -> str:
-    """Normalize visitor keys for email/username (no @ / spaces / injection)."""
-    base = (raw or new_id()).strip()
-    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in base)
-    safe = safe.strip("_")[:VISITOR_KEY_MAX]
-    return safe or new_id()[:VISITOR_KEY_MAX]
+    """Map raw visitor keys to a stable, collision-free identity id.
+
+    Char-rewrite (e.g. ``@`` → ``_``) is unsafe: ``va@evil`` and ``va_evil``
+    must remain distinct users. Hash the exact raw string (UTF-8).
+    ``None`` / blank → fresh random id (anonymous one-shot guest).
+    """
+    if raw is None or not str(raw).strip():
+        base = new_id()
+    else:
+        base = str(raw)
+    digest = hashlib.sha256(base.encode("utf-8")).hexdigest()
+    return digest[:VISITOR_ID_HEX_LEN]
 
 
 @dataclass

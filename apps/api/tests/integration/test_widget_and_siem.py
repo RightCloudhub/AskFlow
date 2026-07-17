@@ -31,7 +31,9 @@ async def test_widget_session_and_message_pipeline(client: AsyncClient):
     body = session.json()
     assert body["access_token"]
     assert body["conversation_id"]
-    assert body["visitor_key"] == "v-test-1"
+    from app.services.widget.service import sanitize_visitor_key
+
+    assert body["visitor_key"] == sanitize_visitor_key("v-test-1")
     headers = {"Authorization": f"Bearer {body['access_token']}"}
 
     msg = await client.post(

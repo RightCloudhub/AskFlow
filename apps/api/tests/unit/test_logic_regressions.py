@@ -47,11 +47,17 @@ async def _db():
     return engine, factory
 
 
-def test_sanitize_visitor_key_strips_injection():
-    assert "@" not in sanitize_visitor_key("evil@x.com")
-    assert " " not in sanitize_visitor_key("a b")
-    assert sanitize_visitor_key("ok-key_1") == "ok-key_1"
-    assert len(sanitize_visitor_key("x" * 200)) <= 48
+def test_sanitize_visitor_key_collision_free_and_stable():
+    """Distinct raw keys must not collapse (skeptic: va@evil vs va_evil)."""
+    a = sanitize_visitor_key("va@evil")
+    b = sanitize_visitor_key("va_evil")
+    assert a != b
+    assert sanitize_visitor_key("va@evil") == a
+    assert sanitize_visitor_key("va_evil") == b
+    assert "@" not in a and " " not in a
+    assert len(a) == 32
+    # same raw always same id (returning visitor)
+    assert sanitize_visitor_key("ok-key_1") == sanitize_visitor_key("ok-key_1")
 
 
 def test_feishu_fail_closed_without_token_in_production():
@@ -137,14 +143,39 @@ async def test_widget_isolation_and_sanitize_roundtrip():
     async with factory() as db:
         a = await WidgetService(db).open_session(visitor_key="va@evil")
         b = await WidgetService(db).open_session(visitor_key="vb")
-        assert a.visitor_key == "va_evil"
         assert a.user_id != b.user_id
+        assert a.visitor_key == sanitize_visitor_key("va@evil")
         from app.services.chat.session.service import ChatService
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as ei:
             await ChatService(db).list_messages(a.conversation_id, b.user_id)
         assert ei.value.status_code == 403
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_widget_colliding_raw_keys_stay_isolated():
+    """va@evil and va_evil must be different users; B cannot read A's messages."""
+    engine, factory = await _db()
+    async with factory() as db:
+        a = await WidgetService(db).open_session(visitor_key="va@evil")
+        b = await WidgetService(db).open_session(visitor_key="va_evil")
+        assert a.visitor_key != b.visitor_key
+        assert a.user_id != b.user_id
+        assert a.conversation_id != b.conversation_id
+        from app.services.chat.session.service import ChatService
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as ei:
+            await ChatService(db).list_messages(a.conversation_id, b.user_id)
+        assert ei.value.status_code == 403
+        with pytest.raises(HTTPException) as ei2:
+            await ChatService(db).list_messages(b.conversation_id, a.user_id)
+        assert ei2.value.status_code == 403
+        # same raw key reuses identity
+        a2 = await WidgetService(db).open_session(visitor_key="va@evil")
+        assert a2.user_id == a.user_id
     await engine.dispose()
 
 
