@@ -1,0 +1,12 @@
+groups:
+  - name: askflow-enterprise
+    rules:
+      - alert: AskFlowHandoffTimeouts
+        expr: increase(askflow_handoff_timeout_total[15m]) > 5
+        labels: {severity: warning}
+      - alert: AskFlowSLABreaches
+        expr: increase(askflow_sla_events_total{state="breached"}[15m]) > 3
+        labels: {severity: warning}
+      - alert: AskFlowRAGRefusalsSpike
+        expr: increase(askflow_rag_refusal_total[10m]) > 50
+        labels: {severity: info}

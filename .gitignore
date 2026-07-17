@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.db
+*.sqlite3
+
+# Node / frontend
+node_modules/
+apps/web/dist/
+*.tsbuildinfo
+
+# Env & local secrets
+.env
+.env.*
+!.env.example
+apps/api/.env
+
+# Runtime / uploads
+apps/api/data/uploads/
+*.log
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Tooling noise
+docs/engineering/code-metrics-report.json

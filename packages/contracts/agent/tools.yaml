@@ -1,0 +1,17 @@
+version: "1.0"
+tools:
+  - name: search_order
+    intent: order_query
+    params:
+      - name: order_id
+        type: string
+        required: true
+  - name: search_knowledge
+    params:
+      - name: query
+        type: string
+        required: true
+      - name: top_k
+        type: integer
+        required: false
+        default: 5

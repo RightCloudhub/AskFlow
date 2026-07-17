@@ -1,0 +1,9 @@
+# Legal routes (cold) — must match app.models.enums.Route
+version: "1.1"
+routes:
+  - rag
+  - tool
+  - ticket
+  - handoff
+  - clarify
+  - refuse

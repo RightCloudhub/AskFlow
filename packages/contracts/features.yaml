@@ -1,0 +1,105 @@
+# AskFlow feature plugins — L2 profiles (PRD + pluggable architecture)
+# Env: ASKFLOW_PROFILE=full|enterprise|mvp|core-only|faq-only
+#      ASKFLOW_FEATURES=+sla,-mcp  (comma-separated deltas)
+
+profiles:
+  core-only:
+    - core
+  faq-only:
+    - core
+    - rag
+  mvp:
+    - core
+    - rag
+    - agent
+    - tools
+    - ticket
+    - handoff
+    - knowledge
+    - ops
+    - cost
+    - widget
+  enterprise:
+    - core
+    - rag
+    - agent
+    - tools
+    - ticket
+    - handoff
+    - knowledge
+    - ops
+    - cost
+    - sla
+    - notify
+    - sso
+    - teams
+    - connectors
+    - launch
+    - analytics
+    - mcp
+    - widget
+    - feishu
+    - qc
+  full:
+    - core
+    - rag
+    - agent
+    - tools
+    - ticket
+    - handoff
+    - knowledge
+    - ops
+    - cost
+    - sla
+    - notify
+    - sso
+    - teams
+    - connectors
+    - launch
+    - analytics
+    - mcp
+    - widget
+    - feishu
+    - qc
+
+plugins:
+  core:
+    depends: []
+  rag:
+    depends: [core]
+  agent:
+    depends: [core]
+  tools:
+    depends: [agent]
+  ticket:
+    depends: [core]
+  handoff:
+    depends: [core]
+  knowledge:
+    depends: [rag]
+  ops:
+    depends: [core]
+  cost:
+    depends: [core]
+  sla:
+    depends: [ticket]
+  notify:
+    depends: [core]
+  sso:
+    depends: [core]
+  teams:
+    depends: [handoff]
+  connectors:
+    depends: [core]
+  launch:
+    depends: [core]
+  analytics:
+    depends: [core]
+  mcp:
+    depends: [tools]
+  widget:
+    depends: [core]
+  feishu:
+    depends: [core]
+  qc:
+    depends: [analytics]
