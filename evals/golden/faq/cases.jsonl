@@ -1,0 +1,2 @@
+{"question": "退货政策是什么", "expect_refused": false, "must_contain": "退"}
+{"question": "如何申请发票", "expect_refused": false, "must_contain": "发票"}

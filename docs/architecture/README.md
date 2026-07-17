@@ -19,6 +19,7 @@ AskFlow 技术架构与上下文/检索/Agent 专题。产品需求以 [PRD.md](
 | [query-rewrite.md](./query-rewrite.md) | 查询规范化 / 规则 / LLM 改写、双通道检索、与意图边界 |
 | [rag-pipeline.md](./rag-pipeline.md) | Honest RAG 端到端：检索→拒答→生成→引用 |
 | [agent-pipeline.md](./agent-pipeline.md) | 单次消息状态图：Harness→意图→路由→分支 |
+| [plugins.md](./plugins.md) | L2 可插拔：profile、SPI、Pipeline handlers、前端装配 |
 
 ## 可观测性
 

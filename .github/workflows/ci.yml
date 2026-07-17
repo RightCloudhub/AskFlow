@@ -1,0 +1,80 @@
+# AskFlow CI — API pytest + offline eval (PRD §12.2 #7 / Wave D)
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-test:
+    name: api-pytest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e ".[dev]"
+      - name: Run pytest
+        env:
+          ASKFLOW_ENV: test
+          SECRET_KEY: test-secret-key-not-for-prod
+          DATABASE_URL: sqlite+aiosqlite:///:memory:
+          ASKFLOW_PROFILE: full
+        run: pytest -q
+
+  eval:
+    name: offline-eval
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install API deps for eval runner
+        working-directory: apps/api
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e ".[dev]"
+      - name: Run offline eval
+        env:
+          ASKFLOW_ENV: test
+          SECRET_KEY: test-secret-key-not-for-prod
+          DATABASE_URL: sqlite+aiosqlite:///:memory:
+          ASKFLOW_PROFILE: full
+          PYTHONPATH: apps/api
+        run: python evals/runners/run_eval.py
+
+  web-build:
+    name: web-build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run build

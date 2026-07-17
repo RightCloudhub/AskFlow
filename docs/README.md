@@ -2,6 +2,9 @@
 
 | 层级 | 文档 | 说明 |
 |------|------|------|
+| **完成状态** | [STATUS.md](./STATUS.md) | **MVP §12.1 完成对照、限制与复验** |
+| **工程规范** | [engineering/code-metrics.md](./engineering/code-metrics.md) | **代码硬性指标（强制）** |
+| 工程估算 | [engineering/pluggable-architecture-estimate.md](./engineering/pluggable-architecture-estimate.md) | 全功能可插拔工程量（L1/L2/L3） |
 | 产品 | [prd/PRD.md](./prd/PRD.md) | 需求 v1.1（含 Agent 编排 / 多模型 / 成本 / Launch Card） |
 | 目录 | [prd/STRUCTURE.md](./prd/STRUCTURE.md) | monorepo 文件夹映射 |
 | 架构 | [architecture/](./architecture/) | 流水线 + **三大支柱** + 上下文/改写 |
@@ -31,6 +34,7 @@
 
 ## 实现时优先遵守
 
+- **代码硬性指标**（函数 ≤50 行、文件 ≤300 行、嵌套 ≤3、位置参数 ≤3、圈复杂度 ≤10、禁魔数）：见 [engineering/code-metrics.md](./engineering/code-metrics.md)  
 - Honest RAG：弱证据不调 LLM  
 - Harness 安全文案不进运营模板  
 - 主路径失败可降级；trace/gap best-effort  

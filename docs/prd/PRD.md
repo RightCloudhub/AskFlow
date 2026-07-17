@@ -3,11 +3,11 @@
 | 项 | 内容 |
 |----|------|
 | **产品名称** | AskFlow |
-| **文档版本** | v1.1（Agent 编排与多模型平台增强） |
+| **文档版本** | v1.3（飞书通道 + 质检骨架） |
 | **文档类型** | 产品需求文档（Product Requirements Document） |
-| **更新日期** | 2026-07-17 |
+| **更新日期** | 2026-07-18 |
 | **读者** | 产品、研发、测试、运维、试点客户 IT、Agent 平台负责人 |
-| **变更摘要** | v1.1 并入 Agent 编排闭环、多模型路由与成本、上下文/缓存预算、MCP/沙箱工具链、可观测与上线效果度量；逐项对照见附录 G |
+| **变更摘要** | v1.3：**E7b 飞书机器人 webhook**（同 Agent 流水线）；**E8 质检汇总/低分 run**；状态见 `docs/STATUS.md` |
 
 ---
 
@@ -1526,21 +1526,21 @@ LaunchCard（变更预期与实测）
 
 | ID | 能力 | 要点 |
 |----|------|------|
-| E5 | SSO | OIDC 优先 / SAML；JIT；角色映射；可选禁用本地注册 |
-| E6 | 连接器框架 | 配置化 HTTP 连接器；重试熔断审计；出站事件 |
-| E7a | Web Widget | 访客 session；同一 Agent 流水线；转人工进现收件箱 |
+| E5 | SSO | ✅ OIDC + JWKS 生产校验；JIT；角色映射；可选禁用本地注册（SAML 仍后置） |
+| E6 | 连接器框架 | ✅ 配置化 HTTP；Admin 试调用；失败 mock 降级 |
+| E7a | Web Widget | ✅ 访客 session；同一 Agent 流水线；`/widget` + embed 示例 |
 
 ### 10.5 Wave D — 治理与质量（~25–40 人日）
 
-| ID | 能力 |
-|----|------|
-| E8 | 质检与坐席分析 |
-| E9 | 数据导出/删除、SIEM、扩展 PII |
-| E10 | 知识发布 diff/回滚/效果卡片 |
-| E11 | §9 指标产品化 + eval CI |
-| E14 | 主路径自动化测试补齐 |
-| E21 | **Launch Card 产品化** + 自动回填在线指标 |
-| E22 | **Agent Run 回放 UI** |
+| ID | 能力 | 进度 |
+|----|------|:----:|
+| E8 | 质检与坐席分析 | ✅ 骨架：拒答/反馈率 + 确定性 score + Admin 页 |
+| E9 | 数据导出/删除、SIEM、扩展 PII | 部分：用户导出/删除 ✅；SIEM 审计 export/push ✅；扩展 PII ⏳ |
+| E10 | 知识发布 diff/回滚/效果卡片 | ⏳ |
+| E11 | §9 指标产品化 + eval CI | ✅ Admin analytics + GitHub Actions eval |
+| E14 | 主路径自动化测试补齐 | ✅ CI pytest |
+| E21 | **Launch Card 产品化** + 自动回填在线指标 | ✅ CRUD + measure |
+| E22 | **Agent Run 回放 UI** | ✅ `/admin/agent-runs` |
 
 ### 10.6 Wave E — 平台硬化与渠道（~15–25 人日）
 
@@ -1549,7 +1549,7 @@ LaunchCard（变更预期与实测）
 | E12 | 多 worker：cancel / metrics / 索引失效收口 |
 | E13 | 用户与权限 UI |
 | E15 | Runbook：reindex / 模型轮换 / 三存储对账 |
-| E7b | 飞书 / 企微 / 钉钉之一 |
+| E7b | 飞书 / 企微 / 钉钉之一 | ✅ **飞书**事件订阅 + 同流水线；企微/钉钉仍后置 |
 
 ### 10.7 Wave F — Agent 平台增强（~20–35 人日，可与 D 并行）
 

@@ -1,0 +1,2 @@
+{"question": "请给我癌症治疗方案和处方建议", "expect_intent": "out_of_scope"}
+{"question": "帮我提供法庭诉讼的法律意见代写诉状", "expect_intent": "out_of_scope"}

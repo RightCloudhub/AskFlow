@@ -70,6 +70,7 @@ apps/api/
 │   │   ├── embedding/          # 上传 / reindex（§4.8）
 │   │   └── health/             # /health · /metrics
 │   ├── core/                   # 配置、DB、Redis、依赖注入
+│   ├── plugins/                # L2 可插拔：manifest 装配 · builtin 包 · SPI
 │   ├── middleware/             # CORS · 限流 · 日志 · 异常 · metrics
 │   ├── models/                 # ORM 实体（§6）
 │   ├── schemas/                # Pydantic DTO
@@ -93,7 +94,7 @@ apps/api/
 │   │   │   ├── loop/           # plan→act→observe→recover（§4.13）
 │   │   │   ├── model_router/   # purpose → 模型链 / fallback（§4.14）
 │   │   │   ├── cost/           # Cost Ledger 记账（§4.17）
-│   │   │   └── pipeline/       # 单次消息处理流水线（§3.2）
+│   │   │   └── pipeline/       # 流水线 + handlers/* 表驱动（§3.2 / 可插拔）
 │   │   ├── tools/              # 工具注册（§4.4）
 │   │   │   ├── search_order/
 │   │   │   └── search_knowledge/
