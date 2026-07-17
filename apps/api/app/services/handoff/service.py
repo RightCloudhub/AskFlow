@@ -139,7 +139,11 @@ class HandoffService:
         if cas.rowcount == 0:
             # lost race
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already claimed")
-        await self.db.refresh(session)
+        # Sync identity map after bulk CAS (refresh alone can lag on some dialects)
+        session.status = HandoffStatus.CLAIMED.value
+        session.claimed_by = agent_id
+        session.claimed_at = now
+        await self.db.flush()
         return session
 
     async def return_to_ai(self, handoff_id: str, agent_id: str) -> HandoffSession:

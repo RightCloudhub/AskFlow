@@ -57,8 +57,8 @@ class FeishuService:
     def verify_token(self, token: str | None) -> bool:
         expected = self.settings.feishu_verification_token
         if not expected:
-            # Dev/test: accept when token not configured
-            return True
+            # Fail-closed in staging/production; open only for local/test
+            return not self.settings.is_production_like
         return bool(token) and token == expected
 
     def parse_event(self, body: dict[str, Any]) -> FeishuInbound | str | None:

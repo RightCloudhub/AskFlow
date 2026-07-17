@@ -18,6 +18,16 @@ from app.utils.ids import new_id
 GUEST_TOKEN_MINUTES = 60 * 12
 USERNAME_PREFIX = "guest_"
 EMAIL_DOMAIN = "guest.askflow.local"
+VISITOR_KEY_MAX = 48
+TITLE_MAX = 40
+
+
+def sanitize_visitor_key(raw: str | None) -> str:
+    """Normalize visitor keys for email/username (no @ / spaces / injection)."""
+    base = (raw or new_id()).strip()
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in base)
+    safe = safe.strip("_")[:VISITOR_KEY_MAX]
+    return safe or new_id()[:VISITOR_KEY_MAX]
 
 
 @dataclass
@@ -39,11 +49,11 @@ class WidgetService:
         title: str = "官网咨询",
         origin: str | None = None,
     ) -> WidgetSession:
-        key = (visitor_key or new_id())[:64]
+        key = sanitize_visitor_key(visitor_key)
         user = await self._ensure_guest(key)
         conv = await ChatService(self.db).create_conversation(
             user.id,
-            ConversationCreate(title=title[:40] or "官网咨询"),
+            ConversationCreate(title=(title or "官网咨询")[:TITLE_MAX]),
         )
         token = create_access_token(
             user.id,
