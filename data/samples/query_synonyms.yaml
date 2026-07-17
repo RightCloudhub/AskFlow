@@ -1,0 +1,31 @@
+# 查询改写 · 同义扩展样例（MVP）
+# 加载路径建议：REWRITE_SYNONYM_PATH
+# 格式：canonical 标准词 → aliases 用户侧说法
+# 改写时：命中任一 alias，则在检索 query 中追加 canonical 与其它 aliases（可配）
+
+version: 1
+
+groups:
+  - id: return_policy
+    canonical: 退货
+    aliases: [退换, 退款, 退货政策, 怎么退, 退货流程, return, refund]
+
+  - id: shipping
+    canonical: 物流
+    aliases: [快递, 运单, 发货, 配送, 到哪了, shipping, tracking, 物流状态]
+
+  - id: order
+    canonical: 订单
+    aliases: [order, 订单号, 我的单子, 买的那个]
+
+  - id: vip_shipping
+    canonical: 会员包邮
+    aliases: [VIP包邮, 会员免运, 包邮吗]
+
+  - id: login
+    canonical: 登录
+    aliases: [登陆, 登入, 无法登录, 密码错, sign in, login]
+
+  - id: invoice
+    canonical: 发票
+    aliases: [开票, 报销, invoice, 增值税票]
