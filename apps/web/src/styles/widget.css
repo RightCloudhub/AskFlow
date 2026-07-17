@@ -1,0 +1,80 @@
+/* Standalone guest widget (PRD E7a) */
+.widget-shell {
+  max-width: 420px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel, #fff);
+  box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, 0.08));
+}
+.widget-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line, #e6ebf2);
+  background: var(--brand, #2563eb);
+  color: #fff;
+}
+.widget-head .meta {
+  opacity: 0.85;
+  font-size: 0.8rem;
+}
+.widget-messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg, #f4f6f9);
+}
+.bubble {
+  max-width: 85%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bubble.user {
+  align-self: flex-end;
+  background: var(--brand-soft, #dbeafe);
+}
+.bubble.assistant,
+.bubble.staff {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid var(--line, #e6ebf2);
+}
+.widget-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--line, #e6ebf2);
+  background: #fff;
+}
+.widget-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--line, #e6ebf2);
+  border-radius: 10px;
+}
+.widget-form button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--brand, #2563eb);
+  color: #fff;
+  cursor: pointer;
+}
+.widget-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.widget-shell .error {
+  color: var(--danger, #b91c1c);
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
