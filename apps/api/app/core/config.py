@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     secret_key: str = Field(default=DEFAULT_SECRET, validation_alias="SECRET_KEY")
     access_token_expire_minutes: int = 60 * 24
     jwt_algorithm: str = "HS256"
-    rate_limit_per_minute: int = 60
+    rate_limit_per_minute: int = Field(default=60, validation_alias="RATE_LIMIT_PER_MINUTE")
 
     # --- database / cache ---
     database_url: str = Field(
@@ -96,6 +96,11 @@ class Settings(BaseSettings):
 
     # --- handoff ---
     handoff_timeout_seconds: int = 300
+    # Background handoff timeout + SLA scan (disabled automatically in test)
+    sweeper_enabled: bool = Field(default=True, validation_alias="SWEEPER_ENABLED")
+    sweeper_interval_seconds: int = Field(default=60, validation_alias="SWEEPER_INTERVAL_SECONDS")
+    # Optional shared secret for /metrics in staging/production (header X-Metrics-Token)
+    metrics_token: str | None = Field(default=None, validation_alias="METRICS_TOKEN")
 
     # --- enterprise notify / OIDC / MCP ---
     notify_webhook_url: str | None = Field(default=None, validation_alias="NOTIFY_WEBHOOK_URL")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -14,6 +15,7 @@ from app.core.config import get_settings
 from app.core.database import init_db
 from app.middleware.logging import RequestLoggingMiddleware
 from app.middleware.metrics import PROCESS_INFO
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.plugins.loader import boot_plugins, load_plugins, shutdown_plugins
 from app.plugins.runtime import get_app_context
 
@@ -49,9 +51,22 @@ async def lifespan(_app: FastAPI):
         settings.askflow_profile,
         ctx.loaded_plugins,
     )
-    yield
-    await shutdown_plugins(get_app_context())
-    logger.info("AskFlow API shutting down")
+    job_task: asyncio.Task | None = None
+    if settings.env != "test" and settings.sweeper_enabled:
+        from app.workers.enterprise_jobs import periodic_loop
+
+        job_task = asyncio.create_task(periodic_loop(settings), name="enterprise_jobs")
+    try:
+        yield
+    finally:
+        if job_task is not None:
+            job_task.cancel()
+            try:
+                await job_task
+            except asyncio.CancelledError:
+                pass
+        await shutdown_plugins(get_app_context())
+        logger.info("AskFlow API shutting down")
 
 
 def create_app() -> FastAPI:
@@ -65,6 +80,9 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
+    # Starlette: last added = outermost. Rate limit outermost after CORS.
+    application.add_middleware(RequestLoggingMiddleware)
+    application.add_middleware(RateLimitMiddleware)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -72,7 +90,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    application.add_middleware(RequestLoggingMiddleware)
 
     api = build_api_router(ctx)
     application.include_router(api, prefix=settings.api_prefix)

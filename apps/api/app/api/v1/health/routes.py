@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
@@ -67,7 +67,22 @@ async def health() -> HealthResponse | JSONResponse:
     return body
 
 
+def _metrics_authorized(request: Request | None) -> bool:
+    settings = get_settings()
+    token = settings.metrics_token
+    if not token:
+        return True
+    if not settings.is_production_like:
+        return True
+    if request is None:
+        return False
+    return request.headers.get("x-metrics-token") == token
+
+
 @router.get("/metrics")
-async def metrics() -> Response:
+async def metrics(request: Request) -> Response:
+    """Prometheus scrape. Optional METRICS_TOKEN in staging/production."""
+    if not _metrics_authorized(request):
+        raise HTTPException(status_code=401, detail="metrics_token_required")
     payload, content_type = metrics_payload()
     return Response(content=payload, media_type=content_type)

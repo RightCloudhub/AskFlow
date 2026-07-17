@@ -32,6 +32,16 @@ async def run_handoff_sweep(
     return {"swept": len(outcomes), "outcomes": outcomes}
 
 
+@router.post("/enterprise-jobs/run")
+async def run_enterprise_jobs_once(
+    _user: User = Depends(require_admin),
+) -> dict:
+    """Manual trigger: handoff timeout sweep + SLA scan + notify (same as background loop)."""
+    from app.workers.enterprise_jobs import run_once
+
+    return await run_once()
+
+
 @router.post("/handoff-sweep/force-expire")
 async def force_expire_for_test(
     db: DbSession,

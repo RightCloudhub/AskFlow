@@ -8,6 +8,7 @@
 | **文档日期** | 2026-07-18 |
 | **整体状态** | **PILOT-READY + MULTI-CHANNEL（代码）** |
 | **对照 PRD** | `docs/prd/PRD.md` **v1.3** |
+| **闭环/安全审查** | `docs/engineering/business-loop-security-fallback-review.md` |
 
 ---
 
@@ -62,7 +63,9 @@
 | SIEM | `services/audit/siem.py` · audit export routes |
 | 飞书 | `services/channels/feishu/` · `api/v1/channels/feishu` · plugin `feishu` |
 | 质检 | `services/qc/` · `api/v1/admin/qc` · `QcPage.tsx` |
+| 限流 / 后台扫描 | `middleware/rate_limit.py` · `workers/enterprise_jobs.py` |
 | PR 拆分 | `docs/engineering/pr-split-pilot-p0-p1.md` |
+| 闭环·安全·兜底审查 | `docs/engineering/business-loop-security-fallback-review.md` |
 
 ### 环境变量（生产）
 
@@ -75,6 +78,9 @@
 | `SIEM_WEBHOOK_URL` | 审计日志 SIEM 推送（可选） |
 | `FEISHU_VERIFICATION_TOKEN` | 飞书事件订阅校验 |
 | `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 飞书主动回复（可选；未配则仅本地流水线） |
+| `SWEEPER_ENABLED` / `SWEEPER_INTERVAL_SECONDS` | 后台 handoff 超时 + SLA 扫描（test 自动关） |
+| `RATE_LIMIT_PER_MINUTE` | IP 限流（默认 60；test 跳过） |
+| `METRICS_TOKEN` | 生产 like 下可选保护 `/metrics` |
 
 ---
 
