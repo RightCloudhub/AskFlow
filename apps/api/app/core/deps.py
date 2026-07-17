@@ -1,10 +1,10 @@
-"""FastAPI dependencies: DB session, current user, RBAC."""
+"""FastAPI dependencies: DB session, current user, RBAC, guest scope."""
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +19,17 @@ bearer_scheme = HTTPBearer(auto_error=False)
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
+def _is_guest_payload(payload: dict[str, Any]) -> bool:
+    return bool(payload.get("guest") or payload.get("channel") in {"widget", "guest"})
+
+
+def _path_allows_guest(path: str) -> bool:
+    # Guest JWT only valid under widget conversation APIs
+    return "/widget/" in path
+
+
 async def get_current_user(
+    request: Request,
     db: DbSession,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> User:
@@ -33,6 +43,12 @@ async def get_current_user(
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
+
+    if _is_guest_payload(payload) and not _path_allows_guest(request.url.path):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="guest_scope_violation",
+        )
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

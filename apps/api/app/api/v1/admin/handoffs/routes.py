@@ -27,8 +27,10 @@ async def claim_handoff(
     user: CurrentUser,
     db: DbSession,
 ) -> HandoffOut:
-    # role checked by router dependency
-    session = await HandoffService(db).claim(handoff_id, user.id)
+    # role checked by router dependency; claim re-checks team scope
+    session = await HandoffService(db).claim(
+        handoff_id, user.id, agent_role=user.role
+    )
     return HandoffOut.model_validate(session)
 
 

@@ -22,9 +22,14 @@ async def upload_document(
     title: str | None = Form(default=None),
     _admin: User = Depends(require_admin),
 ) -> DocumentOut:
-    data = await file.read()
+    from app.core.config import get_settings
+
+    max_bytes = get_settings().max_upload_bytes
+    data = await file.read(max_bytes + 1)
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > max_bytes:
+        raise HTTPException(status_code=413, detail="file_too_large")
     doc = await DocumentService(db).upload(
         filename=file.filename or "upload.txt",
         data=data,

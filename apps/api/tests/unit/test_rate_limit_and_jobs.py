@@ -29,7 +29,11 @@ def test_rate_limit_middleware_returns_429_when_exceeded(monkeypatch: pytest.Mon
     # Avoid env=test from suite conftest short-circuiting the limiter
     monkeypatch.setattr(
         "app.middleware.rate_limit.get_settings",
-        lambda: SimpleNamespace(env="development", rate_limit_per_minute=3),
+        lambda: SimpleNamespace(
+            env="development",
+            rate_limit_per_minute=3,
+            trust_proxy_headers=False,
+        ),
     )
 
     async def homepage(_request: Request) -> PlainTextResponse:

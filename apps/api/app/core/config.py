@@ -109,6 +109,12 @@ class Settings(BaseSettings):
     oidc_client_id: str | None = Field(default=None, validation_alias="OIDC_CLIENT_ID")
     oidc_mock: bool = Field(default=False, validation_alias="OIDC_MOCK")
     disable_local_register: bool = Field(default=False, validation_alias="DISABLE_LOCAL_REGISTER")
+    # Explicit opt-in for local register / first-user admin in staging|production
+    allow_local_register: bool = Field(default=False, validation_alias="ALLOW_LOCAL_REGISTER")
+    allow_bootstrap_admin: bool = Field(default=False, validation_alias="ALLOW_BOOTSTRAP_ADMIN")
+    # Trust X-Forwarded-For for rate limiting only behind a known reverse proxy
+    trust_proxy_headers: bool = Field(default=False, validation_alias="TRUST_PROXY_HEADERS")
+    max_upload_bytes: int = Field(default=15 * 1024 * 1024, validation_alias="MAX_UPLOAD_BYTES")
     mcp_enabled: bool = Field(default=False, validation_alias="MCP_ENABLED")
     mcp_tool_whitelist: str = Field(
         default="search_knowledge",
@@ -139,6 +145,19 @@ class Settings(BaseSettings):
     def is_production_like(self) -> bool:
         return self.env in {"staging", "production"}
 
+    def local_register_allowed(self) -> bool:
+        """Dev/test: open unless DISABLE_LOCAL_REGISTER. Prod-like: need ALLOW_LOCAL_REGISTER."""
+        if self.disable_local_register:
+            return False
+        if self.env in {"development", "test"}:
+            return True
+        return bool(self.allow_local_register)
+
+    def bootstrap_admin_allowed(self) -> bool:
+        if self.env in {"development", "test"}:
+            return True
+        return bool(self.allow_bootstrap_admin)
+
     def assert_startup_safe(self) -> None:
         """Refuse to start with weak secrets outside development/test (S-01)."""
         if self.env in {"development", "test"}:
@@ -147,6 +166,11 @@ class Settings(BaseSettings):
             raise RuntimeError(
                 "Refusing to start: SECRET_KEY is weak/default while "
                 f"ASKFLOW_ENV={self.env}. Set a strong SECRET_KEY (S-01)."
+            )
+        if self.oidc_mock:
+            raise RuntimeError(
+                "Refusing to start: OIDC_MOCK=1 is not allowed when "
+                f"ASKFLOW_ENV={self.env}."
             )
 
 

@@ -105,7 +105,14 @@ class OIDCService:
         self._jwks_override = jwks_override
 
     def _use_mock(self) -> bool:
-        return bool(self.settings.oidc_mock or self.settings.env in MOCK_ENVS)
+        # Never mock in staging/production (startup also refuses OIDC_MOCK there).
+        if self.settings.is_production_like:
+            return False
+        # Tests: always mock for convenience (JWKS tests pass explicit staging Settings).
+        if self.settings.env == "test":
+            return True
+        # development: require explicit OIDC_MOCK=1 (unsigned tokens are unsafe on open nets)
+        return bool(self.settings.oidc_mock)
 
     def _validator(self) -> JWKSValidator:
         if self._jwks_validator is not None:

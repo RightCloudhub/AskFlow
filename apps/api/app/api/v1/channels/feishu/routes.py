@@ -30,17 +30,19 @@ async def feishu_events(request: Request, db: DbSession) -> JSONResponse:
     if result.kind == "challenge":
         return JSONResponse({"challenge": result.challenge})
     if result.kind == "message":
-        return JSONResponse(
-            {
-                "code": 0,
-                "msg": "ok",
-                "run_id": result.run_id,
-                "route": result.route,
-                "reply_status": result.reply_status,
-                # Echo for tests / dry-run when no outbound credentials
-                "reply_text": result.reply_text,
-            }
-        )
+        from app.core.config import get_settings
+
+        body_out: dict[str, Any] = {
+            "code": 0,
+            "msg": "ok",
+            "run_id": result.run_id,
+            "route": result.route,
+            "reply_status": result.reply_status,
+        }
+        # Never echo full answer on open webhook in staging/production
+        if get_settings().env in {"test", "development"}:
+            body_out["reply_text"] = result.reply_text
+        return JSONResponse(body_out)
     if result.reply_status == "bad_token":
         return JSONResponse({"code": 403, "msg": "bad_token"}, status_code=403)
     return JSONResponse({"code": 0, "msg": "ignored"})

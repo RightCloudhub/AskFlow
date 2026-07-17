@@ -15,8 +15,12 @@ router = APIRouter()
 async def register(payload: RegisterRequest, db: DbSession) -> UserOut:
     from app.core.config import get_settings
 
-    if get_settings().disable_local_register:
-        raise HTTPException(status_code=403, detail="Local registration disabled; use SSO")
+    settings = get_settings()
+    if not settings.local_register_allowed():
+        raise HTTPException(
+            status_code=403,
+            detail="Local registration disabled; use SSO or set ALLOW_LOCAL_REGISTER=1",
+        )
     try:
         return await AuthService(db).register(payload)
     except AuthError as exc:

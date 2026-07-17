@@ -16,7 +16,8 @@ from app.services.audit.logger.service import AuditService
 from app.services.chat.session.service import ChatService
 from app.utils.ids import new_id
 
-GUEST_TOKEN_MINUTES = 60 * 12
+# Short-lived guest JWT (cost / abuse surface)
+GUEST_TOKEN_MINUTES = 120
 USERNAME_PREFIX = "guest_"
 EMAIL_DOMAIN = "guest.askflow.local"
 # sha256 hex prefix — collision-resistant, email/username-safe charset

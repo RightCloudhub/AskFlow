@@ -54,6 +54,10 @@ class ChatService:
         if payload.title is not None:
             conv.title = payload.title
         if payload.status is not None:
+            # Block user self-escalation to transferred / arbitrary statuses
+            allowed = {"active", "closed"}
+            if payload.status not in allowed:
+                raise HTTPException(status_code=400, detail="invalid_status")
             conv.status = payload.status
         await self.db.flush()
         await self.db.refresh(conv)

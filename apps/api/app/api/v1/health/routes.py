@@ -28,8 +28,9 @@ async def health() -> HealthResponse | JSONResponse:
             await conn.execute(text("SELECT 1"))
         db_status = "up"
         DEPENDENCY_UP.labels(name="postgres").set(1)
-    except Exception as exc:
-        db_detail = str(exc)
+    except Exception:
+        # Never leak exception text / DSN fragments on public health
+        db_detail = "unavailable" if settings.is_production_like else "error"
         DEPENDENCY_UP.labels(name="postgres").set(0)
     deps.append(HealthDependency(name="database", status=db_status, detail=db_detail))
 
@@ -45,9 +46,9 @@ async def health() -> HealthResponse | JSONResponse:
             await client.aclose()
             redis_status = "up"
             DEPENDENCY_UP.labels(name="redis").set(1)
-        except Exception as exc:
+        except Exception:
             redis_status = "down"
-            redis_detail = str(exc)
+            redis_detail = "unavailable" if settings.is_production_like else "error"
             DEPENDENCY_UP.labels(name="redis").set(0)
     else:
         DEPENDENCY_UP.labels(name="redis").set(0)

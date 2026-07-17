@@ -108,7 +108,13 @@ class HandoffService:
             return []
         return [h for h in rows if (h.intent or "handoff") in scopes]
 
-    async def claim(self, handoff_id: str, agent_id: str) -> HandoffSession:
+    async def claim(
+        self,
+        handoff_id: str,
+        agent_id: str,
+        *,
+        agent_role: str | None = None,
+    ) -> HandoffSession:
         """Atomic claim: second concurrent claimer gets 409 (multi-worker safe)."""
         from sqlalchemy import update
 
@@ -123,6 +129,12 @@ class HandoffService:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already claimed")
         if session.status != HandoffStatus.QUEUED.value:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Handoff not claimable")
+
+        # Enforce same team intent_scope as list_queue (M4). Skip when role omitted (internal/tests).
+        if agent_role is not None and agent_role != "admin":
+            visible = await self.list_queue(agent_id=agent_id, agent_role=agent_role)
+            if not any(h.id == handoff_id for h in visible):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="out_of_scope")
 
         cas = await self.db.execute(
             update(HandoffSession)

@@ -14,7 +14,8 @@ class ConversationCreate(BaseModel):
 
 class ConversationUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=255)
-    status: str | None = None
+    # Users may only close; transfer is system/agent side-effect
+    status: str | None = Field(default=None, pattern="^(active|closed)?$")
 
 
 class ConversationOut(BaseModel):

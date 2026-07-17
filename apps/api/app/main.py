@@ -73,12 +73,15 @@ def create_app() -> FastAPI:
     settings = get_settings()
     # Clear cached settings if tests mutated env before import
     ctx = load_plugins(settings)
+    # Hide OpenAPI in staging/production (M3)
+    docs = None if settings.is_production_like else "/docs"
+    redoc = None if settings.is_production_like else "/redoc"
     application = FastAPI(
         title=settings.app_name,
         version=__version__,
         lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url=docs,
+        redoc_url=redoc,
     )
     # Starlette: last added = outermost. Rate limit outermost after CORS.
     application.add_middleware(RequestLoggingMiddleware)

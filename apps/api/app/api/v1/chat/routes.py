@@ -200,6 +200,18 @@ async def chat_ws(websocket: WebSocket) -> None:
                         {"type": "error", "code": "bad_message", "message": "conversation_id and content required"}
                     )
                     continue
+                from app.core.config import get_settings as _gs
+
+                max_chars = _gs().max_question_chars
+                if len(content) > max_chars:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "code": "too_long",
+                            "message": f"content exceeds {max_chars} chars",
+                        }
+                    )
+                    continue
 
                 user_msg, asst_msg, result = await ChatService(db).handle_user_message(
                     conversation_id, user.id, content

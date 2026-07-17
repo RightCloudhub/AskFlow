@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.document import Document
 from app.models.enums import DocumentStatus
 from app.services.knowledge.indexer.service import IndexerService
-from app.services.knowledge.storage.local import LocalObjectStorage
+from app.services.knowledge.storage.local import LocalObjectStorage, safe_filename
 
 
 class DocumentService:
@@ -26,9 +26,10 @@ class DocumentService:
         uploaded_by: str | None = None,
         index_now: bool = True,
     ) -> Document:
+        safe_name = safe_filename(filename)
         doc = Document(
-            title=title or filename,
-            filename=filename,
+            title=title or safe_name,
+            filename=safe_name,
             content_type=content_type,
             status=DocumentStatus.PENDING.value,
             uploaded_by=uploaded_by,
@@ -36,7 +37,7 @@ class DocumentService:
         self.db.add(doc)
         await self.db.flush()
 
-        key = f"documents/{doc.id}/{filename}"
+        key = f"documents/{doc.id}/{safe_name}"
         self.storage.put(key, data)
         doc.storage_key = key
         await self.db.flush()

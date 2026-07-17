@@ -33,9 +33,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._hits: dict[str, deque[float]] = defaultdict(deque)
 
     def _client_key(self, request: Request) -> str:
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
+        settings = get_settings()
+        # Only trust X-Forwarded-For when ops enables TRUST_PROXY_HEADERS (behind LB)
+        if settings.trust_proxy_headers:
+            forwarded = request.headers.get("x-forwarded-for")
+            if forwarded:
+                return forwarded.split(",")[0].strip() or "unknown"
         if request.client and request.client.host:
             return request.client.host
         return "unknown"

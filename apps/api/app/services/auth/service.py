@@ -31,10 +31,13 @@ class AuthService:
         if existing.scalar_one_or_none() is not None:
             raise AuthError("user_exists", "Username or email already registered")
 
-        # Bootstrap: first account becomes admin so ops surfaces are reachable.
-        count = await self.db.execute(select(User.id).limit(1))
-        if count.scalar_one_or_none() is None:
-            role = UserRole.ADMIN.value
+        # Bootstrap: first account becomes admin only when policy allows (not prod-like by default).
+        from app.core.config import get_settings
+
+        if get_settings().bootstrap_admin_allowed():
+            count = await self.db.execute(select(User.id).limit(1))
+            if count.scalar_one_or_none() is None:
+                role = UserRole.ADMIN.value
 
         user = User(
             username=payload.username,
