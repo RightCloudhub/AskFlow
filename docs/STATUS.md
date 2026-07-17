@@ -9,6 +9,7 @@
 | **整体状态** | **PILOT-READY + MULTI-CHANNEL（代码）** |
 | **对照 PRD** | `docs/prd/PRD.md` **v1.3** |
 | **闭环/安全审查** | `docs/engineering/business-loop-security-fallback-review.md` |
+| **安全 pre-commit** | `docs/engineering/security-precommit-checklist.md` |
 
 ---
 
