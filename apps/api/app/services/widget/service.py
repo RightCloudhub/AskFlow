@@ -86,19 +86,29 @@ class WidgetService:
         )
 
     async def _ensure_guest(self, visitor_key: str) -> User:
+        from sqlalchemy.exc import IntegrityError
+
         username = f"{USERNAME_PREFIX}{visitor_key}"[:64]
         email = f"{visitor_key}@{EMAIL_DOMAIN}"[:255]
         result = await self.db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
         if user is not None:
             return user
-        user = User(
-            username=username,
-            email=email,
-            hashed_password=hash_password(new_id() + "guest"),
-            role=UserRole.USER.value,
-        )
-        self.db.add(user)
-        await self.db.flush()
-        await self.db.refresh(user)
-        return user
+        try:
+            async with self.db.begin_nested():
+                user = User(
+                    username=username,
+                    email=email,
+                    hashed_password=hash_password(new_id() + "guest"),
+                    role=UserRole.USER.value,
+                )
+                self.db.add(user)
+                await self.db.flush()
+            await self.db.refresh(user)
+            return user
+        except IntegrityError:
+            result = await self.db.execute(select(User).where(User.email == email))
+            user = result.scalar_one_or_none()
+            if user is None:
+                raise
+            return user
