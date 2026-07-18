@@ -6,12 +6,20 @@ from app.models.enums import Route
 from app.services.agent.pipeline.context import PipelineResult, TurnContext
 
 TITLE_MAX = 80
+TITLE_BODY_MAX = 64
+
+
+def _ticket_title(intent: str, text: str) -> str:
+    """Stable, type-prefixed title — reduces false open-ticket merges on raw text."""
+    body = (text or "").strip()[:TITLE_BODY_MAX] or "用户请求"
+    title = f"[{intent}] {body}"
+    return title[:TITLE_MAX]
 
 
 async def handle_ticket(ctx: TurnContext) -> PipelineResult:
-    title = ctx.text[:TITLE_MAX]
     intent = ctx.intent_result.intent.value if ctx.intent_result else "fault_report"
     confidence = ctx.intent_result.confidence if ctx.intent_result else 0.8
+    title = _ticket_title(intent, ctx.text)
     se = {
         **ctx.side_effects,
         "ticket": {

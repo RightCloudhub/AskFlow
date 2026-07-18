@@ -85,6 +85,9 @@ class SLAEngine:
         for t in tickets:
             prev = t.sla_state or SLAState.OK.value
             state, reason = self.evaluate_ticket(t, now)
+            # Sticky breach: never downgrade BREACHED → warning/ok (audit trail)
+            if prev == SLAState.BREACHED.value and state != SLAState.BREACHED.value:
+                continue
             if state == prev:
                 continue
             t.sla_state = state

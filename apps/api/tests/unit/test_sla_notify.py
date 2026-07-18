@@ -62,6 +62,14 @@ async def test_sla_warning_then_breached():
         assert t.sla_state == "breached"
         assert any(c.current == "breached" for c in changes2)
 
+        # Sticky: responding does not heal BREACHED back to ok
+        t.first_responded_at = datetime.now(UTC)
+        t.created_at = datetime.now(UTC)  # resolve SLA not due
+        await db.flush()
+        await engine_sla.scan()
+        await db.refresh(t)
+        assert t.sla_state == "breached"
+
     await engine.dispose()
 
 

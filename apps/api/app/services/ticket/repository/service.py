@@ -20,15 +20,11 @@ class TicketRepository:
         self.db = db
 
     async def create_or_get_open(self, user_id: str, payload: TicketCreate) -> tuple[Ticket, bool]:
-        """Return (ticket, created). Concurrent creates converge on same open ticket."""
-        existing = await self.db.execute(
-            select(Ticket).where(
-                Ticket.user_id == user_id,
-                Ticket.title == payload.title,
-                Ticket.status.in_(self.OPEN_STATUSES),
-            )
-        )
-        found = existing.scalar_one_or_none()
+        """Return (ticket, created). Concurrent creates converge on same open ticket.
+
+        Prefer conversation+type match (agent pipeline) before title uniqueness.
+        """
+        found = await self._find_open(user_id, payload)
         if found is not None:
             return found, False
 
@@ -49,29 +45,33 @@ class TicketRepository:
             await self.db.refresh(ticket)
             return ticket, True
         except IntegrityError:
-            # race: unique open (user, title) — converge to winner
-            existing = await self.db.execute(
-                select(Ticket).where(
-                    Ticket.user_id == user_id,
-                    Ticket.title == payload.title,
-                    Ticket.status.in_(self.OPEN_STATUSES),
-                )
-            )
-            found = existing.scalar_one_or_none()
-            if found is None:
-                # nested savepoint may leave session needing a clean re-read
-                await self.db.rollback()
-                existing = await self.db.execute(
-                    select(Ticket).where(
-                        Ticket.user_id == user_id,
-                        Ticket.title == payload.title,
-                        Ticket.status.in_(self.OPEN_STATUSES),
-                    )
-                )
-                found = existing.scalar_one_or_none()
+            found = await self._find_open(user_id, payload)
             if found is None:
                 raise
             return found, False
+
+    async def _find_open(self, user_id: str, payload: TicketCreate) -> Ticket | None:
+        ticket_type = payload.type or "user_created"
+        if payload.conversation_id:
+            by_conv = await self.db.execute(
+                select(Ticket).where(
+                    Ticket.user_id == user_id,
+                    Ticket.conversation_id == payload.conversation_id,
+                    Ticket.type == ticket_type,
+                    Ticket.status.in_(self.OPEN_STATUSES),
+                )
+            )
+            hit = by_conv.scalar_one_or_none()
+            if hit is not None:
+                return hit
+        by_title = await self.db.execute(
+            select(Ticket).where(
+                Ticket.user_id == user_id,
+                Ticket.title == payload.title,
+                Ticket.status.in_(self.OPEN_STATUSES),
+            )
+        )
+        return by_title.scalar_one_or_none()
 
     async def list_for_user(self, user_id: str) -> list[Ticket]:
         result = await self.db.execute(
