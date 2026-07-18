@@ -38,25 +38,23 @@ class HandoffService:
         if found is not None:
             return found
 
-        session = HandoffSession(
-            conversation_id=conversation_id,
-            user_id=user_id,
-            status=HandoffStatus.QUEUED.value,
-            summary=summary or "",
-            intent=intent or "handoff",
-        )
-        self.db.add(session)
-
-        conv = await self.db.get(Conversation, conversation_id)
-        if conv is not None:
-            conv.status = ConversationStatus.TRANSFERRED.value
-
         try:
-            await self.db.flush()
+            async with self.db.begin_nested():
+                session = HandoffSession(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    status=HandoffStatus.QUEUED.value,
+                    summary=summary or "",
+                    intent=intent or "handoff",
+                )
+                self.db.add(session)
+                conv = await self.db.get(Conversation, conversation_id)
+                if conv is not None:
+                    conv.status = ConversationStatus.TRANSFERRED.value
+                await self.db.flush()
             await self.db.refresh(session)
             return session
         except IntegrityError:
-            await self.db.rollback()
             existing = await self.db.execute(
                 select(HandoffSession).where(
                     HandoffSession.conversation_id == conversation_id,
@@ -162,6 +160,11 @@ class HandoffService:
         session = await self.db.get(HandoffSession, handoff_id)
         if session is None:
             raise HTTPException(status_code=404, detail="Handoff not found")
+        if session.status != HandoffStatus.CLAIMED.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Handoff not claimed",
+            )
         if session.claimed_by != agent_id:
             raise HTTPException(status_code=403, detail="Not your handoff")
         session.status = HandoffStatus.RETURNED.value
