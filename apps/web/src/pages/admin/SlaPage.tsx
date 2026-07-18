@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
+import { JsonView } from "../../components/common/json";
 
 type SlaStatus = {
   counts: Record<string, number>;
@@ -48,16 +49,9 @@ export function SlaPage() {
       <button type="button" disabled={busy} onClick={() => void runScan()}>
         {busy ? "扫描中…" : "立即扫描并通知"}
       </button>
-      <div className="panel" style={{ marginTop: "1rem" }}>
-        <h2>状态计数</h2>
-        <pre>{JSON.stringify(status?.counts ?? {}, null, 2)}</pre>
-      </div>
+      <JsonView data={status?.counts ?? {}} title="状态计数" />
       {scan ? (
-        <div className="panel">
-          <h2>最近扫描</h2>
-          <p className="meta">changes={scan.scanned_changes}</p>
-          <pre>{JSON.stringify(scan.changes, null, 2)}</pre>
-        </div>
+        <JsonView data={scan.changes} title={`最近扫描 · ${scan.scanned_changes} 项变更`} />
       ) : null}
       <h2>Warning / Breached 工单</h2>
       <ul className="data-list">

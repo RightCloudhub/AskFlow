@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
+import { JsonView } from "../../components/common/json";
 
 type Summary = Record<string, number | null>;
 type LowRun = {
@@ -27,10 +28,7 @@ export function QcPage() {
     <div className="page-shell tight">
       <h1>质检 QC</h1>
       <p className="meta">基于拒答、弱证据 flags、反馈的确定性评分（无二次 LLM）</p>
-      <div className="panel">
-        <h2>汇总</h2>
-        <pre>{JSON.stringify(summary, null, 2)}</pre>
-      </div>
+      {summary ? <JsonView data={summary} title="质检汇总" /> : <p className="meta">加载中…</p>}
       <h2>低分 / 拒答 runs</h2>
       <ul className="data-list">
         {runs.map((r) => (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
+import { JsonView } from "../../components/common/json";
 
 type RunRow = {
   run_id: string;
@@ -69,12 +70,11 @@ export function AgentRunsPage() {
                 <strong>
                   [{s.kind}] {s.name}
                 </strong>
-                <pre>{JSON.stringify(s.detail || {}, null, 2)}</pre>
+                <JsonView data={s.detail || {}} compact initialExpandDepth={1} />
               </li>
             ))}
           </ol>
-          <h3>费用</h3>
-          <pre>{JSON.stringify(detail.cost || detail.cost_summary, null, 2)}</pre>
+          <JsonView data={detail.cost || detail.cost_summary} title="费用" />
         </div>
       ) : null}
       <h2>最近 runs</h2>

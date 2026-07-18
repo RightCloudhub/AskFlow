@@ -48,7 +48,7 @@ export function PromptsPage() {
       {active && (
         <div className="panel">
           <h3>当前 active</h3>
-          <pre>{active}</pre>
+          <pre className="code-block">{active}</pre>
         </div>
       )}
       <ul className="data-list">

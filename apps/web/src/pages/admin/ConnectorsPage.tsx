@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
+import { JsonView } from "../../components/common/json";
 
 type C = { name: string; base_url: string; enabled: boolean; description: string };
 
 export function ConnectorsPage() {
   const [rows, setRows] = useState<C[]>([]);
-  const [result, setResult] = useState("");
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
   async function load() {
     setRows(await api<C[]>("/api/v1/admin/connectors"));
   }
@@ -17,7 +18,7 @@ export function ConnectorsPage() {
       method: "POST",
       body: JSON.stringify({ params: {} }),
     });
-    setResult(JSON.stringify(r, null, 2));
+    setResult(r);
   }
   return (
     <div className="page-shell tight">
@@ -38,9 +39,7 @@ export function ConnectorsPage() {
           </li>
         ))}
       </ul>
-      {result && (
-        <pre className="panel">{result}</pre>
-      )}
+      {result && <JsonView data={result} title="调用结果" />}
     </div>
   );
 }

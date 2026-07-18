@@ -1,0 +1,188 @@
+/* JSON tree viewer — editor-grade readability, zero dependencies.
+   Component: components/common/json/*. Tokens live in global.css :root. */
+
+.jv {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+/* Inline variant for list rows: just the tree, no card chrome. */
+.jv-compact {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.jv-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px 9px 14px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border-bottom: 1px solid var(--line);
+}
+
+.jv-title {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.jv-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.jv-btn {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--ink-2);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+.jv-btn:hover {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand-strong);
+}
+
+.jv-copy.is-done {
+  background: var(--success-soft);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.jv-body {
+  padding: 12px 14px;
+  overflow: auto;
+}
+
+.jv-compact .jv-body,
+.jv-compact.jv {
+  padding: 0;
+}
+
+/* Rows are block so long string values wrap instead of overflowing. */
+.jv-row {
+  display: block;
+}
+
+.jv-head {
+  margin-left: -6px;
+  padding: 0 6px;
+  border-radius: 6px;
+}
+
+.jv-head:hover {
+  background: var(--panel-2);
+}
+
+.jv-children {
+  margin-left: 0.6ch;
+  padding-left: 1.2ch;
+  border-left: 1px solid var(--line);
+}
+
+.jv-toggle {
+  margin-right: 0.25ch;
+  padding: 0;
+  width: 1.2ch;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.jv-caret {
+  font-size: 0.7em;
+}
+
+.jv-toggle:hover .jv-caret {
+  color: var(--brand);
+}
+
+.jv-key {
+  color: var(--j-key);
+  font-weight: 600;
+}
+
+.jv-punct {
+  color: var(--j-punct);
+}
+
+.jv-colon {
+  margin-right: 0.4ch;
+}
+
+.jv-token {
+  word-break: break-word;
+}
+
+.jv-string {
+  color: var(--j-string);
+}
+
+.jv-number {
+  color: var(--j-number);
+  font-variant-numeric: tabular-nums;
+}
+
+.jv-boolean {
+  color: var(--j-boolean);
+  font-weight: 600;
+}
+
+.jv-null,
+.jv-undefined {
+  color: var(--j-null);
+  font-style: italic;
+}
+
+.jv-summary {
+  font: inherit;
+  margin-left: 0.2ch;
+  padding: 0 8px;
+  color: var(--muted);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+.jv-summary:hover {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand-strong);
+}
+
+.jv-raw {
+  margin: 0;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

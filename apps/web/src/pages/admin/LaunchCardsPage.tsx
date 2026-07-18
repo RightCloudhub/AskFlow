@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "../../api/client";
+import { JsonView } from "../../components/common/json";
 
 type Card = {
   id: string;
@@ -43,7 +44,11 @@ export function LaunchCardsPage() {
             <div>
               <strong>{c.title}</strong>
               <div className="meta">{c.status}</div>
-              <pre>{JSON.stringify({ expected: c.expected_metrics, measured: c.measured_metrics })}</pre>
+              <JsonView
+                data={{ expected: c.expected_metrics, measured: c.measured_metrics }}
+                compact
+                initialExpandDepth={2}
+              />
             </div>
           </li>
         ))}

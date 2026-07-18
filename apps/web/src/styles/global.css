@@ -1,16 +1,58 @@
 :root {
   color-scheme: light;
+
+  /* surfaces & neutrals */
   --bg: #f4f6f9;
+  --bg-tint: #e9eef6;
   --panel: #ffffff;
+  --panel-2: #f6f8fc;
   --ink: #142033;
+  --ink-2: #33445c;
   --muted: #5b6b7c;
   --line: #e6ebf2;
+  --line-strong: #cdd7e6;
+
+  /* brand */
   --brand: #2563eb;
+  --brand-strong: #1d4ed8;
+  --brand-ink: #ffffff;
   --brand-soft: #dbeafe;
+
+  /* semantic */
+  --success: #067a54;
+  --success-soft: #dcfce7;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
   --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --info: #0e7490;
+  --info-soft: #cffafe;
+
+  /* json syntax highlighting */
+  --j-key: #3538cd;
+  --j-string: #0e7490;
+  --j-number: #b45309;
+  --j-boolean: #7c3aed;
+  --j-null: #64748b;
+  --j-punct: #94a3b8;
+
+  /* typography */
+  --font-sans: "Segoe UI", "PingFang SC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", "Source Code Pro",
+    Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* shape, elevation, motion */
   --radius: 14px;
+  --radius-sm: 10px;
+  --radius-lg: 18px;
   --shadow: 0 10px 30px rgba(20, 32, 51, 0.08);
-  font-family: "Segoe UI", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --shadow-sm: 0 1px 2px rgba(20, 32, 51, 0.06), 0 2px 10px rgba(20, 32, 51, 0.05);
+  --shadow-lg: 0 24px 60px rgba(20, 32, 51, 0.16);
+  --ring: 0 0 0 3px rgba(37, 99, 235, 0.28);
+  --dur: 160ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  font-family: var(--font-sans);
   line-height: 1.5;
   color: var(--ink);
   background: var(--bg);

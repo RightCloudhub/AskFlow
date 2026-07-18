@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
+import { JsonView } from "../../components/common/json";
 
 export function CostsPage() {
   const [data, setData] = useState<Record<string, unknown> | null>(null);
@@ -9,7 +10,7 @@ export function CostsPage() {
   return (
     <div className="page-shell tight">
       <h1>成本汇总</h1>
-      <pre className="panel">{JSON.stringify(data, null, 2)}</pre>
+      {data ? <JsonView data={data} title="成本汇总" /> : <p className="meta">加载中…</p>}
     </div>
   );
 }

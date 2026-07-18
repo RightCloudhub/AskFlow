@@ -213,3 +213,67 @@ Because the project was not executed, the following must be confirmed at runtime
 14. **[D-14]** Vague FAQ-fallback query → clarify, not RAG.
 15. **[D-15]** `max_slot_turns=3` → exactly 3 asks then abandon.
 16. **[D-16..D-20]** Nested `/x/metrics` route not skipped; rate-limiter memory bounded; `/metrics` requires token in prod; strongest-score hit reaches grounding with real embeddings; history-bound constant extracted to `Settings`.
+
+---
+
+# Important Documentation — Frontend: Admin JSON Display & Global Style Override
+
+**Date:** 2026-07-18
+**Scope:** Frontend `apps/web` — a new dependency-free JSON tree viewer plus a global style-override layer for the admin console.
+**Method:** Static code-logic review only. Per project policy the project was **not run**, no dependencies were installed, and no `tsc`/`vite`/metrics command was executed. Compliance and behavior were reasoned through by hand; the items below must be confirmed once the stack is built/run.
+
+## What changed & why
+
+Admin pages dumped machine data as raw, **unstyled** `<pre>{JSON.stringify(...)}</pre>` blocks — several not even pretty-printed (`AuditPage`, `LaunchCardsPage` rendered single-line JSON). There was no `pre` styling in the stylesheet at all, so these overflowed horizontally and were hard to scan. Two coordinated changes:
+
+1. **`JsonView` component** (`apps/web/src/components/common/json/*`) — a collapsible, syntax-coloured JSON tree with a toolbar (expand / collapse / raw / copy), collapsed-node summary chips (`{ 5 字段 }` / `[ 3 项 ]`), and a compact inline variant for list rows. **Zero new dependencies** (built from React + CSS only — required by the "code only / no dependency download" constraint and consistent with the project's offline-first ethos).
+2. **Global style override** — upgraded `:root` design tokens in `global.css` (neutral ramp, semantic colours, JSON-syntax colours, a real monospace stack, elevation/motion tokens) + a `theme.css` polish layer (focus rings, button/row micro-interactions, clearer admin-nav active state, base `pre`/`code-block` treatment, quieter scrollbars).
+
+### Design decisions (rationale)
+- **No CDN web fonts.** This is a self-hostable, offline-first enterprise product; a Google-Fonts `<link>` would break air-gapped installs and leak requests. Distinctiveness comes from the monospace data treatment, colour, spacing, and wayfinding — not a downloaded typeface. The sans stack keeps the original zh-CN fallbacks (`PingFang SC`/`Noto Sans SC`).
+- **Token-based override.** Visual change is driven mostly by `:root` tokens (cascades to existing class rules) + an additive `theme.css`, so existing page markup keeps working unchanged (low regression risk).
+- **File-size discipline.** New styling went into separate files (`theme.css` 168 lines, `json-view.css` ~190 lines) instead of growing `global.css`. `global.css` is 500 lines (was already 459) but CSS is **not** scanned by `scripts/ops/check_code_metrics.py` (it only lints `.py`/`.ts`/`.tsx`). All new/modified `.ts`/`.tsx` are well under the 300-line gate (largest is `JsonNode.tsx`, 120).
+
+## Files
+
+**Added**
+- `apps/web/src/components/common/json/jsonUtils.ts` — pure helpers (type classify, format leaf, entries, summary label, pretty-print, clipboard).
+- `apps/web/src/components/common/json/JsonNode.tsx` — recursive node renderer (container/primitive, per-node collapse).
+- `apps/web/src/components/common/json/JsonView.tsx` — public component (toolbar + tree/raw + copy).
+- `apps/web/src/components/common/json/index.ts` — barrel export.
+- `apps/web/src/styles/json-view.css` — viewer styles.
+- `apps/web/src/styles/theme.css` — global polish/override layer.
+
+**Modified**
+- `apps/web/src/styles/global.css` — expanded `:root` token set + `--font-sans`/`--font-mono`.
+- `apps/web/src/main.tsx` — import `theme.css` and `json-view.css`.
+- Admin pages now render `JsonView` instead of raw `<pre>`: `CostsPage`, `AgentRunsPage` (step detail + cost), `ConnectorsPage` (state type changed `string → object|null`), `AuditPage`, `SlaPage` (counts + scan), `QcPage`, `LaunchCardsPage`. `PromptsPage` keeps a `<pre className="code-block">` for prompt *text* (not JSON), now styled by `theme.css`.
+
+## Component behaviour (for reviewers)
+- `expandDepth` semantics: a node is open iff `depth < expandDepth` (root = depth 0). `initialExpandDepth` default **2** (root + first level open). `0` → root collapsed to a summary chip; `1` → root open, children collapsed.
+- Expand-all / collapse-all **remount** the tree (React `key` bump) so every node re-derives its open state; this intentionally resets manual per-node toggles.
+- `compact` renders the tree only (no toolbar/card chrome) for use inside list rows.
+- Per-page config used: Costs `full` (guarded on load) · AgentRuns step `compact depth1` · AgentRuns cost `full` · Connectors `full` · Audit `compact depth0` (one chip per log row) · SLA counts/changes `full` · QC `full` (guarded) · LaunchCards `compact depth2`.
+
+## Static verification performed
+- Grep confirms **no** `<pre>{JSON.stringify...}` remains in `apps/web/src/pages/admin` (only the intentional `PromptsPage` `.code-block`).
+- Every page using `<JsonView>` imports it (7/7).
+- All new/modified `.ts`/`.tsx` ≤ 300 lines (enforced TS metric). By-hand check of function length ≤ 50 / nesting ≤ 3 / no magic numbers (extracted `DEFAULT_EXPAND_DEPTH`, `EXPAND_ALL_DEPTH`, `COLLAPSE_DEPTH`, `ROOT_DEPTH`, `COPY_FEEDBACK_MS`).
+- CSS class names cross-checked against the JSX (`.jv*`).
+
+## Runtime verification checklist (must confirm when built/run)
+1. **Type/build:** `cd apps/web && npm run build` (`tsc --noEmit` + `vite build`) passes — confirms the `unknown` prop, inline `type` imports, and `strict`/`noUnusedLocals` compliance.
+2. **Metrics gate:** `python3 scripts/ops/check_code_metrics.py` → 0 violations (not run here per policy).
+3. **Each admin page renders** its JSON as a tree: `/admin/costs`, `/admin/agent-runs` (query a run), `/admin/connectors` (试调用), `/admin/audit`, `/admin/sla`, `/admin/qc`, `/admin/launch-cards`.
+4. **Interactions:** carets expand/collapse a node; toolbar 展开/折叠 reflow the whole tree; 原文/树视图 toggles raw pretty-printed JSON; 复制 copies and shows 已复制.
+5. **Clipboard limitation:** `navigator.clipboard` needs a **secure context** (https or `localhost`). On plain-HTTP LAN access, copy silently no-ops (no 已复制) — verify the button degrades gracefully; consider an exec-command fallback if HTTP hosting is required.
+6. **Compact rows** (Audit, AgentRuns steps, LaunchCards) stay tidy: collapsed chip per audit row expands on click; no card chrome; monospace at 0.82rem.
+7. **Edge data:** empty object/array renders `{}`/`[]`; `null`/nested arrays/long string values wrap instead of overflowing; a `null` root (pre-load) is guarded by a "加载中…" line on Costs/QC.
+8. **Accessibility:** toggle buttons are keyboard-focusable with a visible focus ring (`--ring`) and expose `aria-expanded`/`aria-label`; verify tab order and screen-reader announcement.
+9. **Contrast:** JSON syntax colours on white/`--panel-2` meet AA (key `#3538cd`, string `#0e7490`, number/warn `#b45309`, boolean `#7c3aed`, null `#64748b`) — spot-check in the running UI.
+10. **No visual regression** on user-facing pages (Login/Chat/Tickets/Widget) from the token/`theme.css` changes (buttons, inputs, focus, scrollbars).
+
+## Known limitations
+- No list virtualization — extremely large payloads render every node (acceptable for current admin payloads; revisit if run/cost detail grows huge).
+- Expand-all/collapse-all resets manual per-node state (by design, via remount).
+- Raw/copy toolbar is available only in non-`compact` mode.

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
+import { JsonView } from "../../components/common/json";
 
 type Audit = {
   id: string;
@@ -28,7 +29,7 @@ export function AuditPage() {
               <div className="meta">
                 {a.resource_type} {a.resource_id || ""} · {a.created_at}
               </div>
-              <pre>{JSON.stringify(a.detail)}</pre>
+              <JsonView data={a.detail} compact initialExpandDepth={0} />
             </div>
           </li>
         ))}
