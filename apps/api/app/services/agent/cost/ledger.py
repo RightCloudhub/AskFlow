@@ -59,11 +59,13 @@ class CostLedger:
             return
 
     def summary(self) -> dict[str, Any]:
+        usage = [e for e in self.entries if e.meta.get("phase") != "budget"]
+        billed = usage if usage else self.entries
         return {
             "run_id": self.run_id,
-            "total_prompt_tokens": sum(e.prompt_tokens for e in self.entries),
-            "total_completion_tokens": sum(e.completion_tokens for e in self.entries),
-            "estimated_usd": round(sum(e.estimated_usd for e in self.entries), 6),
+            "total_prompt_tokens": sum(e.prompt_tokens for e in billed),
+            "total_completion_tokens": sum(e.completion_tokens for e in billed),
+            "estimated_usd": round(sum(e.estimated_usd for e in billed), 6),
             "calls": len(self.entries),
             "entries": [
                 {
@@ -73,6 +75,7 @@ class CostLedger:
                     "completion_tokens": e.completion_tokens,
                     "estimated_usd": e.estimated_usd,
                     "cache_hit": e.cache_hit,
+                    "phase": e.meta.get("phase", "usage"),
                 }
                 for e in self.entries
             ],
