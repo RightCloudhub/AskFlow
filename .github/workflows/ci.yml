@@ -34,7 +34,7 @@ jobs:
         env:
           ASKFLOW_ENV: test
           SECRET_KEY: test-secret-key-not-for-prod
-          DATABASE_URL: sqlite+aiosqlite:///:memory:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
           ASKFLOW_PROFILE: full
         run: pytest -q
 
@@ -58,7 +58,7 @@ jobs:
         env:
           ASKFLOW_ENV: test
           SECRET_KEY: test-secret-key-not-for-prod
-          DATABASE_URL: sqlite+aiosqlite:///:memory:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
           ASKFLOW_PROFILE: full
           PYTHONPATH: apps/api
         run: python evals/runners/run_eval.py
