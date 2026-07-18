@@ -31,6 +31,26 @@ class PipelineResult:
 
 
 @dataclass
+class TurnIds:
+    """Run identity + ledger for a single pipeline turn."""
+
+    run_id: str
+    trace_id: str
+    ledger: CostLedger
+    flags: list[str]
+
+
+@dataclass
+class TurnPayload:
+    """User text, history, and conversation metadata for a turn."""
+
+    text: str
+    history: list[dict[str, Any]]
+    metadata: dict[str, Any]
+    meta_patch: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class TurnContext:
     """Immutable-ish bag passed to route handlers."""
 

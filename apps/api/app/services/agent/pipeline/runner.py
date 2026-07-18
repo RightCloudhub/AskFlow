@@ -9,19 +9,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.enums import Intent, Route
 from app.services.agent.cost.ledger import CostLedger
 from app.services.agent.harness.policy import Harness
-from app.services.agent.intent.classifier import IntentClassifier
+from app.services.agent.intent.classifier import IntentClassifier, IntentResult
 from app.services.agent.loop.engine import LoopEngine
 from app.services.agent.model_router.router import ModelRouter
-from app.services.agent.pipeline.context import PipelineResult, TurnContext
+from app.services.agent.pipeline.context import (
+    PipelineResult,
+    TurnContext,
+    TurnIds,
+    TurnPayload,
+)
 from app.services.agent.pipeline.defaults import resolve_route_handlers
 from app.services.agent.pipeline.handlers.clarify import handle_clarify
+from app.services.agent.pipeline.slot_gate import (
+    SlotGateOutcome,
+    attach_meta_patch,
+    evaluate_slot_gate,
+)
+from app.services.agent.pipeline.turn_results import (
+    blocked_result,
+    slot_abandon_result,
+    slot_ask_result,
+    transferred_result,
+)
 from app.services.agent.router.decision import RouteResolver
-from app.services.agent.slots.state import SlotDecision, SlotTracker
+from app.services.agent.slots.state import SlotTracker
 from app.services.rag.pipeline import RAGPipeline
 from app.services.tools.registry import registry
 from app.utils.ids import new_run_id, new_trace_id
 
-# Re-export for callers/tests
 __all__ = ["MessagePipeline", "PipelineResult"]
 
 COST_PURPOSES = (
@@ -52,45 +67,64 @@ class MessagePipeline:
         conversation_status: str = "active",
     ) -> PipelineResult:
         run_id = new_run_id()
-        trace_id = new_trace_id()
         ledger = CostLedger(run_id)
         self._seed_cost(ledger)
-        flags: list[str] = []
-
-        if conversation_status == "transferred":
-            return self._transferred(run_id, trace_id, ledger, flags)
-
-        prep = self.harness.prepare(text, history)
-        flags.extend(prep.flags)
-        if not prep.allowed:
-            return self._blocked(run_id, trace_id, ledger, flags, prep.stop_message or "")
-
-        meta = metadata or {}
-        # Tool slot short-circuit only when tools capability is enabled
-        if self._tools_enabled():
-            slot = self.slots.decide(prep.text, meta)
-        else:
-            slot = SlotDecision(action="none")
-            flags = flags + ["tools_disabled_skip_slot"]
-
-        meta_patch: dict[str, Any] = {}
-        if slot.patch:
-            meta_patch = self.slots.apply_patch({}, slot.patch)
-
-        if slot.action == "ask":
-            return await self._slot_ask(run_id, trace_id, ledger, flags, slot, meta_patch)
-
-        if slot.action == "filled" and slot.order_id:
-            return await self._slot_filled(
-                run_id, trace_id, ledger, flags, slot.order_id, meta_patch, prep.text
-            )
-
-        return await self._classify_and_dispatch(
-            run_id, trace_id, ledger, flags, prep.text, prep.history, meta, meta_patch
+        ids = TurnIds(
+            run_id=run_id,
+            trace_id=new_trace_id(),
+            ledger=ledger,
+            flags=[],
         )
 
+        if conversation_status == "transferred":
+            return transferred_result(ids, self.harness)
+
+        prep = self.harness.prepare(text, history)
+        ids.flags.extend(prep.flags)
+        if not prep.allowed:
+            return blocked_result(ids, prep.stop_message or "")
+
+        payload = TurnPayload(
+            text=prep.text,
+            history=prep.history,
+            metadata=metadata or {},
+        )
+        if not self._tools_enabled():
+            ids.flags.append("tools_disabled_skip_slot")
+            return await self._classify_and_dispatch(ids, payload)
+
+        gate = await evaluate_slot_gate(
+            self.slots,
+            payload.text,
+            payload.metadata,
+            history=payload.history,
+            classify=self.classifier.classify,
+        )
+        return await self._apply_slot_gate(ids, payload, gate)
+
+    async def _apply_slot_gate(
+        self,
+        ids: TurnIds,
+        payload: TurnPayload,
+        gate: SlotGateOutcome,
+    ) -> PipelineResult:
+        if gate.kind == "ask" and gate.decision is not None:
+            return slot_ask_result(
+                ids, self.harness, gate.decision.message, gate.meta_patch
+            )
+        if gate.kind == "filled" and gate.decision and gate.decision.order_id:
+            payload.meta_patch = gate.meta_patch
+            return await self._slot_filled(ids, payload, gate.decision.order_id)
+        if gate.kind == "abandon" and gate.decision is not None:
+            return slot_abandon_result(
+                ids, self.harness, gate.decision.message, gate.meta_patch
+            )
+        payload.meta_patch = gate.meta_patch
+        if gate.kind == "continue" and gate.intent_result is not None:
+            return await self._dispatch_known_intent(ids, payload, gate.intent_result)
+        return await self._classify_and_dispatch(ids, payload)
+
     def _tools_enabled(self) -> bool:
-        """True when tools plugin registered (or no AppContext → full defaults)."""
         from app.plugins.runtime import get_app_context
 
         ctx = get_app_context()
@@ -108,86 +142,27 @@ class MessagePipeline:
                 model=sel.model,
                 prompt_tokens=0,
                 completion_tokens=0,
+                meta={"phase": "budget"},
             )
-
-    def _transferred(
-        self, run_id: str, trace_id: str, ledger: CostLedger, flags: list[str]
-    ) -> PipelineResult:
-        return PipelineResult(
-            run_id=run_id,
-            trace_id=trace_id,
-            answer=self.harness.transferred_message(),
-            route="noop",
-            intent=None,
-            confidence=1.0,
-            flags=flags + ["transferred_skip_ai"],
-            cost=ledger.summary(),
-        )
-
-    def _blocked(
-        self,
-        run_id: str,
-        trace_id: str,
-        ledger: CostLedger,
-        flags: list[str],
-        answer: str,
-    ) -> PipelineResult:
-        return PipelineResult(
-            run_id=run_id,
-            trace_id=trace_id,
-            answer=answer,
-            route="blocked",
-            intent=None,
-            confidence=1.0,
-            flags=flags,
-            cost=ledger.summary(),
-        )
-
-    async def _slot_ask(
-        self,
-        run_id: str,
-        trace_id: str,
-        ledger: CostLedger,
-        flags: list[str],
-        slot: Any,
-        meta_patch: dict[str, Any],
-    ) -> PipelineResult:
-        final = self.harness.finalize(slot.message)
-        return PipelineResult(
-            run_id=run_id,
-            trace_id=trace_id,
-            answer=final.text,
-            route=Route.TOOL.value,
-            intent=Intent.ORDER_QUERY.value,
-            confidence=0.9,
-            flags=flags + final.flags + ["slot_ask"],
-            metadata_patch=meta_patch,
-            cost=ledger.summary(),
-        )
 
     async def _slot_filled(
         self,
-        run_id: str,
-        trace_id: str,
-        ledger: CostLedger,
-        flags: list[str],
+        ids: TurnIds,
+        payload: TurnPayload,
         order_id: str,
-        meta_patch: dict[str, Any],
-        text: str = "",
     ) -> PipelineResult:
-        # Always go through registry — never hard-call handle_tool
         turn = TurnContext(
-            run_id=run_id,
-            trace_id=trace_id,
-            text=text,
+            run_id=ids.run_id,
+            trace_id=ids.trace_id,
+            text=payload.text,
             history=[],
             metadata={},
-            flags=flags,
-            ledger=ledger,
+            flags=ids.flags,
+            ledger=ids.ledger,
             harness=self.harness,
             slots=self.slots,
             order_id=order_id,
-            meta_patch=meta_patch or {"pending_slot": None},
+            meta_patch=payload.meta_patch or {"pending_slot": None},
             loop=self.loop,
             rag=self.rag,
         )
@@ -195,17 +170,19 @@ class MessagePipeline:
 
     async def _classify_and_dispatch(
         self,
-        run_id: str,
-        trace_id: str,
-        ledger: CostLedger,
-        flags: list[str],
-        text: str,
-        history: list[dict[str, Any]],
-        metadata: dict[str, Any],
-        meta_patch: dict[str, Any],
+        ids: TurnIds,
+        payload: TurnPayload,
     ) -> PipelineResult:
-        intent_result = await self.classifier.classify(text, history)
-        flags.extend(intent_result.reasons or [])
+        intent_result = await self.classifier.classify(payload.text, payload.history)
+        return await self._dispatch_known_intent(ids, payload, intent_result)
+
+    async def _dispatch_known_intent(
+        self,
+        ids: TurnIds,
+        payload: TurnPayload,
+        intent_result: IntentResult,
+    ) -> PipelineResult:
+        flags = list(ids.flags) + list(intent_result.reasons or [])
         resolved = await self.router.resolve(intent_result.intent)
         route_decision = self.harness.choose_route(
             resolved.route,
@@ -214,40 +191,37 @@ class MessagePipeline:
         )
         flags.extend(route_decision.flags)
         route = route_decision.route
-
-        side_effects: dict[str, Any] = {
-            "intent_source": intent_result.source,
-            "route_source": resolved.source,
-            "policy_version": self.harness.policy_version,
-        }
-
         if route == Route.REFUSE or intent_result.intent == Intent.OUT_OF_SCOPE:
             route_key = Route.REFUSE.value
         else:
             route_key = route.value
-
         turn = TurnContext(
-            run_id=run_id,
-            trace_id=trace_id,
-            text=text,
-            history=history,
-            metadata=metadata,
+            run_id=ids.run_id,
+            trace_id=ids.trace_id,
+            text=payload.text,
+            history=payload.history,
+            metadata=payload.metadata,
             flags=flags,
-            ledger=ledger,
+            ledger=ids.ledger,
             harness=self.harness,
             slots=self.slots,
             intent_result=intent_result,
-            side_effects=side_effects,
-            meta_patch=meta_patch,
+            side_effects={
+                "intent_source": intent_result.source,
+                "route_source": resolved.source,
+                "policy_version": self.harness.policy_version,
+            },
+            meta_patch=payload.meta_patch,
             loop=self.loop,
             rag=self.rag,
         )
         return await self._dispatch(route_key, turn)
 
     async def _dispatch(self, route_key: str, turn: TurnContext) -> PipelineResult:
-        # Resolve at call-time so profile changes / unit tests without AppContext work
         handler = resolve_route_handlers().get(route_key)
         if handler is None:
             turn.flags = list(turn.flags) + [f"handler_missing:{route_key}"]
-            return await handle_clarify(turn)
-        return await handler(turn)
+            result = await handle_clarify(turn)
+        else:
+            result = await handler(turn)
+        return attach_meta_patch(result, turn.meta_patch)
