@@ -1,0 +1,194 @@
+/* Ant Design Pro–style admin chrome (loaded after theme.css). */
+
+.af-pro-layout {
+  background: #f0f2f5;
+}
+
+.af-pro-sider {
+  position: sticky !important;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+
+.af-pro-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 64px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.af-pro-logo.collapsed {
+  justify-content: center;
+  padding: 0;
+}
+
+.af-pro-logo-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1677ff, #722ed1);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.af-pro-logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  color: #fff;
+  min-width: 0;
+}
+
+.af-pro-logo-text strong {
+  font-size: 14px;
+}
+
+.af-pro-logo-text span {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.af-pro-loading {
+  color: rgba(255, 255, 255, 0.45);
+  padding: 16px;
+  font-size: 12px;
+}
+
+.af-pro-header {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px !important;
+  height: 56px !important;
+  line-height: 56px !important;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.06);
+}
+
+.af-pro-content {
+  margin: 0;
+  padding: 20px 24px 32px;
+  min-height: calc(100vh - 56px);
+}
+
+.af-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.af-page-header {
+  margin-bottom: 20px;
+}
+
+.af-stat-card .ant-statistic-content-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.af-stat-suffix {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+.af-chart-empty {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  color: #8c8c8c;
+  font-size: 13px;
+}
+
+.af-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding-bottom: 48px;
+}
+
+.af-donut-center strong {
+  font-size: 22px;
+  font-weight: 700;
+  color: #141414;
+  line-height: 1.2;
+}
+
+.af-donut-center span {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.af-chart-legend {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.af-chart-legend.compact {
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+
+.af-chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #595959;
+  min-width: 0;
+}
+
+.af-chart-legend strong {
+  margin-left: auto;
+  color: #141414;
+  font-variant-numeric: tabular-nums;
+}
+
+.af-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.af-legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.af-mono {
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+/* Keep legacy admin-shell rules from breaking if referenced */
+.admin-shell.af-admin {
+  display: block;
+  min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+  .af-pro-content {
+    padding: 12px 12px 24px;
+  }
+
+  .af-chart-legend.compact {
+    grid-template-columns: 1fr;
+  }
+}

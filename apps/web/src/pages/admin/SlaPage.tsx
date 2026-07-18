@@ -1,6 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Button, Card, Col, Empty, List, Row, Spin, Table } from "antd";
+import { ThunderboltOutlined } from "@ant-design/icons";
+import {
+  DonutChart,
+  PageHeader,
+  StatCard,
+  StatusBadge,
+  type ChartDatum,
+} from "../../components/admin";
 import { api } from "../../api/client";
-import { JsonView } from "../../components/common/json";
 
 type SlaStatus = {
   counts: Record<string, number>;
@@ -16,20 +24,44 @@ type SlaStatus = {
 
 type ScanResult = {
   scanned_changes: number;
-  changes: Array<{ ticket_id: string; previous: string; current: string; reason: string }>;
+  changes: Array<{
+    ticket_id: string;
+    previous: string;
+    current: string;
+    reason: string;
+  }>;
+};
+
+const COUNT_LABELS: Record<string, string> = {
+  ok: "正常",
+  warning: "预警",
+  breached: "违约",
+  pending: "待处理",
+  processing: "处理中",
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  low: "低",
+  normal: "普通",
+  high: "高",
+  urgent: "紧急",
+  p1: "P1",
+  p2: "P2",
+  p3: "P3",
 };
 
 export function SlaPage() {
   const [status, setStatus] = useState<SlaStatus | null>(null);
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     setStatus(await api<SlaStatus>("/api/v1/admin/sla/status"));
   }
 
   useEffect(() => {
-    void load();
+    void load().finally(() => setLoading(false));
   }, []);
 
   async function runScan() {
@@ -43,30 +75,130 @@ export function SlaPage() {
     }
   }
 
+  const counts = status?.counts ?? {};
+  const donut: ChartDatum[] = useMemo(
+    () =>
+      Object.entries(counts).map(([k, v]) => ({
+        key: k,
+        label: COUNT_LABELS[k] ?? k,
+        value: v,
+        color:
+          k === "breached"
+            ? "#ff4d4f"
+            : k === "warning"
+              ? "#faad14"
+              : k === "ok"
+                ? "#52c41a"
+                : undefined,
+      })),
+    [counts]
+  );
+
+  const ticketColumns = [
+    { title: "标题", dataIndex: "title" },
+    {
+      title: "SLA",
+      dataIndex: "sla_state",
+      render: (v: string) => <StatusBadge value={v} />,
+    },
+    {
+      title: "优先级",
+      dataIndex: "priority",
+      render: (p: string) => PRIORITY_LABELS[p] ?? p,
+    },
+    {
+      title: "状态",
+      dataIndex: "status",
+      render: (s: string) => COUNT_LABELS[s] ?? s,
+    },
+  ];
+
   return (
-    <div className="page-shell tight">
-      <h1>SLA 运营</h1>
-      <button type="button" disabled={busy} onClick={() => void runScan()}>
-        {busy ? "扫描中…" : "立即扫描并通知"}
-      </button>
-      <JsonView data={status?.counts ?? {}} title="状态计数" />
-      {scan ? (
-        <JsonView data={scan.changes} title={`最近扫描 · ${scan.scanned_changes} 项变更`} />
-      ) : null}
-      <h2>Warning / Breached 工单</h2>
-      <ul className="data-list">
-        {(status?.tickets || []).map((t) => (
-          <li key={t.id}>
-            <div>
-              <strong>{t.title}</strong>
-              <div className="meta">
-                {t.sla_state} · {t.priority} · {t.status}
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {!status?.tickets?.length ? <p className="meta">当前无 warning/breached 工单</p> : null}
+    <div className="af-page">
+      <PageHeader
+        eyebrow="客服运营"
+        title="SLA 监控"
+        subtitle="服务等级协议扫描、预警与违约工单一览"
+        actions={
+          <Button
+            type="primary"
+            icon={<ThunderboltOutlined />}
+            loading={busy}
+            onClick={() => void runScan()}
+          >
+            立即扫描并通知
+          </Button>
+        }
+      />
+      <Spin spinning={loading}>
+        <Row gutter={[16, 16]}>
+          {Object.entries(counts).map(([k, v]) => (
+            <Col xs={24} sm={12} lg={6} key={k}>
+              <StatCard
+                label={COUNT_LABELS[k] ?? k}
+                value={v}
+                tone={
+                  k === "breached" ? "danger" : k === "warning" ? "warn" : "default"
+                }
+              />
+            </Col>
+          ))}
+          {!Object.keys(counts).length && !loading ? (
+            <Col span={24}>
+              <Empty description="暂无 SLA 计数" />
+            </Col>
+          ) : null}
+        </Row>
+
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} lg={12}>
+            <Card title="SLA 状态分布">
+              <DonutChart
+                data={donut}
+                centerLabel="工单"
+                centerValue={String(
+                  Object.values(counts).reduce((s, n) => s + n, 0)
+                )}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card
+              title="最近扫描"
+              extra={
+                scan ? `${scan.scanned_changes} 项变更` : "点击扫描触发"
+              }
+            >
+              <List
+                size="small"
+                locale={{ emptyText: "尚无扫描变更记录" }}
+                dataSource={scan?.changes ?? []}
+                renderItem={(c) => (
+                  <List.Item>
+                    <List.Item.Meta
+                      title={<code className="af-mono">{c.ticket_id}</code>}
+                      description={`${COUNT_LABELS[c.previous] ?? c.previous} → ${
+                        COUNT_LABELS[c.current] ?? c.current
+                      } · ${c.reason}`}
+                    />
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        <Card title="预警 / 违约工单" style={{ marginTop: 16 }}>
+          <Table
+            size="middle"
+            rowKey="id"
+            dataSource={status?.tickets ?? []}
+            columns={ticketColumns}
+            pagination={false}
+            locale={{ emptyText: "当前无预警 / 违约工单" }}
+          />
+        </Card>
+      </Spin>
     </div>
   );
 }

@@ -20,11 +20,25 @@ export type FeatureId =
   | "feishu"
   | "qc";
 
+/** Sidebar section key — drives grouped navigation. */
+export type NavGroupId =
+  | "overview"
+  | "knowledge"
+  | "intelligence"
+  | "service"
+  | "system";
+
 export type AdminNavItem = {
   pluginId: FeatureId | string;
   to: string;
   label: string;
   order: number;
+  /** Group for collapsible sidebar sections */
+  group?: NavGroupId;
+  /** Optional short description shown on hover / subtitle */
+  hint?: string;
+  /** Simple icon key resolved in AdminLayout */
+  icon?: string;
 };
 
 export type AdminRouteDef = {

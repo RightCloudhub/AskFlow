@@ -1,5 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Button, Card, Form, Input, Space, Table } from "antd";
+import { CheckOutlined, CloseOutlined, PlusOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
+import { PageHeader, StatusBadge } from "../../components/admin";
 
 type Draft = {
   id: string;
@@ -13,13 +16,14 @@ export function DraftsPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     setDrafts(await api<Draft[]>("/api/v1/admin/drafts"));
   }
 
   useEffect(() => {
-    void load();
+    void load().finally(() => setLoading(false));
   }, []);
 
   async function create(e: FormEvent) {
@@ -44,43 +48,90 @@ export function DraftsPage() {
   }
 
   return (
-    <div className="page-shell tight">
-      <h1>知识草稿</h1>
-      <form className="panel form-grid" onSubmit={(e) => void create(e)}>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="标题" required />
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="正文"
-          rows={4}
-          required
+    <div className="af-page">
+      <PageHeader
+        eyebrow="知识中心"
+        title="知识草稿"
+        subtitle="审核 FAQ 草稿并发布到知识库"
+      />
+      <Card title="新建草稿" style={{ marginBottom: 16 }}>
+        <form onSubmit={(e) => void create(e)}>
+          <Form layout="vertical">
+            <Form.Item label="标题" required>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="标题"
+                required
+              />
+            </Form.Item>
+            <Form.Item label="正文" required>
+              <Input.TextArea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="正文"
+                rows={4}
+                required
+              />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+              创建草稿
+            </Button>
+          </Form>
+        </form>
+      </Card>
+
+      <Card title="草稿列表">
+        <Table
+          loading={loading}
+          rowKey="id"
+          dataSource={drafts}
+          pagination={{ pageSize: 10 }}
+          columns={[
+            { title: "标题", dataIndex: "title" },
+            {
+              title: "摘要",
+              dataIndex: "content",
+              render: (c: string) => c.slice(0, 80) + (c.length > 80 ? "…" : ""),
+            },
+            {
+              title: "状态",
+              dataIndex: "status",
+              width: 100,
+              render: (s: string) => <StatusBadge value={s} />,
+            },
+            {
+              title: "操作",
+              key: "actions",
+              width: 200,
+              render: (_: unknown, d: Draft) =>
+                d.status === "draft" ? (
+                  <Space>
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<CheckOutlined />}
+                      onClick={() => void approve(d.id)}
+                    >
+                      通过
+                    </Button>
+                    <Button
+                      danger
+                      size="small"
+                      icon={<CloseOutlined />}
+                      onClick={() => void reject(d.id)}
+                    >
+                      拒绝
+                    </Button>
+                  </Space>
+                ) : (
+                  "—"
+                ),
+            },
+          ]}
+          locale={{ emptyText: "暂无草稿" }}
         />
-        <button type="submit">创建草稿</button>
-      </form>
-      <ul className="data-list">
-        {drafts.map((d) => (
-          <li key={d.id}>
-            <div>
-              <strong>{d.title}</strong>
-              <div className="meta">
-                {d.status}
-                {d.document_id ? ` · doc=${d.document_id}` : ""}
-              </div>
-              <p>{d.content.slice(0, 160)}</p>
-            </div>
-            {d.status === "draft" && (
-              <div className="row-actions">
-                <button type="button" onClick={() => void approve(d.id)}>
-                  审核通过
-                </button>
-                <button type="button" onClick={() => void reject(d.id)}>
-                  拒绝
-                </button>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
+      </Card>
     </div>
   );
 }

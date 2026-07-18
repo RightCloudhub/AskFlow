@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
+import { Button, Card, Space, Table, Tag } from "antd";
+import { CheckOutlined, StopOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
+import { PageHeader, StatusBadge } from "../../components/admin";
 
 type Gap = {
   id: string;
@@ -11,13 +14,14 @@ type Gap = {
 
 export function GapsPage() {
   const [gaps, setGaps] = useState<Gap[]>([]);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     setGaps(await api<Gap[]>("/api/v1/admin/gaps"));
   }
 
   useEffect(() => {
-    void load();
+    void load().finally(() => setLoading(false));
   }, []);
 
   async function dismiss(id: string) {
@@ -38,28 +42,65 @@ export function GapsPage() {
   }
 
   return (
-    <div className="page-shell tight">
-      <h1>知识缺口</h1>
-      <ul className="data-list">
-        {gaps.map((g) => (
-          <li key={g.id}>
-            <div>
-              <strong>{g.question}</strong>
-              <div className="meta">
-                hits={g.hit_count} · {g.reason || "-"}
-              </div>
-            </div>
-            <div className="row-actions">
-              <button type="button" onClick={() => void promote(g)}>
-                生成草稿
-              </button>
-              <button type="button" onClick={() => void dismiss(g.id)}>
-                忽略
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+    <div className="af-page">
+      <PageHeader
+        eyebrow="知识中心"
+        title="知识缺口"
+        subtitle="未覆盖问题沉淀，可生成草稿或忽略"
+      />
+      <Card>
+        <Table
+          loading={loading}
+          rowKey="id"
+          dataSource={gaps}
+          pagination={{ pageSize: 10 }}
+          columns={[
+            { title: "问题", dataIndex: "question" },
+            {
+              title: "命中",
+              dataIndex: "hit_count",
+              width: 90,
+              render: (n: number) => <Tag color="blue">{n}</Tag>,
+            },
+            {
+              title: "原因",
+              dataIndex: "reason",
+              render: (r: string | null) => r || "—",
+            },
+            {
+              title: "状态",
+              dataIndex: "status",
+              width: 100,
+              render: (s: string) => <StatusBadge value={s} />,
+            },
+            {
+              title: "操作",
+              key: "actions",
+              width: 220,
+              render: (_: unknown, g: Gap) => (
+                <Space>
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<CheckOutlined />}
+                    onClick={() => void promote(g)}
+                  >
+                    生成草稿
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<StopOutlined />}
+                    onClick={() => void dismiss(g.id)}
+                  >
+                    忽略
+                  </Button>
+                </Space>
+              ),
+            },
+          ]}
+          locale={{ emptyText: "暂无知识缺口" }}
+        />
+      </Card>
     </div>
   );
 }
