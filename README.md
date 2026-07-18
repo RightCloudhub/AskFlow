@@ -9,6 +9,7 @@
 | [docs/STATUS.md](./docs/STATUS.md) | **项目完成状态**（§12.1 对照 / 限制 / 复验） |
 | [docs/engineering/code-metrics.md](./docs/engineering/code-metrics.md) | **代码硬性指标（强制）** |
 | [AGENTS.md](./AGENTS.md) | 助手 / 贡献者工程约定入口 |
+| [CLAUDE.md](./CLAUDE.md) | Claude Code 工作指南（命令 · 架构 · 约定） |
 | [docs/prd/PRD.md](./docs/prd/PRD.md) | 产品需求（**v1.1** · Agent 编排 / 多模型 / 成本 / Launch Card） |
 | [docs/prd/STRUCTURE.md](./docs/prd/STRUCTURE.md) | 目录结构与 PRD 映射 |
 | [docs/README.md](./docs/README.md) | **文档中心**（推荐入口） |
@@ -57,7 +58,7 @@ data/samples/     # 含 query_synonyms.yaml 等样例
 |----|------|
 | API | FastAPI |
 | ORM | SQLAlchemy 2 async + Alembic |
-| 向量 | ChromaDB（MVP） |
+| 向量 | ChromaDB（选型；当前 BM25 占位） |
 | 队列 | Redis |
 | 对象存储 | MinIO / S3 |
 | 前端 | React + Vite |
@@ -82,9 +83,9 @@ data/samples/     # 含 query_synonyms.yaml 等样例
 **详细对照见 [docs/STATUS.md](./docs/STATUS.md)**（完成线 = PRD §12.1 + **§12.2 企业代码**）。
 
 - 状态码：`ENTERPRISE-READY`（代码层；生产需接真实 IdP/Webhook）  
-- API 自动化：**66+ pytest** + eval runner；Honest RAG / out_of_scope 拒答  
-- 企业层：SLA · 通知 · OIDC · 连接器 · 技能组 · 用户导出删除 · 成本 · Launch Card · MCP  
-- 可选增强：真实 Chroma/LLM 流式、正式 JWKS、IM 渠道  
+- API 自动化：**137 pytest**（unit / integration / e2e）+ 离线 eval + CI 门禁；Honest RAG / out_of_scope 拒答  
+- 企业层：SLA · 通知 · OIDC(JWKS) · 连接器 · 技能组 · 用户导出删除 · 成本 · Launch Card · MCP · 渠道(Web/Feishu) · QC · Analytics  
+- 可选增强：真实 Chroma 向量通道、LLM 生成 / 流式（默认离线抽取式）  
 
 ## 本地快速启动
 
@@ -98,6 +99,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 export ASKFLOW_ENV=development SECRET_KEY=dev-secret-change-me
 export DATABASE_URL=sqlite+aiosqlite:///./askflow.dev.db   # 或 postgresql+asyncpg://...
+export ASKFLOW_PROFILE=full   # 运行档位：full | enterprise | mvp | core-only | faq-only（见 packages/contracts/features.yaml）
 uvicorn app.main:app --reload --port 8000
 
 # Web（另开终端）
@@ -109,13 +111,17 @@ cd apps/web && npm install && npm run dev
 - 用户台：http://localhost:5173  
 
 ```bash
-cd apps/api && source .venv/bin/activate && PYTHONPATH=. pytest -q
+cd apps/api && source .venv/bin/activate
+pip install -e ".[dev]"          # 测试 / lint 依赖（pytest · ruff）
+PYTHONPATH=. pytest -q            # 单测：PYTHONPATH=. pytest tests/unit/test_intent.py::test_name -q
+ruff check .
 ```
+
+离线评测：`PYTHONPATH=apps/api python evals/runners/run_eval.py`（仓库根运行）。  
+硬指标门禁：`python3 scripts/ops/check_code_metrics.py`（函数≤50 行 · 文件≤300 行 · 圈复杂度≤10 · 禁魔数）。
 
 ## 建议下一步
 
-1. 知识库异步索引（`workers/index_worker`）+ Admin 文档页  
-2. 接入 OpenAI 兼容 LLM（生成 / 分类 / 摘要）与真实 WS 流式  
-3. Admin：意图 / Prompt / Gap / Draft / 审计看板  
-4. Chroma 向量通道替换当前 BM25 语义占位  
-5. golden / refusal eval runner 与 CI 门禁  
+1. Chroma 向量通道 + 真实 embedding，替换当前 BM25 语义占位（`services/rag/vector/store.py`）
+2. 接入 OpenAI 兼容 LLM 生成 / 流式（当前默认离线抽取式）
+3. 知识库异步索引：`workers/index_worker` 目前为骨架，接队列消费与 chunk→embed→upsert  
