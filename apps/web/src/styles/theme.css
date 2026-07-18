@@ -78,6 +78,57 @@ textarea:focus,
   overflow: hidden;
 }
 
+/* E29 brand polish: soft brand wash + smoother shell motion */
+body {
+  background-image:
+    radial-gradient(1200px 400px at 10% -10%, color-mix(in srgb, var(--brand) 12%, transparent), transparent),
+    radial-gradient(900px 360px at 100% 0%, color-mix(in srgb, var(--info) 10%, transparent), transparent);
+  background-attachment: fixed;
+}
+
+.sidebar a,
+.nav a {
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.sidebar a:hover,
+.nav a:hover {
+  transform: translateX(2px);
+}
+
+.auth-card,
+.panel {
+  backdrop-filter: saturate(1.05) blur(2px);
+}
+
+.message-bubble,
+.bubble {
+  animation: af-fade-up 220ms var(--ease);
+}
+
+@keyframes af-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .stat-card::before {
   content: "";
   position: absolute;

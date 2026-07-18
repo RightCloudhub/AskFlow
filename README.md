@@ -85,7 +85,7 @@ data/samples/     # 含 query_synonyms.yaml 等样例
 - 状态码：`ENTERPRISE-READY`（代码层；生产需接真实 IdP/Webhook）  
 - API 自动化：**137 pytest**（unit / integration / e2e）+ 离线 eval + CI 门禁；Honest RAG / out_of_scope 拒答  
 - 企业层：SLA · 通知 · OIDC(JWKS) · 连接器 · 技能组 · 用户导出删除 · 成本 · Launch Card · MCP · 渠道(Web/Feishu) · QC · Analytics  
-- 可选增强：真实 Chroma 向量通道、LLM 生成 / 流式（默认离线抽取式）  
+- 可选增强：Chroma / 真实 embedding、OpenAI 兼容 LLM 生成·流式（默认离线抽取式 + 内存向量）  
 
 ## 本地快速启动
 
@@ -120,8 +120,15 @@ ruff check .
 离线评测：`PYTHONPATH=apps/api python evals/runners/run_eval.py`（仓库根运行）。  
 硬指标门禁：`python3 scripts/ops/check_code_metrics.py`（函数≤50 行 · 文件≤300 行 · 圈复杂度≤10 · 禁魔数）。
 
-## 建议下一步
+## 建议下一步（已落地骨架 → 生产增强）
 
-1. Chroma 向量通道 + 真实 embedding，替换当前 BM25 语义占位（`services/rag/vector/store.py`）
-2. 接入 OpenAI 兼容 LLM 生成 / 流式（当前默认离线抽取式）
-3. 知识库异步索引：`workers/index_worker` 目前为骨架，接队列消费与 chunk→embed→upsert  
+1. ✅ **向量通道 + embedding**：`services/rag/vector/*` + `services/rag/embedding/*`  
+   - 默认：离线 hashing embedding + 进程内余弦索引（测试/无密钥可用）  
+   - 可选：`EMBEDDING_*` / `LLM_*` 走 OpenAI 兼容 embedding；`CHROMA_HOST` 或 `CHROMA_PERSIST_DIR` 启用 Chroma（需 `pip install '.[vector]'`）
+2. ✅ **OpenAI 兼容 LLM 生成 / 流式**：`services/llm/client.py` + `rag/generator`  
+   - 配置 `LLM_BASE_URL` + `LLM_API_KEY` 后走 chat completions；失败或未配置回落抽取式
+3. ✅ **知识库异步索引**：`workers/index_worker` 队列 + 消费循环  
+   - `INDEX_ASYNC=1` 时上传入队；worker 执行 chunk→embed→BM25/vector upsert  
+   - 默认同步索引（测试与本地简单路径）
+
+已补齐：WS token 经 `token_sink` 挂接 generator 流式（intent/source 仍先于 token）；索引 job 先 commit 再入队；embedding/index Prometheus 指标。

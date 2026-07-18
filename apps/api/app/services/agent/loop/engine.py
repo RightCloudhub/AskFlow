@@ -38,12 +38,26 @@ class LoopEngine:
         tool_name: str,
         arguments: dict[str, Any],
         plan_hint: str | None = None,
+        intent: str | None = None,
     ) -> LoopResult:
         _ = plan_hint
+        from app.services.agent.reasoning import reasoning_extra_steps
+        from app.services.sandbox.guard import sandbox_allowed
+
         started = time.monotonic()
         steps = 0
         tool_calls = 0
         retries = 0
+        extra = reasoning_extra_steps(intent)
+        max_steps = self.settings.max_loop_steps + extra
+
+        if tool_name.startswith("sandbox_") and not sandbox_allowed():
+            return LoopResult(
+                ok=False,
+                phase=LoopPhase.RECOVER,
+                message="sandbox_disabled",
+                error_class="sandbox_disabled",
+            )
 
         if tool_name not in self.tools:
             return LoopResult(
@@ -53,7 +67,7 @@ class LoopEngine:
                 error_class="unknown_tool",
             )
 
-        while steps < self.settings.max_loop_steps:
+        while steps < max_steps:
             steps += 1
             elapsed_ms = (time.monotonic() - started) * 1000
             if elapsed_ms > self.settings.max_wall_ms:

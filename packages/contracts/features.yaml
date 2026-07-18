@@ -60,6 +60,8 @@ profiles:
     - mcp
     - widget
     - feishu
+    - wecom
+    - dingtalk
     - qc
 
 plugins:
@@ -100,6 +102,10 @@ plugins:
   widget:
     depends: [core]
   feishu:
+    depends: [core]
+  wecom:
+    depends: [core]
+  dingtalk:
     depends: [core]
   qc:
     depends: [analytics]

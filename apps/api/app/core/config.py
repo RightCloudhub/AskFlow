@@ -67,6 +67,25 @@ class Settings(BaseSettings):
     embedding_model: str = Field(default="text-embedding-3-small", validation_alias="EMBEDDING_MODEL")
     embedding_base_url: str | None = Field(default=None, validation_alias="EMBEDDING_BASE_URL")
     embedding_api_key: str | None = Field(default=None, validation_alias="EMBEDDING_API_KEY")
+    embedding_dim: int = Field(default=384, validation_alias="EMBEDDING_DIM")
+    llm_timeout_seconds: float = Field(default=60.0, validation_alias="LLM_TIMEOUT_SECONDS")
+
+    # --- vector store (Chroma optional) ---
+    chroma_persist_dir: str | None = Field(default=None, validation_alias="CHROMA_PERSIST_DIR")
+    chroma_host: str | None = Field(default=None, validation_alias="CHROMA_HOST")
+    chroma_port: int = Field(default=8001, validation_alias="CHROMA_PORT")
+    chroma_collection: str = Field(default="askflow", validation_alias="CHROMA_COLLECTION")
+
+    # --- knowledge index worker ---
+    index_async: bool = Field(default=False, validation_alias="INDEX_ASYNC")
+    index_worker_enabled: bool = Field(default=True, validation_alias="INDEX_WORKER_ENABLED")
+    index_worker_poll_seconds: float = Field(default=1.0, validation_alias="INDEX_WORKER_POLL_SECONDS")
+    index_queue_key: str = Field(default="askflow:index_jobs", validation_alias="INDEX_QUEUE_KEY")
+    revision_store_dir: str = Field(
+        default="./data/revisions",
+        validation_alias="REVISION_STORE_DIR",
+    )
+    cancel_ttl_seconds: int = Field(default=300, validation_alias="CANCEL_TTL_SECONDS")
 
     # --- tools ---
     order_lookup_url: str | None = Field(default=None, validation_alias="ORDER_LOOKUP_URL")
@@ -84,6 +103,24 @@ class Settings(BaseSettings):
     max_answer_chars: int = 4000
     max_history_messages: int = 20
     max_history_chars: int = 6000
+    # E25 retrieval cache (0 = off)
+    retrieval_cache_ttl_seconds: int = Field(
+        default=60,
+        validation_alias="RETRIEVAL_CACHE_TTL_S",
+    )
+    retrieval_cache_max_entries: int = Field(
+        default=256,
+        validation_alias="RETRIEVAL_CACHE_MAX_ENTRIES",
+    )
+    # E26 mid-session summary compression
+    history_summary_threshold: int = Field(
+        default=12,
+        validation_alias="HISTORY_SUMMARY_THRESHOLD",
+    )
+    history_summary_keep_recent: int = Field(
+        default=4,
+        validation_alias="HISTORY_SUMMARY_KEEP_RECENT",
+    )
 
     # --- agent loop budgets (PRD §4.13) ---
     max_loop_steps: int = 6
@@ -128,6 +165,30 @@ class Settings(BaseSettings):
     )
     feishu_app_id: str | None = Field(default=None, validation_alias="FEISHU_APP_ID")
     feishu_app_secret: str | None = Field(default=None, validation_alias="FEISHU_APP_SECRET")
+    # --- WeCom / DingTalk ---
+    wecom_token: str | None = Field(default=None, validation_alias="WECOM_TOKEN")
+    wecom_corp_id: str | None = Field(default=None, validation_alias="WECOM_CORP_ID")
+    wecom_agent_id: str | None = Field(default=None, validation_alias="WECOM_AGENT_ID")
+    dingtalk_app_secret: str | None = Field(default=None, validation_alias="DINGTALK_APP_SECRET")
+    dingtalk_app_key: str | None = Field(default=None, validation_alias="DINGTALK_APP_KEY")
+
+    # --- multi-bot (E18) ---
+    bot_profiles_json: str = Field(default="", validation_alias="BOT_PROFILES_JSON")
+    default_bot_id: str = Field(default="default", validation_alias="DEFAULT_BOT_ID")
+
+    # --- i18n (E17) ---
+    default_locale: str = Field(default="zh-CN", validation_alias="DEFAULT_LOCALE")
+
+    # --- extended reasoning (E27, default off) ---
+    reasoning_enabled: bool = Field(default=False, validation_alias="REASONING_ENABLED")
+    reasoning_intent_whitelist: str = Field(
+        default="product_faq,troubleshoot",
+        validation_alias="REASONING_INTENT_WHITELIST",
+    )
+    reasoning_max_steps: int = Field(default=2, validation_alias="REASONING_MAX_STEPS")
+
+    # --- sandbox (E28, default off) ---
+    sandbox_enabled: bool = Field(default=False, validation_alias="SANDBOX_ENABLED")
 
     # --- feature plugins (L2) ---
     askflow_profile: str = Field(default="full", validation_alias="ASKFLOW_PROFILE")

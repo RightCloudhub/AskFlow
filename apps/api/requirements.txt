@@ -17,3 +17,5 @@ pyyaml>=6.0.2
 rank-bm25>=0.2.2
 orjson>=3.10.0
 email-validator>=2.2.0
+# Optional vector backend (also: pip install 'askflow-api[vector]')
+# chromadb>=0.5.0

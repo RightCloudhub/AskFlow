@@ -73,9 +73,21 @@ question (original)
 
 ## 5. 流式与取消
 
-- token 帧经 WS 推送  
-- `cancel` → 协作取消 LLM 流（单 worker MVP；多 worker 见 tracing 多实例方案）  
+- token 帧经 WS 推送（顺序：intent → source* → token* → message_end）  
+- 生成侧：`AnswerGenerator.generate` 在 LLM 可用时走 **stream 拼装**（一次调用），经 `token_sink` 缓冲后由 WS 按序下发；未配置 LLM 时抽取式分片同样走 sink  
+- 非 RAG 路由：WS 对终稿答案做固定步长分片  
+- `cancel` → 协作取消（单 worker MVP；多 worker 见 tracing 多实例方案）  
 - 超输出上限：截断 + 提示 + metrics `truncated`  
+
+向量通道：
+
+| 模式 | 条件 | 说明 |
+|------|------|------|
+| offline hash + memory | 默认 | 无密钥；余弦检索 |
+| OpenAI embedding | `EMBEDDING_*` / `LLM_*` | `/v1/embeddings` |
+| Chroma | `CHROMA_HOST` 或 `CHROMA_PERSIST_DIR` | 需 `pip install '.[vector]'` |
+
+异步索引：`INDEX_ASYNC=1` 时 upload/reindex 先 commit 再入队；`workers/index_worker` 消费 chunk→embed→BM25+vector upsert。  
 
 ---
 

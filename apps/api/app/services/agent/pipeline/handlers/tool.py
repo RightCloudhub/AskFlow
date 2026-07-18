@@ -41,15 +41,16 @@ async def _run_order_lookup(ctx: TurnContext, order_id: str) -> PipelineResult:
         from app.services.tools.registry import registry
 
         loop = LoopEngine(registry.as_loop_map())
-    loop_result = await loop.run(
-        tool_name="search_order",
-        arguments={"order_id": order_id},
-    )
-    answer, extra_flags = _format_order_answer(order_id, loop_result)
-    final = ctx.harness.finalize(answer)
     intent = (
         ctx.intent_result.intent.value if ctx.intent_result else Intent.ORDER_QUERY.value
     )
+    loop_result = await loop.run(
+        tool_name="search_order",
+        arguments={"order_id": order_id},
+        intent=intent,
+    )
+    answer, extra_flags = _format_order_answer(order_id, loop_result)
+    final = ctx.harness.finalize(answer)
     confidence = ctx.intent_result.confidence if ctx.intent_result else 0.9
     se = {
         **ctx.side_effects,

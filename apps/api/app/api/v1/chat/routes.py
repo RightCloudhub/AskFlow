@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import json
-from typing import Any
-
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
+from app.api.v1.chat import ws_handler
+from app.core import database as dbmod
 from app.core.deps import CurrentUser, DbSession
-from app.core.security import decode_access_token
-from app.middleware.metrics import CHAT_TURNS, WS_CONNECTIONS
-from app.models.user import User
+from app.middleware.metrics import WS_CONNECTIONS
+from app.models.feedback import Feedback
 from app.schemas.chat import (
     ConversationCreate,
     ConversationOut,
@@ -21,15 +20,15 @@ from app.schemas.chat import (
     MessageOut,
 )
 from app.services.chat.session.service import ChatService
-from sqlalchemy import select
-from app.models.feedback import Feedback
-from app.core import database as dbmod
 
 router = APIRouter()
 
 
 class SendMessageRequest(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
+    attachments: list[dict] | None = None
+    bot_id: str | None = None
+    locale: str | None = None
 
 
 class SendMessageResponse(BaseModel):
@@ -94,8 +93,15 @@ async def send_message(
     db: DbSession,
 ) -> SendMessageResponse:
     """REST fallback for message turn (WS is preferred for streaming)."""
+    from app.middleware.metrics import CHAT_TURNS
+
     user_msg, asst_msg, result = await ChatService(db).handle_user_message(
-        conversation_id, user.id, payload.content
+        conversation_id,
+        user.id,
+        payload.content,
+        attachments=payload.attachments,
+        bot_id=payload.bot_id,
+        locale=payload.locale,
     )
     CHAT_TURNS.labels(route=result.route, intent=result.intent or "none").inc()
     return SendMessageResponse(
@@ -142,123 +148,13 @@ async def chat_ws(websocket: WebSocket) -> None:
     """WS protocol: auth first, then message / cancel / ping (PRD §4.5.2)."""
     await websocket.accept()
     WS_CONNECTIONS.inc()
-    user: User | None = None
     try:
-        # wait for auth frame
-        raw = await websocket.receive_text()
-        try:
-            frame = json.loads(raw)
-        except json.JSONDecodeError:
-            await websocket.send_json({"type": "error", "code": "bad_json", "message": "Invalid JSON"})
-            await websocket.close(code=4400)
-            return
-
-        if frame.get("type") != "auth" or not frame.get("token"):
-            await websocket.send_json({"type": "error", "code": "auth_required", "message": "Send auth first"})
-            await websocket.close(code=4401)
-            return
-
-        try:
-            payload = decode_access_token(str(frame["token"]))
-            user_id = payload.get("sub")
-        except ValueError:
-            await websocket.send_json({"type": "error", "code": "invalid_token", "message": "Invalid token"})
-            await websocket.close(code=4401)
-            return
-
         async with dbmod.SessionLocal() as db:
-            user = await db.get(User, user_id)
-            if user is None or not user.is_active:
-                await websocket.send_json({"type": "error", "code": "invalid_user", "message": "User not found"})
-                await websocket.close(code=4401)
+            user = await ws_handler.authenticate(websocket, db)
+            if user is None:
                 return
             await websocket.send_json({"type": "auth_ok", "user_id": user.id})
-
-            while True:
-                raw = await websocket.receive_text()
-                try:
-                    msg = json.loads(raw)
-                except json.JSONDecodeError:
-                    await websocket.send_json({"type": "error", "code": "bad_json", "message": "Invalid JSON"})
-                    continue
-
-                mtype = msg.get("type")
-                if mtype == "ping":
-                    await websocket.send_json({"type": "pong"})
-                    continue
-                if mtype == "cancel":
-                    await websocket.send_json({"type": "message_end", "cancelled": True})
-                    continue
-                if mtype != "message":
-                    await websocket.send_json({"type": "error", "code": "unknown_type", "message": mtype})
-                    continue
-
-                conversation_id = msg.get("conversation_id")
-                content = (msg.get("content") or "").strip()
-                if not conversation_id or not content:
-                    await websocket.send_json(
-                        {"type": "error", "code": "bad_message", "message": "conversation_id and content required"}
-                    )
-                    continue
-                from app.core.config import get_settings as _gs
-
-                max_chars = _gs().max_question_chars
-                if len(content) > max_chars:
-                    await websocket.send_json(
-                        {
-                            "type": "error",
-                            "code": "too_long",
-                            "message": f"content exceeds {max_chars} chars",
-                        }
-                    )
-                    continue
-
-                user_msg, asst_msg, result = await ChatService(db).handle_user_message(
-                    conversation_id, user.id, content
-                )
-                await db.commit()
-
-                if result.intent:
-                    await websocket.send_json(
-                        {
-                            "type": "intent",
-                            "intent": result.intent,
-                            "confidence": result.confidence,
-                            "route": result.route,
-                        }
-                    )
-                for src in result.sources:
-                    await websocket.send_json({"type": "source", **src})
-
-                # stream tokens in chunks
-                step = 32
-                text = result.answer or ""
-                for i in range(0, len(text), step):
-                    await websocket.send_json({"type": "token", "content": text[i : i + step]})
-
-                if result.side_effects.get("ticket"):
-                    await websocket.send_json({"type": "ticket", **result.side_effects["ticket"]})
-                if result.side_effects.get("handoff"):
-                    await websocket.send_json({"type": "handoff", **result.side_effects["handoff"]})
-
-                await websocket.send_json(
-                    {
-                        "type": "message_end",
-                        "message_id": asst_msg.id,
-                        "user_message_id": user_msg.id,
-                        "run_id": result.run_id,
-                        "trace_id": result.trace_id,
-                        "route": result.route,
-                        "intent": result.intent,
-                        "sources": result.sources,
-                        "verification": result.verification,
-                        "answer_confidence": result.answer_confidence,
-                        "flags": result.flags,
-                        "refused": result.refused,
-                    }
-                )
-                CHAT_TURNS.labels(route=result.route, intent=result.intent or "none").inc()
-
+            await ws_handler.session_loop(websocket, db, user)
     except WebSocketDisconnect:
         pass
     finally:

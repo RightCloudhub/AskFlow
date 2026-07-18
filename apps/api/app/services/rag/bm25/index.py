@@ -126,7 +126,7 @@ def get_default_bm25() -> BM25Index:
     global _default_index
     if _default_index is None:
         _default_index = BM25Index()
-        _default_index.add_documents(_seed_docs())
+        _default_index.add_documents(seed_documents())
     return _default_index
 
 
@@ -134,9 +134,16 @@ def reset_default_bm25() -> None:
     """Test helper: rebuild seeded index after mutations."""
     global _default_index
     _default_index = None
+    try:
+        from app.services.rag.vector.store import reset_default_vector_store
+
+        reset_default_vector_store()
+    except Exception:
+        pass
 
 
-def _seed_docs() -> list[dict[str, Any]]:
+def seed_documents() -> list[dict[str, Any]]:
+    """Shared FAQ seed payloads for BM25 + vector bootstrap."""
     return [
         {
             "doc_id": "seed-return",

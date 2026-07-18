@@ -64,3 +64,28 @@ class TeamService:
                 if p:
                     scopes.add(p)
         return scopes
+
+    async def least_open_member(self, team_id: str) -> str | None:
+        """Pick team member with fewest claimed open handoffs (E3 最少未结)."""
+        from sqlalchemy import func
+
+        from app.models.enums import HandoffStatus
+        from app.models.handoff import HandoffSession
+
+        members = await self.list_members(team_id)
+        if not members:
+            return None
+        counts: dict[str, int] = {m.user_id: 0 for m in members}
+        result = await self.db.execute(
+            select(HandoffSession.claimed_by, func.count())
+            .where(
+                HandoffSession.status == HandoffStatus.CLAIMED.value,
+                HandoffSession.claimed_by.in_(list(counts.keys())),
+            )
+            .group_by(HandoffSession.claimed_by)
+        )
+        for uid, n in result.all():
+            if uid in counts:
+                counts[uid] = int(n)
+        # stable: lowest count, then user_id
+        return sorted(counts.items(), key=lambda x: (x[1], x[0]))[0][0]

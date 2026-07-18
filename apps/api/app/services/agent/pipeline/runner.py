@@ -65,6 +65,7 @@ class MessagePipeline:
         history: list[dict[str, Any]] | None = None,
         metadata: dict[str, Any] | None = None,
         conversation_status: str = "active",
+        cancel_key: str | None = None,
     ) -> PipelineResult:
         run_id = new_run_id()
         ledger = CostLedger(run_id)
@@ -88,6 +89,7 @@ class MessagePipeline:
             text=prep.text,
             history=prep.history,
             metadata=metadata or {},
+            cancel_key=cancel_key,
         )
         if not self._tools_enabled():
             ids.flags.append("tools_disabled_skip_slot")
@@ -165,6 +167,7 @@ class MessagePipeline:
             meta_patch=payload.meta_patch or {"pending_slot": None},
             loop=self.loop,
             rag=self.rag,
+            cancel_key=payload.cancel_key,
         )
         return await self._dispatch(Route.TOOL.value, turn)
 
@@ -214,6 +217,7 @@ class MessagePipeline:
             meta_patch=payload.meta_patch,
             loop=self.loop,
             rag=self.rag,
+            cancel_key=payload.cancel_key,
         )
         return await self._dispatch(route_key, turn)
 

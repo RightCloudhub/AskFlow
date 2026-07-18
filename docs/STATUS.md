@@ -27,6 +27,21 @@
 | SIEM 审计导出（E9 部分） | ✅ | `GET/POST /admin/audit-logs/export-siem`；`SIEM_WEBHOOK_URL` |
 | 飞书通道（E7b / U-12） | ✅ | `POST /channels/feishu/events`；challenge + 同流水线回复 |
 | 质检 QC（E8 骨架） | ✅ | `/admin/qc/summary|low-quality` + Admin 质检页 |
+| E9 扩展 PII | ✅ | 订单号部分遮罩 + 身份证/银行卡/地址；审计 `mask_detail` |
+| E10 知识 diff/回滚 | ✅ | revision 快照 + `/admin/documents/{id}/generations|diff|rollback` |
+| E12 多 worker cancel | ✅ | `cancel_registry`（进程 + 可选 Redis）+ 生成中止 + metrics |
+| E15 运维 Runbook | ✅ | `deploy/runbooks/reindex-model-storage.md` · `multi-worker-cancel-metrics.md` |
+| E3 最少未结派单 | ✅ | `TeamService.least_open_member` · `GET /admin/teams/{id}/suggest-assignee` |
+| E25 检索缓存 | ✅ | `rag/retrieval_cache.py` · `RETRIEVAL_CACHE_TTL_S` · metrics hit/miss |
+| E26 会话中段摘要 | ✅ | `agent/history_summary.py` · harness `history_summarized` |
+| 企微 / 钉钉通道 | ✅ | `/channels/wecom` · `/channels/dingtalk` · 同流水线 |
+| E16 附件元数据 | ✅ | `chat/attachments.py` · 消息 meta + 文本 cue |
+| E17 i18n | ✅ | `services/i18n/messages.py` zh-CN / en-US |
+| E18 多 Bot | ✅ | `bots/profiles.py` · `GET /admin/bots` · `BOT_PROFILES_JSON` |
+| E19 访客 | ✅ | Widget（既有） |
+| E27 扩展推理 | ✅ | 默关 `REASONING_ENABLED` · 意图白名单 + 步数预算 |
+| E28 沙箱 | ✅ | 默关 `SANDBOX_ENABLED` · sandbox_* 工具拒绝 |
+| E29 前端打磨 | ✅ | `theme.css` 品牌渐变/动效 + reduced-motion |
 
 ---
 
@@ -89,9 +104,9 @@
 
 | 检查 | 结果 |
 |------|------|
-| `pytest` (apps/api) | **99+ passed**（含 JWKS / run replay / notify） |
+| `pytest` (apps/api) | **156+ passed**（含 E9/E10/E12 波次缺口 + RAG/向量/索引） |
 | Eval runner | **passed=8 failed=0** |
-| Web build | **success** |
+| Web build | 见最新 CI / 本地 `npm run build` |
 | CI workflow | 文件就位：api-pytest + offline-eval + web-build |
 
 复跑：
@@ -134,5 +149,36 @@ cd ../web && npm run build
 3. 连接器 `base_url` 指向客户内网 CRM/订单系统  
 4. Prometheus 抓取 `/metrics` 与告警规则挂载  
 5. 生产 `SECRET_KEY` 强度与 `ASKFLOW_ENV=production` fail-safe  
+6. 可选 LLM：`LLM_BASE_URL` + `LLM_API_KEY`（生成/流式；未配则抽取式）  
+7. 可选向量：`EMBEDDING_*` 与 `CHROMA_HOST`/`CHROMA_PERSIST_DIR`（未配则 offline hash + 内存索引）  
+8. 可选异步索引：`INDEX_ASYNC=1` +（可选）`REDIS_URL`；进程内 `index_worker` 默认随 API 启动  
 
 详见：`deploy/checklists/pilot-integration.md`
+
+---
+
+## 8. RAG / 索引增强（2026-07-18）
+
+| 能力 | 状态 | 路径 |
+|------|:----:|------|
+| 真实 embedding 客户端 | ✅ | `services/rag/embedding/`（OpenAI 兼容 + offline） |
+| 向量通道（非 BM25 占位） | ✅ | `services/rag/vector/` memory cosine + 可选 Chroma |
+| LLM 生成 / 流式 | ✅ | `services/llm/client.py` · `rag/generator` |
+| 异步 index worker | ✅ | `workers/index_worker/` 队列消费 chunk→embed→upsert |
+| Indexer 双写 BM25+vector | ✅ | `services/knowledge/indexer/service.py` |
+
+---
+
+## 9. 范围诚实声明
+
+| 项 | 状态 |
+|----|------|
+| §12.1 + §12.2 代码验收 | ✅ 有真实路径与自动化 |
+| §10 非可选残留 E9/E10/E12/E15 | ✅ 本波收口 |
+| §11.2 排除项 | 不做 |
+| 企微/钉钉 | ✅ 代码通道（与飞书并列） |
+| E16–E19 / E29 P2 | ✅ 代码层交付（品牌动效为 CSS 级） |
+| E27/E28 | ✅ 默关可开；非生产默开 |
+| L2 插件 P2–P4 深拆 | ⏳ 骨架 + profile 解析；非全矩阵隔离 |
+| E20 多租户 SaaS | 不做（§11.2） |
+| **GA-CERTIFIED** | 未宣称（需真实 IdP/负载/渗透） |

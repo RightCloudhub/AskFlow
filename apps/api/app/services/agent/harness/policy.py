@@ -109,6 +109,13 @@ class Harness:
             )
 
         cleaned_history = self._sanitize_history(history or [], flags)
+        from app.services.agent.history_summary import compress_history
+
+        cleaned_history, compressed = compress_history(
+            cleaned_history, settings=self.settings
+        )
+        if compressed:
+            flags.append("history_summarized")
         return PrepareResult(allowed=True, text=raw, history=cleaned_history, flags=flags)
 
     def choose_route(

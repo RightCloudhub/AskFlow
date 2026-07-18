@@ -21,8 +21,10 @@ from app.plugins.builtin.sso import SsoPlugin
 from app.plugins.builtin.teams import TeamsPlugin
 from app.plugins.builtin.ticket import TicketPlugin
 from app.plugins.builtin.tools import ToolsPlugin
+from app.plugins.builtin.dingtalk import DingTalkPlugin
 from app.plugins.builtin.feishu import FeishuPlugin
 from app.plugins.builtin.qc import QcPlugin
+from app.plugins.builtin.wecom import WeComPlugin
 from app.plugins.builtin.widget import WidgetPlugin
 
 # Factory map: id → instance
@@ -46,6 +48,8 @@ BUILTIN_FACTORIES: dict[str, type] = {
     "mcp": McpPlugin,
     "widget": WidgetPlugin,
     "feishu": FeishuPlugin,
+    "wecom": WeComPlugin,
+    "dingtalk": DingTalkPlugin,
     "qc": QcPlugin,
 }
 

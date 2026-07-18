@@ -1520,7 +1520,7 @@ LaunchCard（变更预期与实测）
 
 | ID | 能力 | 要点 |
 |----|------|------|
-| E3 | 技能组 / 排班 / 派单 | Team、忙闲、按意图路由、轮询/最少未结、本组成员可见队列 |
+| E3 | 技能组 / 排班 / 派单 | ✅ Team + 意图范围队列 + 最少未结 suggest-assignee（排班表后置） |
 
 ### 10.4 Wave C — 进得了企业 IT（~25–40 人日）
 
@@ -1535,8 +1535,8 @@ LaunchCard（变更预期与实测）
 | ID | 能力 | 进度 |
 |----|------|:----:|
 | E8 | 质检与坐席分析 | ✅ 骨架：拒答/反馈率 + 确定性 score + Admin 页 |
-| E9 | 数据导出/删除、SIEM、扩展 PII | 部分：用户导出/删除 ✅；SIEM 审计 export/push ✅；扩展 PII ⏳ |
-| E10 | 知识发布 diff/回滚/效果卡片 | ⏳ |
+| E9 | 数据导出/删除、SIEM、扩展 PII | ✅ 用户导出/删除；SIEM export/push；扩展 PII（订单/证/卡/地址） |
+| E10 | 知识发布 diff/回滚/效果卡片 | ✅ generation 快照 + Admin generations/diff/rollback |
 | E11 | §9 指标产品化 + eval CI | ✅ Admin analytics + GitHub Actions eval |
 | E14 | 主路径自动化测试补齐 | ✅ CI pytest |
 | E21 | **Launch Card 产品化** + 自动回填在线指标 | ✅ CRUD + measure |
@@ -1544,34 +1544,34 @@ LaunchCard（变更预期与实测）
 
 ### 10.6 Wave E — 平台硬化与渠道（~15–25 人日）
 
-| ID | 能力 |
-|----|------|
-| E12 | 多 worker：cancel / metrics / 索引失效收口 |
-| E13 | 用户与权限 UI |
-| E15 | Runbook：reindex / 模型轮换 / 三存储对账 |
-| E7b | 飞书 / 企微 / 钉钉之一 | ✅ **飞书**事件订阅 + 同流水线；企微/钉钉仍后置 |
+| ID | 能力 | 进度 |
+|----|------|:----:|
+| E12 | 多 worker：cancel / metrics / 索引失效收口 | ✅ cancel_registry + 文档 + 生成中止 |
+| E13 | 用户与权限 UI | ✅ Admin users 导出/禁用/删除 |
+| E15 | Runbook：reindex / 模型轮换 / 三存储对账 | ✅ `deploy/runbooks/reindex-model-storage.md` |
+| E7b | 飞书 / 企微 / 钉钉 | ✅ 飞书 + 企微 + 钉钉事件入口 + 同流水线 |
 
 ### 10.7 Wave F — Agent 平台增强（~20–35 人日，可与 D 并行）
 
 | ID | 能力 | 要点 |
 |----|------|------|
-| E23 | 多模型网关 | LiteLLM/OpenRouter 类或自研等价；统一 fallback 与密钥 |
-| E24 | MCP Client | 白名单导入工具到 Registry；默认只读 |
-| E25 | 成本优化波次 | prompt cache、检索缓存、批量/降级策略；目标单位成本 -20% |
-| E26 | 会话摘要压缩 | 长会话中段摘要；摘要 purpose 走小模型 |
-| E27 | 扩展思考/复杂推理（可选） | 仅白名单意图；严格预算；默关 |
-| E28 | 受控代码沙箱（可选） | 默认关；威胁建模通过后才试点 |
+| E23 | 多模型网关 | ✅ 自研 `ModelRouter` purpose 路由 + fallback + 密钥配置（LiteLLM 可选后置） |
+| E24 | MCP Client | ✅ 白名单 sync 到 Registry；默认只读 |
+| E25 | 成本优化波次 | ✅ 检索 TTL 缓存 + CostLedger cache_hit；单位成本 -20% 需生产流量 |
+| E26 | 会话摘要压缩 | ✅ 长历史 extractive 中段摘要（离线）；LLM 摘要 purpose 可接小模型 |
+| E27 | 扩展思考/复杂推理（可选） | ✅ 默关；`REASONING_ENABLED` + 意图白名单 + 额外步数 |
+| E28 | 受控代码沙箱（可选） | ✅ 默关；`SANDBOX_ENABLED`；sandbox_* 工具拒绝 |
 
 ### 10.8 体验增强（P2，按需）
 
-| ID | 项 |
-|----|-----|
-| E16 | 富媒体：图片/附件、截图报障 |
-| E17 | i18n / 时区 |
-| E18 | 多 Bot（业务线独立 prompt 与知识子集） |
-| E19 | 访客模式（与 Widget 重叠） |
-| E20 | 多租户 SaaS — **独立商业立项**，默认不在本 PRD 范围 |
-| E29 | 前端动效打磨（Framer Motion / CSS）达到品牌级 |
+| ID | 项 | 进度 |
+|----|-----|:----:|
+| E16 | 富媒体：图片/附件、截图报障 | ✅ 附件 meta + 渠道 cue |
+| E17 | i18n / 时区 | ✅ zh-CN/en-US 文案表（时区后置配置） |
+| E18 | 多 Bot（业务线独立 prompt 与知识子集） | ✅ `BOT_PROFILES_JSON` + Admin `/bots` |
+| E19 | 访客模式（与 Widget 重叠） | ✅ Widget 既有 |
+| E20 | 多租户 SaaS — **独立商业立项**，默认不在本 PRD 范围 | 不做 |
+| E29 | 前端动效打磨 | ✅ CSS 品牌层（无强制 Framer 依赖） |
 
 ### 10.9 企业闭环目标态
 

@@ -51,22 +51,37 @@ async def lifespan(_app: FastAPI):
         settings.askflow_profile,
         ctx.loaded_plugins,
     )
-    job_task: asyncio.Task | None = None
-    if settings.env != "test" and settings.sweeper_enabled:
-        from app.workers.enterprise_jobs import periodic_loop
-
-        job_task = asyncio.create_task(periodic_loop(settings), name="enterprise_jobs")
+    bg_tasks = _start_background_tasks(settings)
     try:
         yield
     finally:
-        if job_task is not None:
-            job_task.cancel()
-            try:
-                await job_task
-            except asyncio.CancelledError:
-                pass
+        await _stop_background_tasks(bg_tasks)
         await shutdown_plugins(get_app_context())
         logger.info("AskFlow API shutting down")
+
+
+def _start_background_tasks(settings) -> list[asyncio.Task]:
+    if settings.env == "test":
+        return []
+    tasks: list[asyncio.Task] = []
+    if settings.sweeper_enabled:
+        from app.workers.enterprise_jobs import periodic_loop
+
+        tasks.append(asyncio.create_task(periodic_loop(settings), name="enterprise_jobs"))
+    if settings.index_worker_enabled:
+        from app.workers.index_worker.consumer import consumer_loop
+
+        tasks.append(asyncio.create_task(consumer_loop(settings), name="index_worker"))
+    return tasks
+
+
+async def _stop_background_tasks(tasks: list[asyncio.Task]) -> None:
+    for task in tasks:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 def create_app() -> FastAPI:

@@ -74,3 +74,14 @@ async def add_member(
 ) -> dict:
     m = await TeamService(db).add_member(team_id, body.user_id)
     return {"id": m.id, "team_id": m.team_id, "user_id": m.user_id}
+
+
+@router.get("/{team_id}/suggest-assignee")
+async def suggest_assignee(
+    team_id: str,
+    db: DbSession,
+    _user: User = Depends(require_agent_or_admin),
+) -> dict:
+    """E3: least open claimed load among team members."""
+    uid = await TeamService(db).least_open_member(team_id)
+    return {"team_id": team_id, "suggested_user_id": uid, "strategy": "least_open"}

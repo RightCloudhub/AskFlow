@@ -48,6 +48,7 @@ class TurnPayload:
     history: list[dict[str, Any]]
     metadata: dict[str, Any]
     meta_patch: dict[str, Any] = field(default_factory=dict)
+    cancel_key: str | None = None
 
 
 @dataclass
@@ -69,3 +70,4 @@ class TurnContext:
     order_id: str | None = None
     loop: Any = None
     rag: Any = None
+    cancel_key: str | None = None

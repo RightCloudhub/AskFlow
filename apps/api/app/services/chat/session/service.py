@@ -96,12 +96,29 @@ class ChatService:
         conversation_id: str,
         user_id: str,
         content: str,
+        *,
+        attachments: list | None = None,
+        bot_id: str | None = None,
+        locale: str | None = None,
     ) -> tuple[Message, Message, PipelineResult]:
+        from app.services.bots.profiles import get_bot
+        from app.services.chat.attachments import attachment_prompt_suffix, normalize_attachments
+
         conv = await self.get_conversation(conversation_id, user_id)
+        atts = normalize_attachments(attachments)
+        user_meta: dict = {}
+        if atts:
+            user_meta["attachments"] = atts
+        if bot_id:
+            user_meta["bot_id"] = bot_id
+        if locale:
+            user_meta["locale"] = locale
+        text = content + attachment_prompt_suffix(atts)
         user_msg = await self.add_message(
             conversation_id,
             role=MessageRole.USER.value,
-            content=content,
+            content=text,
+            meta=user_meta or None,
         )
 
         history_rows = await self.list_messages(conversation_id, user_id)
@@ -111,12 +128,24 @@ class ChatService:
             if m.id != user_msg.id
         ]
 
+        meta = dict(conv.metadata_json or {})
+        bot = get_bot(bot_id or meta.get("bot_id"))
+        meta.setdefault("bot_id", bot.id)
+        if locale:
+            meta["locale"] = locale
+        elif bot.locale:
+            meta.setdefault("locale", bot.locale)
+        meta["system_prompt_key"] = bot.system_prompt_key
+        if bot.knowledge_tags:
+            meta["knowledge_tags"] = bot.knowledge_tags
+
         pipeline = MessagePipeline(self.db)
         result = await pipeline.handle(
-            content,
+            text,
             history=history,
-            metadata=conv.metadata_json or {},
+            metadata=meta,
             conversation_status=conv.status,
+            cancel_key=conversation_id,
         )
 
         if result.metadata_patch:

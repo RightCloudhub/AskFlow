@@ -12,7 +12,7 @@ async def handle_rag(ctx: TurnContext) -> PipelineResult:
         from app.services.rag.pipeline import RAGPipeline
 
         rag = RAGPipeline()
-    result = await rag.run(ctx.text, history=ctx.history)
+    result = await rag.run(ctx.text, history=ctx.history, cancel_key=ctx.cancel_key)
     final = ctx.harness.finalize(result.answer)
     flags = list(ctx.flags) + list(result.flags) + list(final.flags)
     intent = ctx.intent_result.intent.value if ctx.intent_result else None

@@ -40,6 +40,18 @@ services:
     volumes:
       - askflow_minio:/data
 
+  # Optional vector store (pair with CHROMA_HOST=localhost CHROMA_PORT=8001)
+  chroma:
+    image: chromadb/chroma:0.5.23
+    ports:
+      - "8001:8000"
+    volumes:
+      - askflow_chroma:/chroma/chroma
+    environment:
+      IS_PERSISTENT: "TRUE"
+      ANONYMIZED_TELEMETRY: "FALSE"
+
 volumes:
   askflow_pg:
   askflow_minio:
+  askflow_chroma:

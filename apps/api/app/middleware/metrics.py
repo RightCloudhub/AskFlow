@@ -92,6 +92,40 @@ OUT_OF_SCOPE_TOTAL = Counter(
     "askflow_out_of_scope_total",
     "Out-of-scope refusals",
 )
+EMBEDDING_REQUESTS = Counter(
+    "askflow_embedding_requests_total",
+    "Embedding batch requests",
+    ["status", "backend"],
+)
+EMBEDDING_LATENCY = Histogram(
+    "askflow_embedding_latency_seconds",
+    "Embedding batch latency",
+    ["backend"],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10),
+)
+INDEX_JOBS_TOTAL = Counter(
+    "askflow_index_jobs_total",
+    "Knowledge index jobs",
+    ["status"],
+)
+CANCEL_REQUESTS_TOTAL = Counter(
+    "askflow_cancel_requests_total",
+    "Cancel requests (conversation or run)",
+    ["scope"],
+)
+CANCEL_HONORED_TOTAL = Counter(
+    "askflow_cancel_honored_total",
+    "Cancels observed mid-generation",
+)
+RETRIEVAL_CACHE_TOTAL = Counter(
+    "askflow_retrieval_cache_total",
+    "RAG retrieval cache hits/misses",
+    ["result"],
+)
+HISTORY_SUMMARY_TOTAL = Counter(
+    "askflow_history_summary_total",
+    "Mid-session history compressions",
+)
 
 
 def metrics_payload() -> tuple[bytes, str]:
