@@ -20,6 +20,12 @@ async def test_fault_report():
 
 
 @pytest.mark.asyncio
+async def test_bare_number_not_fault():
+    r = await IntentClassifier().classify("房间号是500")
+    assert r.intent != Intent.FAULT_REPORT
+
+
+@pytest.mark.asyncio
 async def test_complaint():
     r = await IntentClassifier().classify("我要投诉，非常不满")
     assert r.intent == Intent.COMPLAINT

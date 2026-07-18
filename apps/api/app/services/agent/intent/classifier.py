@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from app.models.enums import Intent
 
 # Rule patterns with medium confidence (0.7)
+# Fault: bare "500" alone is too noisy — require error context / HTTP status phrasing.
 RULE_PATTERNS: list[tuple[Intent, re.Pattern[str], float]] = [
     (
         Intent.ORDER_QUERY,
@@ -19,7 +20,11 @@ RULE_PATTERNS: list[tuple[Intent, re.Pattern[str], float]] = [
     ),
     (
         Intent.FAULT_REPORT,
-        re.compile(r"(报错|错误码?|bug|故障|crash|崩溃|500|打不开|无法使用|异常)", re.I),
+        re.compile(
+            r"(报错|错误码?|bug|故障|crash|崩溃|打不开|无法使用|异常|"
+            r"HTTP\s*500|状态码\s*500|internal\s*server\s*error)",
+            re.I,
+        ),
         0.7,
     ),
     (
@@ -73,13 +78,14 @@ class IntentClassifier:
                 # best-effort: fall through to rules
                 pass
 
-        if rule.confidence < 0.5 and rule.intent == Intent.FAQ:
+        # Very low-confidence FAQ → force clarify instead of weak RAG
+        if rule.intent == Intent.FAQ and rule.confidence < 0.5:
             return IntentResult(
                 intent=Intent.FAQ,
                 confidence=rule.confidence,
                 source=rule.source,
-                needs_clarify=False,
-                reasons=rule.reasons,
+                needs_clarify=True,
+                reasons=(rule.reasons or []) + ["low_conf_clarify"],
             )
         return rule
 
