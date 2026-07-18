@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Card, Col, Empty, Row, Spin, Table } from "antd";
 import {
   DonutChart,
@@ -10,23 +10,10 @@ import {
   purposeLabel,
   type ChartDatum,
 } from "../../components/admin";
-import { api } from "../../api/client";
+import { useCostSummary } from "../../hooks/use-governance";
+import type { CostBucket } from "../../api/types";
 
-type CostRow = {
-  purpose?: string;
-  model?: string;
-  prompt_tokens: number;
-  completion_tokens: number;
-  estimated_usd: number;
-  calls: number;
-};
-
-type CostSummary = {
-  by_purpose?: CostRow[];
-  by_model?: CostRow[];
-};
-
-function totals(rows: CostRow[]) {
+function totals(rows: CostBucket[]) {
   return rows.reduce(
     (acc, r) => {
       acc.usd += r.estimated_usd || 0;
@@ -35,25 +22,18 @@ function totals(rows: CostRow[]) {
       acc.completion += r.completion_tokens || 0;
       return acc;
     },
-    { usd: 0, calls: 0, prompt: 0, completion: 0 }
+    { usd: 0, calls: 0, prompt: 0, completion: 0 },
   );
 }
 
 export function CostsPage() {
-  const [data, setData] = useState<CostSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    void api<CostSummary>("/api/v1/admin/costs/summary")
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, []);
-
+  const costQ = useCostSummary();
+  const data = costQ.data;
   const purposeRows = data?.by_purpose ?? [];
   const modelRows = data?.by_model ?? [];
   const agg = useMemo(
     () => totals(purposeRows.length ? purposeRows : modelRows),
-    [purposeRows, modelRows]
+    [purposeRows, modelRows],
   );
 
   const purposeChart: ChartDatum[] = purposeRows.map((r, i) => ({
@@ -61,13 +41,11 @@ export function CostsPage() {
     label: purposeLabel(r.purpose ?? "其他"),
     value: r.estimated_usd,
   }));
-
   const modelChart: ChartDatum[] = modelRows.map((r, i) => ({
     key: r.model ?? `m${i}`,
     label: r.model || "未知模型",
     value: r.estimated_usd,
   }));
-
   const callChart: ChartDatum[] = purposeRows.map((r, i) => ({
     key: `c-${r.purpose ?? i}`,
     label: purposeLabel(r.purpose ?? "其他"),
@@ -109,8 +87,8 @@ export function CostsPage() {
         title="成本分析"
         subtitle="按用途与模型拆分 Token 与预估费用"
       />
-      <Spin spinning={loading}>
-        {!data && !loading ? (
+      <Spin spinning={costQ.isLoading}>
+        {!data && !costQ.isLoading ? (
           <Empty description="暂无成本数据" />
         ) : (
           <>
@@ -156,7 +134,7 @@ export function CostsPage() {
                 <Card title="明细表">
                   <Table
                     size="middle"
-                    rowKey={(r) => r.purpose ?? String(Math.random())}
+                    rowKey={(r) => r.purpose ?? r.model ?? String(Math.random())}
                     dataSource={purposeRows}
                     columns={columns}
                     pagination={false}

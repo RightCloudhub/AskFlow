@@ -1,45 +1,17 @@
-import { useEffect, useState } from "react";
 import { Button, Card, Space, Table, Tag } from "antd";
 import { CheckOutlined, StopOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
 import { PageHeader, StatusBadge } from "../../components/admin";
-
-type Gap = {
-  id: string;
-  question: string;
-  hit_count: number;
-  reason: string | null;
-  status: string;
-};
+import {
+  useDismissGap,
+  useGaps,
+  usePromoteGap,
+} from "../../hooks/use-knowledge";
+import type { Gap } from "../../api/types";
 
 export function GapsPage() {
-  const [gaps, setGaps] = useState<Gap[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  async function load() {
-    setGaps(await api<Gap[]>("/api/v1/admin/gaps"));
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
-
-  async function dismiss(id: string) {
-    await api(`/api/v1/admin/gaps/${id}/dismiss`, { method: "POST" });
-    await load();
-  }
-
-  async function promote(g: Gap) {
-    await api(`/api/v1/admin/gaps/${g.id}/promote`, {
-      method: "POST",
-      body: JSON.stringify({
-        title: `FAQ: ${g.question.slice(0, 40)}`,
-        content: g.question,
-        gap_id: g.id,
-      }),
-    });
-    await load();
-  }
+  const gapsQ = useGaps();
+  const dismiss = useDismissGap();
+  const promote = usePromoteGap();
 
   return (
     <div className="af-page">
@@ -50,9 +22,9 @@ export function GapsPage() {
       />
       <Card>
         <Table
-          loading={loading}
+          loading={gapsQ.isLoading}
           rowKey="id"
-          dataSource={gaps}
+          dataSource={gapsQ.data ?? []}
           pagination={{ pageSize: 10 }}
           columns={[
             { title: "问题", dataIndex: "question" },
@@ -83,14 +55,16 @@ export function GapsPage() {
                     type="primary"
                     size="small"
                     icon={<CheckOutlined />}
-                    onClick={() => void promote(g)}
+                    loading={promote.isPending && promote.variables?.id === g.id}
+                    onClick={() => void promote.mutateAsync(g)}
                   >
                     生成草稿
                   </Button>
                   <Button
                     size="small"
                     icon={<StopOutlined />}
-                    onClick={() => void dismiss(g.id)}
+                    loading={dismiss.isPending && dismiss.variables === g.id}
+                    onClick={() => void dismiss.mutateAsync(g.id)}
                   >
                     忽略
                   </Button>

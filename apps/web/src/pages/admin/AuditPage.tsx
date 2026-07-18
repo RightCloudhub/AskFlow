@@ -1,27 +1,11 @@
-import { useEffect, useState } from "react";
 import { Card, Collapse, Table, Tag } from "antd";
-import { api } from "../../api/client";
 import { PageHeader } from "../../components/admin";
 import { JsonView } from "../../components/common/json";
-
-type Audit = {
-  id: string;
-  action: string;
-  resource_type: string;
-  resource_id: string | null;
-  detail: Record<string, unknown>;
-  created_at: string;
-};
+import { useAuditLogs } from "../../hooks/use-governance";
+import type { AuditLog } from "../../api/types";
 
 export function AuditPage() {
-  const [rows, setRows] = useState<Audit[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    void api<Audit[]>("/api/v1/admin/audit-logs")
-      .then(setRows)
-      .finally(() => setLoading(false));
-  }, []);
+  const auditQ = useAuditLogs();
 
   return (
     <div className="af-page">
@@ -32,9 +16,9 @@ export function AuditPage() {
       />
       <Card>
         <Table
-          loading={loading}
+          loading={auditQ.isLoading}
           rowKey="id"
-          dataSource={rows}
+          dataSource={auditQ.data ?? []}
           pagination={{ pageSize: 15 }}
           columns={[
             {
@@ -45,7 +29,7 @@ export function AuditPage() {
             {
               title: "资源",
               key: "resource",
-              render: (_: unknown, a: Audit) =>
+              render: (_: unknown, a: AuditLog) =>
                 `${a.resource_type} ${a.resource_id || ""}`.trim(),
             },
             {
@@ -56,7 +40,7 @@ export function AuditPage() {
             {
               title: "详情",
               key: "detail",
-              render: (_: unknown, a: Audit) => (
+              render: (_: unknown, a: AuditLog) => (
                 <Collapse
                   ghost
                   size="small"
@@ -65,7 +49,11 @@ export function AuditPage() {
                       key: "1",
                       label: "查看 JSON",
                       children: (
-                        <JsonView data={a.detail} compact initialExpandDepth={1} />
+                        <JsonView
+                          data={a.detail}
+                          compact
+                          initialExpandDepth={1}
+                        />
                       ),
                     },
                   ]}

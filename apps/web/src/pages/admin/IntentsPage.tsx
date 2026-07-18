@@ -1,16 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Button, Card, Form, Select, Space, Table, Tag } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
 import { PageHeader } from "../../components/admin";
-
-type IntentRow = {
-  id: string;
-  intent: string;
-  route: string;
-  enabled: boolean;
-  description: string;
-};
+import { useIntents, useUpsertIntent } from "../../hooks/use-ops";
 
 const INTENTS = ["faq", "product", "order_query", "fault_report", "complaint", "handoff"];
 const ROUTES = ["rag", "tool", "ticket", "handoff", "clarify"];
@@ -33,27 +25,17 @@ const ROUTE_LABELS: Record<string, string> = {
 };
 
 export function IntentsPage() {
-  const [rows, setRows] = useState<IntentRow[]>([]);
   const [intent, setIntent] = useState("faq");
   const [route, setRoute] = useState("rag");
   const [msg, setMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  async function load() {
-    setRows(await api<IntentRow[]>("/api/v1/admin/intents"));
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
+  const intentsQ = useIntents();
+  const upsert = useUpsertIntent();
 
   async function save() {
-    await api(`/api/v1/admin/intents/${intent}`, {
-      method: "PUT",
-      body: JSON.stringify({ intent, route, enabled: true, description: "ops" }),
-    });
-    setMsg(`已更新 ${INTENT_LABELS[intent] ?? intent} → ${ROUTE_LABELS[route] ?? route}`);
-    await load();
+    await upsert.mutateAsync({ intent, route });
+    setMsg(
+      `已更新 ${INTENT_LABELS[intent] ?? intent} → ${ROUTE_LABELS[route] ?? route}`,
+    );
   }
 
   return (
@@ -91,7 +73,12 @@ export function IntentsPage() {
               }))}
             />
           </Form.Item>
-          <Button type="primary" icon={<SaveOutlined />} onClick={() => void save()}>
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            loading={upsert.isPending}
+            onClick={() => void save()}
+          >
             保存
           </Button>
         </Space>
@@ -99,9 +86,9 @@ export function IntentsPage() {
 
       <Card title="当前映射">
         <Table
-          loading={loading}
+          loading={intentsQ.isLoading}
           rowKey="id"
-          dataSource={rows}
+          dataSource={intentsQ.data ?? []}
           pagination={false}
           columns={[
             {

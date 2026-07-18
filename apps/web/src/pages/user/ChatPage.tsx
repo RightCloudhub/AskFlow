@@ -1,195 +1,175 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Spin } from "antd";
 import { useNavigate } from "react-router-dom";
+import { setToken } from "../../api/client";
+import type { CitationSource, Message } from "../../api/types";
 import {
-  api,
-  Conversation,
-  Message,
-  setToken,
-  User,
-} from "../../api/client";
-import { useFeatures } from "../../plugins/features";
+  Composer,
+  HandoffBanner,
+  MessageList,
+  SourcePanel,
+} from "../../components/chat";
+import { AppShell } from "../../components/layout/AppShell";
+import { useMe } from "../../hooks/use-auth";
+import {
+  useConversations,
+  useCreateConversation,
+  useMessages,
+} from "../../hooks/use-chat";
+import { getChatSocket } from "../../services/chat-ws";
+import { useQueryClient } from "@tanstack/react-query";
+import { ChatKeys } from "../../hooks/query-keys";
 
 export function ChatPage() {
   const nav = useNavigate();
-  const { enabled } = useFeatures();
-  const [me, setMe] = useState<User | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [streamText, setStreamText] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [handoffHint, setHandoffHint] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const user = await api<User>("/api/v1/admin/auth/me");
-        setMe(user);
-        const list = await api<Conversation[]>("/api/v1/chat/conversations");
-        setConversations(list);
-        if (list[0]) setActiveId(list[0].id);
-      } catch {
-        setToken(null);
-        nav("/login");
-      }
-    })();
-  }, [nav]);
+  const meQ = useMe();
+  const convQ = useConversations(meQ.isSuccess);
+  const msgQ = useMessages(activeId);
+  const createConv = useCreateConversation();
 
   useEffect(() => {
-    if (!activeId) return;
-    (async () => {
-      const rows = await api<Message[]>(
-        `/api/v1/chat/conversations/${activeId}/messages`,
-      );
-      setMessages(rows);
-    })();
-  }, [activeId]);
+    if (meQ.isError) {
+      setToken(null);
+      nav("/login");
+    }
+  }, [meQ.isError, nav]);
+
+  useEffect(() => {
+    if (!activeId && convQ.data?.[0]) setActiveId(convQ.data[0].id);
+  }, [activeId, convQ.data]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [msgQ.data, streamText, streaming]);
 
-  async function newChat() {
-    const conv = await api<Conversation>("/api/v1/chat/conversations", {
-      method: "POST",
-      body: JSON.stringify({ title: "新会话" }),
-    });
-    setConversations((prev) => [conv, ...prev]);
+  async function handleNewChat() {
+    const conv = await createConv.mutateAsync("新会话");
     setActiveId(conv.id);
-    setMessages([]);
+    setHandoffHint(null);
   }
 
-  async function onSend(e: FormEvent) {
-    e.preventDefault();
-    if (!activeId || !input.trim() || sending) return;
-    setSending(true);
-    setError(null);
-    const content = input.trim();
-    setInput("");
+  async function handleSend(content: string) {
+    if (!activeId || streaming) return;
+    setSendError(null);
+    setStreaming(true);
+    setStreamText("");
+    const sources: CitationSource[] = [];
+    let endMeta: Record<string, unknown> = {};
+
+    // Optimistic user bubble via cache
+    const tempUser: Message = {
+      id: `tmp-u-${Date.now()}`,
+      role: "user",
+      content,
+      created_at: new Date().toISOString(),
+    };
+    const key = ChatKeys.messages(activeId);
+    const prev = qc.getQueryData<Message[]>(key) ?? [];
+    qc.setQueryData<Message[]>(key, [...prev, tempUser]);
+
     try {
-      const res = await api<{
-        user_message: Message;
-        assistant_message: Message;
-      }>(`/api/v1/chat/conversations/${activeId}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ content }),
+      await getChatSocket().sendMessage(activeId, content, {
+        onToken: (chunk) => setStreamText((t) => t + chunk),
+        onSource: (s) => sources.push(s),
+        onHandoff: (p) =>
+          setHandoffHint(String(p.summary || "已进入人工接管队列")),
+        onEnd: (p) => {
+          endMeta = {
+            route: p.route,
+            answer_confidence: p.answer_confidence,
+            refused: p.refused,
+            sources: p.sources?.length ? p.sources : sources,
+          };
+        },
+        onError: (m) => setSendError(m),
       });
-      setMessages((prev) => [...prev, res.user_message, res.assistant_message]);
-      const list = await api<Conversation[]>("/api/v1/chat/conversations");
-      setConversations(list);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "发送失败");
-      setInput(content);
+      await qc.invalidateQueries({ queryKey: key });
+      await qc.invalidateQueries({ queryKey: ChatKeys.conversations() });
+      // if stream leftover and invalidate slow, still clear
+      void endMeta;
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : "发送失败");
+      qc.setQueryData<Message[]>(key, prev);
     } finally {
-      setSending(false);
+      setStreaming(false);
+      setStreamText("");
     }
   }
 
-  function logout() {
-    setToken(null);
-    nav("/login");
+  const loadingShell = meQ.isLoading || (meQ.isSuccess && convQ.isLoading);
+
+  if (loadingShell) {
+    return (
+      <div className="af-query-state" style={{ minHeight: "100vh" }}>
+        <Spin size="large" tip="加载会话…" />
+      </div>
+    );
   }
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="sidebar-head">
-          <span className="brand-mark sm">AF</span>
-          <strong>AskFlow</strong>
-        </div>
-        <button className="primary" onClick={newChat}>
-          新建会话
-        </button>
-        <ul className="conv-list">
-          {conversations.map((c) => (
-            <li key={c.id}>
-              <button
-                className={c.id === activeId ? "active" : ""}
-                onClick={() => setActiveId(c.id)}
-              >
-                <span className="title">{c.title}</span>
-                <span className="status">{c.status}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        <div className="sidebar-foot">
-          <span>{me?.username}</span>
-          {enabled("ticket") ? (
-            <a className="linkish" href="/tickets">
-              工单
-            </a>
-          ) : null}
-          <a className="linkish" href="/admin">
-            Admin
-          </a>
-          <button className="linkish" onClick={logout}>
-            退出
-          </button>
-        </div>
-      </aside>
-
-      <main className="chat-main">
-        <header className="chat-header">
-          <h2>智能客服</h2>
-          <p>诚实 RAG · 意图路由 · 可转人工</p>
-        </header>
-
-        <div className="message-list">
-          {messages.length === 0 && (
-            <div className="empty-state">
-              <h3>有什么可以帮您？</h3>
-              <p>试试：退货政策 / 查订单物流 / 转人工客服</p>
-            </div>
-          )}
-          {messages.map((m) => (
-            <article key={m.id} className={`bubble ${m.role}`}>
-              <div className="bubble-role">{m.role === "user" ? "我" : "助手"}</div>
-              <div className="bubble-body">{m.content}</div>
-              {m.role === "assistant" && m.meta?.answer_confidence != null && (
-                <div className="confidence">
-                  置信度 {Number(m.meta.answer_confidence).toFixed(2)}
-                  {m.meta.route ? ` · ${String(m.meta.route)}` : ""}
-                  {m.meta.refused ? " · 拒答" : ""}
-                </div>
-              )}
-              {m.role === "assistant" && Array.isArray(m.meta?.sources) && (m.meta.sources as { source?: string; text?: string; index?: number }[]).length > 0 && (
-                <div className="sources">
-                  <div className="sources-title">来源</div>
-                  {(m.meta.sources as { source?: string; text?: string; index?: number }[]).map((s, i) => (
-                    <div key={i} className="source-item">
-                      [{s.index ?? i + 1}] {s.source}: {(s.text || "").slice(0, 120)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </article>
-          ))}
-          <div ref={bottomRef} />
-        </div>
-
-        {error && <div className="error-banner inline">{error}</div>}
-
-        <form className="composer" onSubmit={onSend}>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={activeId ? "输入问题，Enter 发送" : "请先新建会话"}
-            rows={2}
-            disabled={!activeId || sending}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void onSend(e);
-              }
-            }}
+    <AppShell
+      me={meQ.data}
+      conversations={convQ.data ?? []}
+      activeId={activeId}
+      onSelectConversation={(id) => {
+        setActiveId(id);
+        setHandoffHint(null);
+      }}
+      onNewChat={() => void handleNewChat()}
+      creating={createConv.isPending}
+    >
+      {handoffHint ? (
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 28px 8px" }}>
+          <HandoffBanner
+            summary={handoffHint}
+            onGoAdmin={() => nav("/admin/handoffs")}
           />
-          <button type="submit" disabled={!activeId || sending || !input.trim()}>
-            {sending ? "…" : "发送"}
-          </button>
-        </form>
-      </main>
-    </div>
+        </div>
+      ) : null}
+
+      <div className="af-chat-stage">
+        {msgQ.isLoading && activeId && !streaming ? (
+          <div className="af-query-state">
+            <Spin tip="加载消息…" />
+          </div>
+        ) : (
+          <MessageList
+            messages={msgQ.data ?? []}
+            streaming={streaming}
+            streamingText={streamText}
+          />
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {sendError ? (
+        <Alert
+          type="error"
+          showIcon
+          style={{
+            maxWidth: 860,
+            margin: "0 auto 8px",
+            width: "calc(100% - 56px)",
+          }}
+          message={sendError}
+        />
+      ) : null}
+
+      <Composer
+        disabled={!activeId}
+        sending={streaming}
+        placeholder={activeId ? undefined : "请先新建会话"}
+        onSend={handleSend}
+      />
+      <SourcePanel />
+    </AppShell>
   );
 }

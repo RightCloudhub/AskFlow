@@ -1,44 +1,23 @@
-import { useEffect, useState } from "react";
 import { Button, Card, Space, Table } from "antd";
 import { CheckCircleOutlined, SyncOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
 import { PageHeader, StatusBadge } from "../../components/admin";
-
-type Ticket = {
-  id: string;
-  title: string;
-  status: string;
-  priority: string;
-  type: string;
-  assignee: string | null;
-};
+import {
+  useAdminTickets,
+  useUpdateAdminTicket,
+} from "../../hooks/use-ops";
+import type { AdminTicket } from "../../api/types";
 
 const PRIORITY: Record<string, string> = {
   low: "低",
   normal: "普通",
+  medium: "中",
   high: "高",
   urgent: "紧急",
 };
 
 export function TicketsAdminPage() {
-  const [rows, setRows] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  async function load() {
-    setRows(await api<Ticket[]>("/api/v1/admin/tickets"));
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
-
-  async function setStatus(id: string, status: string) {
-    await api(`/api/v1/admin/tickets/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
-    await load();
-  }
+  const ticketsQ = useAdminTickets();
+  const update = useUpdateAdminTicket();
 
   return (
     <div className="af-page">
@@ -49,9 +28,9 @@ export function TicketsAdminPage() {
       />
       <Card>
         <Table
-          loading={loading}
+          loading={ticketsQ.isLoading}
           rowKey="id"
-          dataSource={rows}
+          dataSource={ticketsQ.data ?? []}
           pagination={{ pageSize: 10 }}
           columns={[
             { title: "标题", dataIndex: "title" },
@@ -72,12 +51,19 @@ export function TicketsAdminPage() {
               title: "操作",
               key: "actions",
               width: 220,
-              render: (_: unknown, t: Ticket) => (
+              render: (_: unknown, t: AdminTicket) => (
                 <Space>
                   <Button
                     size="small"
                     icon={<SyncOutlined />}
-                    onClick={() => void setStatus(t.id, "processing")}
+                    loading={
+                      update.isPending &&
+                      update.variables?.id === t.id &&
+                      update.variables?.status === "processing"
+                    }
+                    onClick={() =>
+                      void update.mutateAsync({ id: t.id, status: "processing" })
+                    }
                   >
                     处理中
                   </Button>
@@ -85,7 +71,14 @@ export function TicketsAdminPage() {
                     type="primary"
                     size="small"
                     icon={<CheckCircleOutlined />}
-                    onClick={() => void setStatus(t.id, "resolved")}
+                    loading={
+                      update.isPending &&
+                      update.variables?.id === t.id &&
+                      update.variables?.status === "resolved"
+                    }
+                    onClick={() =>
+                      void update.mutateAsync({ id: t.id, status: "resolved" })
+                    }
                   >
                     已解决
                   </Button>

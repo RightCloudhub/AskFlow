@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { MarkdownBody } from "../../components/chat/MarkdownBody";
 
 const API = "/api/v1";
 const STORAGE_KEY = "askflow_widget_session";
@@ -81,7 +82,10 @@ export function WidgetPage() {
         token: session.access_token,
         body: JSON.stringify({ content }),
       });
-      setMessages((m) => [...m, { role: "assistant", content: r.assistant_message.content }]);
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: r.assistant_message.content },
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "send failed");
     } finally {
@@ -98,7 +102,11 @@ export function WidgetPage() {
       <div className="widget-messages">
         {messages.map((m, i) => (
           <div key={`${m.role}-${i}`} className={`bubble ${m.role}`}>
-            {m.content}
+            {m.role === "assistant" ? (
+              <MarkdownBody content={m.content} />
+            ) : (
+              m.content
+            )}
           </div>
         ))}
         {!messages.length ? <p className="meta">有什么可以帮您？</p> : null}

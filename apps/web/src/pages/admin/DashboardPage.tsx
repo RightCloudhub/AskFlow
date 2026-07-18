@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Alert, Card, Col, Empty, Row, Spin } from "antd";
 import {
   BarChart,
@@ -11,27 +11,8 @@ import {
   purposeLabel,
   type ChartDatum,
 } from "../../components/admin";
-import { api } from "../../api/client";
-
-type CostBucket = {
-  purpose?: string;
-  model?: string;
-  estimated_usd: number;
-  calls: number;
-};
-
-type AnalyticsSummary = {
-  messages?: number;
-  tickets_open?: number;
-  handoffs_queued?: number;
-  gaps_open?: number;
-  thumbs_down?: number;
-  sla_breached?: number;
-  handoff_timeouts?: number;
-  notifications?: number;
-  cost_estimated_usd?: number;
-  cost?: { by_purpose?: CostBucket[]; by_model?: CostBucket[] };
-};
+import { useAnalyticsSummary } from "../../hooks/use-analytics";
+import type { AnalyticsSummary } from "../../api/types";
 
 const KPI = [
   { key: "messages", tone: "brand" as const, format: "number" as const },
@@ -48,60 +29,57 @@ function num(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
+function buildOpsBars(summary: AnalyticsSummary): ChartDatum[] {
+  return [
+    { key: "messages", label: "消息", value: num(summary.messages) },
+    { key: "tickets", label: "未结工单", value: num(summary.tickets_open) },
+    { key: "handoffs", label: "排队接管", value: num(summary.handoffs_queued) },
+    { key: "gaps", label: "知识缺口", value: num(summary.gaps_open) },
+    { key: "sla", label: "SLA 违约", value: num(summary.sla_breached) },
+    { key: "timeout", label: "接管超时", value: num(summary.handoff_timeouts) },
+  ];
+}
+
+function buildRiskDonut(summary: AnalyticsSummary): ChartDatum[] {
+  return [
+    { key: "sla", label: "SLA 违约", value: num(summary.sla_breached) },
+    { key: "down", label: "差评", value: num(summary.thumbs_down) },
+    { key: "timeout", label: "接管超时", value: num(summary.handoff_timeouts) },
+    { key: "gaps", label: "开放缺口", value: num(summary.gaps_open) },
+  ];
+}
+
 export function DashboardPage() {
-  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: summary, error, isLoading, isError } = useAnalyticsSummary();
 
-  useEffect(() => {
-    setLoading(true);
-    api<AnalyticsSummary>("/api/v1/admin/analytics/summary")
-      .then(setSummary)
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const opsBars: ChartDatum[] = useMemo(() => {
-    if (!summary) return [];
-    return [
-      { key: "messages", label: "消息", value: num(summary.messages) },
-      { key: "tickets", label: "未结工单", value: num(summary.tickets_open) },
-      { key: "handoffs", label: "排队接管", value: num(summary.handoffs_queued) },
-      { key: "gaps", label: "知识缺口", value: num(summary.gaps_open) },
-      { key: "sla", label: "SLA 违约", value: num(summary.sla_breached) },
-      { key: "timeout", label: "接管超时", value: num(summary.handoff_timeouts) },
-    ];
-  }, [summary]);
-
-  const riskDonut: ChartDatum[] = useMemo(() => {
-    if (!summary) return [];
-    return [
-      { key: "sla", label: "SLA 违约", value: num(summary.sla_breached) },
-      { key: "down", label: "差评", value: num(summary.thumbs_down) },
-      { key: "timeout", label: "接管超时", value: num(summary.handoff_timeouts) },
-      { key: "gaps", label: "开放缺口", value: num(summary.gaps_open) },
-    ];
-  }, [summary]);
-
-  const costByPurpose: ChartDatum[] = useMemo(
+  const opsBars = useMemo(
+    () => (summary ? buildOpsBars(summary) : []),
+    [summary],
+  );
+  const riskDonut = useMemo(
+    () => (summary ? buildRiskDonut(summary) : []),
+    [summary],
+  );
+  const costByPurpose = useMemo(
     () =>
       (summary?.cost?.by_purpose ?? []).map((p, i) => ({
         key: p.purpose ?? `p${i}`,
         label: purposeLabel(p.purpose ?? "其他"),
         value: p.estimated_usd ?? 0,
       })),
-    [summary]
+    [summary],
   );
-
-  const costByModel: ChartDatum[] = useMemo(
+  const costByModel = useMemo(
     () =>
       (summary?.cost?.by_model ?? []).map((m, i) => ({
         key: m.model ?? `m${i}`,
         label: m.model || "未知模型",
         value: m.estimated_usd ?? 0,
       })),
-    [summary]
+    [summary],
   );
+
+  const riskTotal = riskDonut.reduce((s, d) => s + d.value, 0);
 
   return (
     <div className="af-page">
@@ -110,9 +88,18 @@ export function DashboardPage() {
         title="运营看板"
         subtitle="消息 · 工单 · 接管 · 知识缺口 · 模型成本 — 一屏决策"
       />
-      {error ? <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
-      <Spin spinning={loading}>
-        {!summary && !loading ? (
+
+      {isError ? (
+        <Alert
+          type="error"
+          showIcon
+          message={error instanceof Error ? error.message : String(error)}
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
+
+      <Spin spinning={isLoading}>
+        {!summary && !isLoading ? (
           <Empty description="暂无运营数据" />
         ) : summary ? (
           <>
@@ -121,7 +108,9 @@ export function DashboardPage() {
                 <Col xs={24} sm={12} md={8} lg={6} key={k.key}>
                   <StatCard
                     label={labelMetric(k.key)}
-                    value={(summary as Record<string, unknown>)[k.key] as number}
+                    value={
+                      (summary as Record<string, unknown>)[k.key] as number
+                    }
                     tone={k.tone}
                     format={k.format}
                   />
@@ -140,7 +129,7 @@ export function DashboardPage() {
                   <DonutChart
                     data={riskDonut}
                     centerLabel="风险项"
-                    centerValue={String(riskDonut.reduce((s, d) => s + d.value, 0))}
+                    centerValue={String(riskTotal)}
                   />
                 </Card>
               </Col>

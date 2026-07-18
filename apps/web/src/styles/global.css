@@ -114,6 +114,36 @@ textarea {
   gap: 14px;
 }
 
+.auth-card-antd {
+  width: min(420px, 100%);
+  border-radius: 20px !important;
+  box-shadow: var(--shadow) !important;
+  border: 1px solid var(--line) !important;
+}
+
+.auth-card-antd .ant-card-body {
+  padding: 28px;
+}
+
+.af-login-form {
+  display: grid;
+  gap: 14px;
+}
+
+.af-login-form .brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.af-field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 .auth-card .brand {
   display: flex;
   gap: 12px;

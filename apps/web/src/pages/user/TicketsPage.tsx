@@ -1,106 +1,98 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../../api/client";
+import { Alert, Button, Card, Segmented, Typography } from "antd";
+import {
+  ArrowLeftOutlined,
+  AppstoreOutlined,
+  UnorderedListOutlined,
+} from "@ant-design/icons";
+import {
+  useCloseTicket,
+  useCreateTicket,
+  useTickets,
+} from "../../hooks/use-tickets";
+import type { Ticket } from "../../api/types";
+import { TicketBoard } from "../../components/ticket/TicketBoard";
+import { TicketDetail } from "../../components/ticket/TicketDetail";
+import { TicketForm } from "../../components/ticket/TicketForm";
+import { TicketList } from "../../components/ticket/TicketList";
 
-type Ticket = {
-  id: string;
-  title: string;
-  status: string;
-  priority: string;
-  type: string;
-  description: string;
-  created_at: string;
-};
+const { Title, Text } = Typography;
 
 export function TicketsPage() {
-  const [items, setItems] = useState<Ticket[]>([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<"list" | "board">("list");
+  const [selected, setSelected] = useState<Ticket | null>(null);
+  const ticketsQ = useTickets();
+  const createM = useCreateTicket();
+  const closeM = useCloseTicket();
 
-  async function load() {
-    const rows = await api<Ticket[]>("/api/v1/tickets");
-    setItems(rows);
-  }
-
-  useEffect(() => {
-    void load().catch((e) => setError(String(e)));
-  }, []);
-
-  async function onCreate(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    try {
-      await api("/api/v1/tickets", {
-        method: "POST",
-        body: JSON.stringify({ title, description, type: "user_created", priority: "medium" }),
-      });
-      setTitle("");
-      setDescription("");
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "创建失败");
-    }
-  }
-
-  async function closeTicket(id: string) {
-    await api(`/api/v1/tickets/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: "closed" }),
-    });
-    await load();
-  }
+  const err =
+    (createM.error instanceof Error && createM.error.message) ||
+    (ticketsQ.error instanceof Error && ticketsQ.error.message) ||
+    null;
 
   return (
     <div className="page-shell">
       <header className="page-header">
         <div>
-          <h1>我的工单</h1>
-          <p>查看与关闭自己创建的工单</p>
+          <Title level={3} style={{ margin: 0 }}>
+            我的工单
+          </Title>
+          <Text type="secondary">查看与关闭自己创建的工单</Text>
         </div>
-        <Link to="/">返回对话</Link>
+        <Link to="/">
+          <Button type="link" icon={<ArrowLeftOutlined />}>
+            返回对话
+          </Button>
+        </Link>
       </header>
 
-      <form className="panel form-grid" onSubmit={onCreate}>
-        <h2>新建工单</h2>
-        <input
-          placeholder="标题"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-        <textarea
-          placeholder="描述"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-        />
-        <button type="submit">提交</button>
-      </form>
+      {err ? (
+        <Alert type="error" showIcon message={err} style={{ marginBottom: 16 }} />
+      ) : null}
 
-      {error && <div className="error-banner">{error}</div>}
+      <Card title="新建工单" style={{ marginBottom: 16 }}>
+        <TicketForm
+          loading={createM.isPending}
+          onSubmit={async (p) => {
+            await createM.mutateAsync(p);
+          }}
+        />
+      </Card>
 
-      <div className="panel">
-        <h2>工单列表</h2>
-        <ul className="data-list">
-          {items.map((t) => (
-            <li key={t.id}>
-              <div>
-                <strong>{t.title}</strong>
-                <div className="meta">
-                  {t.status} · {t.priority} · {t.type}
-                </div>
-                <p>{t.description}</p>
-              </div>
-              {t.status !== "closed" && (
-                <button type="button" onClick={() => void closeTicket(t.id)}>
-                  关闭
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <Card
+        title="工单列表"
+        extra={
+          <Segmented
+            value={view}
+            onChange={(v) => setView(v as "list" | "board")}
+            options={[
+              { value: "list", icon: <UnorderedListOutlined />, label: "列表" },
+              { value: "board", icon: <AppstoreOutlined />, label: "看板" },
+            ]}
+          />
+        }
+      >
+        {view === "list" ? (
+          <TicketList
+            rows={ticketsQ.data ?? []}
+            loading={ticketsQ.isLoading}
+            closingId={closeM.isPending ? closeM.variables ?? null : null}
+            onClose={(id) => void closeM.mutateAsync(id)}
+          />
+        ) : (
+          <TicketBoard
+            rows={ticketsQ.data ?? []}
+            onSelect={setSelected}
+          />
+        )}
+      </Card>
+
+      <TicketDetail
+        open={Boolean(selected)}
+        ticket={selected}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }

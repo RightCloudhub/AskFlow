@@ -12,6 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.conversation import Conversation
 from app.models.enums import ConversationStatus, HandoffStatus
 from app.models.handoff import HandoffSession
+from app.services.handoff.scope import filter_queue_by_team, merge_inbox
+
+HTTP_NOT_FOUND = status.HTTP_404_NOT_FOUND
+HTTP_FORBIDDEN = status.HTTP_403_FORBIDDEN
+HTTP_CONFLICT = status.HTTP_409_CONFLICT
 
 
 class HandoffService:
@@ -72,14 +77,7 @@ class HandoffService:
         agent_id: str | None = None,
         agent_role: str | None = None,
     ) -> list[HandoffSession]:
-        """List queued handoffs; non-admin agents are filtered by team intent_scope.
-
-        Rules:
-        - admin (or no agent_id): full queue
-        - agent with no team membership: empty queue
-        - agent whose teams include empty intent_scope: full queue (catch-all team)
-        - otherwise: only handoffs whose intent is in the union of team scopes
-        """
+        """Inbox: scoped queued items + sessions claimed by this agent."""
         result = await self.db.execute(
             select(HandoffSession)
             .where(HandoffSession.status == HandoffStatus.QUEUED.value)
@@ -87,24 +85,24 @@ class HandoffService:
         )
         rows = list(result.scalars().all())
         if agent_id is None or agent_role == "admin":
-            return rows
+            scoped = rows
+        else:
+            scoped = await filter_queue_by_team(self.db, rows, agent_id=agent_id)
+        if agent_id is None:
+            return scoped
+        claimed = await self._claimed_by(agent_id)
+        return merge_inbox(scoped, claimed)
 
-        from app.services.team.service import TeamService
-
-        team_svc = TeamService(self.db)
-        team_ids = await team_svc.user_team_ids(agent_id)
-        if not team_ids:
-            return []
-
-        scopes = await team_svc.team_intent_scopes(agent_id)
-        # empty string in scopes means a catch-all team (intent_scope blank)
-        teams = await team_svc.list_teams()
-        member_teams = [t for t in teams if t.id in team_ids]
-        if any(not (t.intent_scope or "").strip() for t in member_teams):
-            return rows
-        if not scopes:
-            return []
-        return [h for h in rows if (h.intent or "handoff") in scopes]
+    async def _claimed_by(self, agent_id: str) -> list[HandoffSession]:
+        result = await self.db.execute(
+            select(HandoffSession)
+            .where(
+                HandoffSession.status == HandoffStatus.CLAIMED.value,
+                HandoffSession.claimed_by == agent_id,
+            )
+            .order_by(HandoffSession.claimed_at.desc())
+        )
+        return list(result.scalars().all())
 
     async def claim(
         self,
@@ -117,22 +115,18 @@ class HandoffService:
         from sqlalchemy import update
 
         now = datetime.now(UTC)
-        # Idempotent re-claim by same agent
         session = await self.db.get(HandoffSession, handoff_id)
         if session is None:
-            raise HTTPException(status_code=404, detail="Handoff not found")
+            raise HTTPException(status_code=HTTP_NOT_FOUND, detail="Handoff not found")
         if session.status == HandoffStatus.CLAIMED.value and session.claimed_by == agent_id:
             return session
         if session.status == HandoffStatus.CLAIMED.value and session.claimed_by != agent_id:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already claimed")
+            raise HTTPException(status_code=HTTP_CONFLICT, detail="Already claimed")
         if session.status != HandoffStatus.QUEUED.value:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Handoff not claimable")
+            raise HTTPException(status_code=HTTP_CONFLICT, detail="Handoff not claimable")
 
-        # Enforce same team intent_scope as list_queue (M4). Skip when role omitted (internal/tests).
         if agent_role is not None and agent_role != "admin":
-            visible = await self.list_queue(agent_id=agent_id, agent_role=agent_role)
-            if not any(h.id == handoff_id for h in visible):
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="out_of_scope")
+            await self._assert_in_scope(session, agent_id)
 
         cas = await self.db.execute(
             update(HandoffSession)
@@ -147,26 +141,32 @@ class HandoffService:
             )
         )
         if cas.rowcount == 0:
-            # lost race
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already claimed")
-        # Sync identity map after bulk CAS (refresh alone can lag on some dialects)
+            raise HTTPException(status_code=HTTP_CONFLICT, detail="Already claimed")
         session.status = HandoffStatus.CLAIMED.value
         session.claimed_by = agent_id
         session.claimed_at = now
         await self.db.flush()
         return session
 
+    async def _assert_in_scope(self, session: HandoffSession, agent_id: str) -> None:
+        result = await self.db.execute(
+            select(HandoffSession).where(
+                HandoffSession.status == HandoffStatus.QUEUED.value
+            )
+        )
+        queued = list(result.scalars().all())
+        visible = await filter_queue_by_team(self.db, queued, agent_id=agent_id)
+        if not any(h.id == session.id for h in visible):
+            raise HTTPException(status_code=HTTP_FORBIDDEN, detail="out_of_scope")
+
     async def return_to_ai(self, handoff_id: str, agent_id: str) -> HandoffSession:
         session = await self.db.get(HandoffSession, handoff_id)
         if session is None:
-            raise HTTPException(status_code=404, detail="Handoff not found")
+            raise HTTPException(status_code=HTTP_NOT_FOUND, detail="Handoff not found")
         if session.status != HandoffStatus.CLAIMED.value:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Handoff not claimed",
-            )
+            raise HTTPException(status_code=HTTP_CONFLICT, detail="Handoff not claimed")
         if session.claimed_by != agent_id:
-            raise HTTPException(status_code=403, detail="Not your handoff")
+            raise HTTPException(status_code=HTTP_FORBIDDEN, detail="Not your handoff")
         session.status = HandoffStatus.RETURNED.value
         conv = await self.db.get(Conversation, session.conversation_id)
         if conv is not None:

@@ -1,50 +1,28 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { Button, Card, Form, Input, Space, Table } from "antd";
 import { CheckOutlined, CloseOutlined, PlusOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
 import { PageHeader, StatusBadge } from "../../components/admin";
-
-type Draft = {
-  id: string;
-  title: string;
-  content: string;
-  status: string;
-  document_id: string | null;
-};
+import {
+  useApproveDraft,
+  useCreateDraft,
+  useDrafts,
+  useRejectDraft,
+} from "../../hooks/use-knowledge";
+import type { Draft } from "../../api/types";
 
 export function DraftsPage() {
-  const [drafts, setDrafts] = useState<Draft[]>([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(true);
+  const draftsQ = useDrafts();
+  const create = useCreateDraft();
+  const approve = useApproveDraft();
+  const reject = useRejectDraft();
 
-  async function load() {
-    setDrafts(await api<Draft[]>("/api/v1/admin/drafts"));
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
-
-  async function create(e: FormEvent) {
+  async function onCreate(e: FormEvent) {
     e.preventDefault();
-    await api("/api/v1/admin/drafts", {
-      method: "POST",
-      body: JSON.stringify({ title, content }),
-    });
+    await create.mutateAsync({ title, content });
     setTitle("");
     setContent("");
-    await load();
-  }
-
-  async function approve(id: string) {
-    await api(`/api/v1/admin/drafts/${id}/approve`, { method: "POST" });
-    await load();
-  }
-
-  async function reject(id: string) {
-    await api(`/api/v1/admin/drafts/${id}/reject`, { method: "POST" });
-    await load();
   }
 
   return (
@@ -55,7 +33,7 @@ export function DraftsPage() {
         subtitle="审核 FAQ 草稿并发布到知识库"
       />
       <Card title="新建草稿" style={{ marginBottom: 16 }}>
-        <form onSubmit={(e) => void create(e)}>
+        <form onSubmit={(e) => void onCreate(e)}>
           <Form layout="vertical">
             <Form.Item label="标题" required>
               <Input
@@ -74,7 +52,12 @@ export function DraftsPage() {
                 required
               />
             </Form.Item>
-            <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<PlusOutlined />}
+              loading={create.isPending}
+            >
               创建草稿
             </Button>
           </Form>
@@ -83,16 +66,17 @@ export function DraftsPage() {
 
       <Card title="草稿列表">
         <Table
-          loading={loading}
+          loading={draftsQ.isLoading}
           rowKey="id"
-          dataSource={drafts}
+          dataSource={draftsQ.data ?? []}
           pagination={{ pageSize: 10 }}
           columns={[
             { title: "标题", dataIndex: "title" },
             {
               title: "摘要",
               dataIndex: "content",
-              render: (c: string) => c.slice(0, 80) + (c.length > 80 ? "…" : ""),
+              render: (c: string) =>
+                c.slice(0, 80) + (c.length > 80 ? "…" : ""),
             },
             {
               title: "状态",
@@ -111,7 +95,8 @@ export function DraftsPage() {
                       type="primary"
                       size="small"
                       icon={<CheckOutlined />}
-                      onClick={() => void approve(d.id)}
+                      loading={approve.isPending && approve.variables === d.id}
+                      onClick={() => void approve.mutateAsync(d.id)}
                     >
                       通过
                     </Button>
@@ -119,7 +104,8 @@ export function DraftsPage() {
                       danger
                       size="small"
                       icon={<CloseOutlined />}
-                      onClick={() => void reject(d.id)}
+                      loading={reject.isPending && reject.variables === d.id}
+                      onClick={() => void reject.mutateAsync(d.id)}
                     >
                       拒绝
                     </Button>

@@ -85,6 +85,20 @@
   margin: 0 auto;
 }
 
+.af-mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+
+.af-diff-panel {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--line, #e6ebf2);
+  border-radius: 12px;
+  background: var(--panel-2, #f6f8fc);
+}
+
+
 .af-page-header {
   margin-bottom: 20px;
 }

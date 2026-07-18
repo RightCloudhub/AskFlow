@@ -1,6 +1,7 @@
 export { PageHeader } from "./PageHeader";
 export { StatCard } from "./StatCard";
 export { StatusBadge } from "./StatusBadge";
+export { DocumentRevisionDrawer } from "./DocumentRevisionDrawer";
 export { adminTheme, CHART_COLORS } from "./theme";
 export { navIcon } from "./navIcons";
 export {

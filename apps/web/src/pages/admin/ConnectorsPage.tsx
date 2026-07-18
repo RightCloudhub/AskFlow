@@ -1,45 +1,22 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, Card, Table, Tag } from "antd";
 import { ApiOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
 import { PageHeader } from "../../components/admin";
 import { JsonView } from "../../components/common/json";
-
-type C = {
-  name: string;
-  base_url: string;
-  enabled: boolean;
-  description: string;
-};
+import {
+  useConnectors,
+  useInvokeConnector,
+} from "../../hooks/use-governance";
+import type { Connector } from "../../api/types";
 
 export function ConnectorsPage() {
-  const [rows, setRows] = useState<C[]>([]);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [invoking, setInvoking] = useState<string | null>(null);
+  const connectorsQ = useConnectors();
+  const invoke = useInvokeConnector();
 
-  async function load() {
-    setRows(await api<C[]>("/api/v1/admin/connectors"));
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
-
-  async function invoke(name: string) {
-    setInvoking(name);
-    try {
-      const r = await api<Record<string, unknown>>(
-        `/api/v1/admin/connectors/${name}/invoke`,
-        {
-          method: "POST",
-          body: JSON.stringify({ params: {} }),
-        }
-      );
-      setResult(r);
-    } finally {
-      setInvoking(null);
-    }
+  async function onInvoke(name: string) {
+    const r = await invoke.mutateAsync(name);
+    setResult(r);
   }
 
   return (
@@ -51,9 +28,9 @@ export function ConnectorsPage() {
       />
       <Card title="连接器列表" style={{ marginBottom: 16 }}>
         <Table
-          loading={loading}
+          loading={connectorsQ.isLoading}
           rowKey="name"
-          dataSource={rows}
+          dataSource={connectorsQ.data ?? []}
           pagination={false}
           columns={[
             { title: "名称", dataIndex: "name" },
@@ -70,13 +47,13 @@ export function ConnectorsPage() {
               title: "操作",
               key: "actions",
               width: 120,
-              render: (_: unknown, c: C) => (
+              render: (_: unknown, c: Connector) => (
                 <Button
                   type="primary"
                   size="small"
                   icon={<ApiOutlined />}
-                  loading={invoking === c.name}
-                  onClick={() => void invoke(c.name)}
+                  loading={invoke.isPending && invoke.variables === c.name}
+                  onClick={() => void onInvoke(c.name)}
                 >
                   试调用
                 </Button>

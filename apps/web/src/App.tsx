@@ -1,29 +1,80 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { Spin } from "antd";
 import { getToken } from "./api/client";
-import { FeaturesProvider, useFeatures } from "./plugins/features";
+import { useFeatures } from "./plugins/features";
 import { filterRoutes } from "./plugins/registry";
-import { LoginPage } from "./pages/auth/LoginPage";
-import { ChatPage } from "./pages/user/ChatPage";
-import { TicketsPage } from "./pages/user/TicketsPage";
-import { AdminLayout } from "./pages/admin/AdminLayout";
-import { DashboardPage } from "./pages/admin/DashboardPage";
-import { DocumentsPage } from "./pages/admin/DocumentsPage";
-import { IntentsPage } from "./pages/admin/IntentsPage";
-import { PromptsPage } from "./pages/admin/PromptsPage";
-import { GapsPage } from "./pages/admin/GapsPage";
-import { DraftsPage } from "./pages/admin/DraftsPage";
-import { HandoffsPage } from "./pages/admin/HandoffsPage";
-import { TicketsAdminPage } from "./pages/admin/TicketsAdminPage";
-import { AuditPage } from "./pages/admin/AuditPage";
-import { UsersPage } from "./pages/admin/UsersPage";
-import { ConnectorsPage } from "./pages/admin/ConnectorsPage";
-import { CostsPage } from "./pages/admin/CostsPage";
-import { LaunchCardsPage } from "./pages/admin/LaunchCardsPage";
-import { TeamsPage } from "./pages/admin/TeamsPage";
-import { SlaPage } from "./pages/admin/SlaPage";
-import { AgentRunsPage } from "./pages/admin/AgentRunsPage";
-import { WidgetPage } from "./pages/widget/WidgetPage";
-import { QcPage } from "./pages/admin/QcPage";
+
+const LoginPage = lazy(() =>
+  import("./pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })),
+);
+const ChatPage = lazy(() =>
+  import("./pages/user/ChatPage").then((m) => ({ default: m.ChatPage })),
+);
+const TicketsPage = lazy(() =>
+  import("./pages/user/TicketsPage").then((m) => ({ default: m.TicketsPage })),
+);
+const WidgetPage = lazy(() =>
+  import("./pages/widget/WidgetPage").then((m) => ({ default: m.WidgetPage })),
+);
+const AdminLayout = lazy(() =>
+  import("./pages/admin/AdminLayout").then((m) => ({ default: m.AdminLayout })),
+);
+const DashboardPage = lazy(() =>
+  import("./pages/admin/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+);
+const DocumentsPage = lazy(() =>
+  import("./pages/admin/DocumentsPage").then((m) => ({ default: m.DocumentsPage })),
+);
+const IntentsPage = lazy(() =>
+  import("./pages/admin/IntentsPage").then((m) => ({ default: m.IntentsPage })),
+);
+const PromptsPage = lazy(() =>
+  import("./pages/admin/PromptsPage").then((m) => ({ default: m.PromptsPage })),
+);
+const GapsPage = lazy(() =>
+  import("./pages/admin/GapsPage").then((m) => ({ default: m.GapsPage })),
+);
+const DraftsPage = lazy(() =>
+  import("./pages/admin/DraftsPage").then((m) => ({ default: m.DraftsPage })),
+);
+const HandoffsPage = lazy(() =>
+  import("./pages/admin/HandoffsPage").then((m) => ({ default: m.HandoffsPage })),
+);
+const TicketsAdminPage = lazy(() =>
+  import("./pages/admin/TicketsAdminPage").then((m) => ({
+    default: m.TicketsAdminPage,
+  })),
+);
+const AuditPage = lazy(() =>
+  import("./pages/admin/AuditPage").then((m) => ({ default: m.AuditPage })),
+);
+const UsersPage = lazy(() =>
+  import("./pages/admin/UsersPage").then((m) => ({ default: m.UsersPage })),
+);
+const ConnectorsPage = lazy(() =>
+  import("./pages/admin/ConnectorsPage").then((m) => ({ default: m.ConnectorsPage })),
+);
+const CostsPage = lazy(() =>
+  import("./pages/admin/CostsPage").then((m) => ({ default: m.CostsPage })),
+);
+const LaunchCardsPage = lazy(() =>
+  import("./pages/admin/LaunchCardsPage").then((m) => ({
+    default: m.LaunchCardsPage,
+  })),
+);
+const TeamsPage = lazy(() =>
+  import("./pages/admin/TeamsPage").then((m) => ({ default: m.TeamsPage })),
+);
+const SlaPage = lazy(() =>
+  import("./pages/admin/SlaPage").then((m) => ({ default: m.SlaPage })),
+);
+const AgentRunsPage = lazy(() =>
+  import("./pages/admin/AgentRunsPage").then((m) => ({ default: m.AgentRunsPage })),
+);
+const QcPage = lazy(() =>
+  import("./pages/admin/QcPage").then((m) => ({ default: m.QcPage })),
+);
 
 const PAGE_MAP: Record<string, React.ReactNode> = {
   dashboard: <DashboardPage />,
@@ -50,59 +101,65 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PageFallback() {
+  return (
+    <div className="af-query-state" style={{ minHeight: "40vh" }}>
+      <Spin tip="加载页面…" />
+    </div>
+  );
+}
+
 function AppRoutes() {
   const { features, enabled } = useFeatures();
   const adminRoutes = filterRoutes(features);
   const showTickets = enabled("ticket");
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/widget" element={<WidgetPage />} />
-      <Route
-        path="/"
-        element={
-          <RequireAuth>
-            <ChatPage />
-          </RequireAuth>
-        }
-      />
-      {showTickets ? (
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/widget" element={<WidgetPage />} />
         <Route
-          path="/tickets"
+          path="/"
           element={
             <RequireAuth>
-              <TicketsPage />
+              <ChatPage />
             </RequireAuth>
           }
         />
-      ) : null}
-      <Route
-        path="/admin"
-        element={
-          <RequireAuth>
-            <AdminLayout />
-          </RequireAuth>
-        }
-      >
-        {adminRoutes.map((r) => (
+        {showTickets ? (
           <Route
-            key={r.path || "index"}
-            index={r.path === ""}
-            path={r.path || undefined}
-            element={PAGE_MAP[r.page] ?? <Navigate to="/admin" replace />}
+            path="/tickets"
+            element={
+              <RequireAuth>
+                <TicketsPage />
+              </RequireAuth>
+            }
           />
-        ))}
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        ) : null}
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth>
+              <AdminLayout />
+            </RequireAuth>
+          }
+        >
+          {adminRoutes.map((r) => (
+            <Route
+              key={r.path || "index"}
+              index={r.path === ""}
+              path={r.path || undefined}
+              element={PAGE_MAP[r.page] ?? <Navigate to="/admin" replace />}
+            />
+          ))}
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 
 export function App() {
-  return (
-    <FeaturesProvider>
-      <AppRoutes />
-    </FeaturesProvider>
-  );
+  return <AppRoutes />;
 }

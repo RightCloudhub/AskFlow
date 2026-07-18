@@ -1,6 +1,10 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, setToken } from "../../api/client";
+import { Alert, Button, Card, Input, Typography } from "antd";
+import { setToken } from "../../api/client";
+import { authService } from "../../services/auth-service";
+
+const { Title, Text } = Typography;
 
 export function LoginPage() {
   const nav = useNavigate();
@@ -17,15 +21,9 @@ export function LoginPage() {
     setLoading(true);
     try {
       if (mode === "register") {
-        await api("/api/v1/admin/auth/register", {
-          method: "POST",
-          body: JSON.stringify({ username, email, password }),
-        });
+        await authService.register(username, email, password);
       }
-      const tokenRes = await api<{ access_token: string }>("/api/v1/admin/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ username, password }),
-      });
+      const tokenRes = await authService.login(username, password);
       setToken(tokenRes.access_token);
       nav("/");
     } catch (err) {
@@ -37,55 +35,79 @@ export function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <form className="auth-card" onSubmit={onSubmit}>
-        <div className="brand">
-          <span className="brand-mark">AF</span>
-          <div>
-            <h1>AskFlow</h1>
-            <p>企业智能客服 · 登录后开始提问</p>
+      <Card className="auth-card-antd" bordered={false}>
+        <form onSubmit={(e) => void onSubmit(e)} className="af-login-form">
+          <div className="brand">
+            <span className="brand-mark">AF</span>
+            <div>
+              <Title level={3} style={{ margin: 0 }}>
+                AskFlow
+              </Title>
+              <Text type="secondary">企业智能客服 · 登录后开始提问</Text>
+            </div>
           </div>
-        </div>
 
-        <label>
-          用户名
-          <input value={username} onChange={(e) => setUsername(e.target.value)} required minLength={3} />
-        </label>
-        {mode === "register" && (
-          <label>
-            邮箱
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+          <label className="af-field">
+            <span>用户名</span>
+            <Input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
+              minLength={3}
+              size="large"
+              autoComplete="username"
             />
           </label>
-        )}
-        <label>
-          密码
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-          />
-        </label>
 
-        {error && <div className="error-banner">{error}</div>}
+          {mode === "register" ? (
+            <label className="af-field">
+              <span>邮箱</span>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                size="large"
+                autoComplete="email"
+              />
+            </label>
+          ) : null}
 
-        <button type="submit" disabled={loading}>
-          {loading ? "处理中…" : mode === "login" ? "登录" : "注册并登录"}
-        </button>
+          <label className="af-field">
+            <span>密码</span>
+            <Input.Password
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              size="large"
+              autoComplete={
+                mode === "login" ? "current-password" : "new-password"
+              }
+            />
+          </label>
 
-        <button
-          type="button"
-          className="linkish"
-          onClick={() => setMode(mode === "login" ? "register" : "login")}
-        >
-          {mode === "login" ? "没有账号？注册" : "已有账号？登录"}
-        </button>
-      </form>
+          {error ? <Alert type="error" showIcon message={error} /> : null}
+
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            block
+            loading={loading}
+          >
+            {mode === "login" ? "登录" : "注册并登录"}
+          </Button>
+
+          <Button
+            type="link"
+            block
+            onClick={() => setMode(mode === "login" ? "register" : "login")}
+          >
+            {mode === "login" ? "没有账号？注册" : "已有账号？登录"}
+          </Button>
+        </form>
+      </Card>
     </div>
   );
 }

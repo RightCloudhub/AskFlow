@@ -1,44 +1,35 @@
-import { useEffect, useState } from "react";
-import { Button, Card, Input, Space, Table, Typography } from "antd";
+import { useState } from "react";
+import { Button, Card, Input, Space, Table, Typography, message } from "antd";
 import { CloudUploadOutlined, ReloadOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
 import { PageHeader } from "../../components/admin";
-
-type Template = {
-  id: string;
-  key: string;
-  description: string;
-  active_version_id: string | null;
-};
+import { promptService } from "../../services/prompt-service";
+import { usePromptTemplates, usePublishPrompt } from "../../hooks/use-ops";
 
 export function PromptsPage() {
-  const [templates, setTemplates] = useState<Template[]>([]);
   const [key, setKey] = useState("rag.system");
   const [content, setContent] = useState("");
   const [active, setActive] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  async function load() {
-    setTemplates(await api<Template[]>("/api/v1/admin/prompts"));
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
+  const [loadingActive, setLoadingActive] = useState(false);
+  const templatesQ = usePromptTemplates();
+  const publish = usePublishPrompt();
 
   async function loadActive() {
-    const res = await api<{ content: string }>(`/api/v1/admin/prompts/${key}/active`);
-    setActive(res.content);
-    setContent(res.content);
+    setLoadingActive(true);
+    try {
+      const res = await promptService.active(key);
+      setActive(res.content);
+      setContent(res.content);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "加载失败");
+    } finally {
+      setLoadingActive(false);
+    }
   }
 
-  async function publish() {
-    await api(`/api/v1/admin/prompts/${key}/versions`, {
-      method: "POST",
-      body: JSON.stringify({ content, activate: true }),
-    });
-    await load();
-    await loadActive();
+  async function onPublish() {
+    await publish.mutateAsync({ key, content });
+    setActive(content);
+    message.success("已发布并激活");
   }
 
   return (
@@ -63,13 +54,18 @@ export function PromptsPage() {
             style={{ fontFamily: "var(--font-mono, monospace)" }}
           />
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => void loadActive()}>
+            <Button
+              icon={<ReloadOutlined />}
+              loading={loadingActive}
+              onClick={() => void loadActive()}
+            >
               加载当前版本
             </Button>
             <Button
               type="primary"
               icon={<CloudUploadOutlined />}
-              onClick={() => void publish()}
+              loading={publish.isPending}
+              onClick={() => void onPublish()}
             >
               发布并激活
             </Button>
@@ -87,9 +83,9 @@ export function PromptsPage() {
 
       <Card title="模板列表">
         <Table
-          loading={loading}
+          loading={templatesQ.isLoading}
           rowKey="id"
-          dataSource={templates}
+          dataSource={templatesQ.data ?? []}
           pagination={false}
           columns={[
             { title: "Key", dataIndex: "key" },

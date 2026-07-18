@@ -1,0 +1,513 @@
+/* Chat / user-shell styles (RAGFlow-inspired layout, AskFlow tokens). */
+
+.af-app-shell {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.af-app-sider {
+  background: #0b1220 !important;
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex !important;
+  flex-direction: column;
+  padding: 12px 12px 8px;
+}
+
+.af-app-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.af-app-sider-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 12px;
+  color: #f8fafc;
+}
+
+.af-app-sider-head strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.af-app-sider-tag {
+  display: block !important;
+  font-size: 11px !important;
+  color: rgba(248, 250, 252, 0.45) !important;
+}
+
+.af-app-new-chat {
+  margin: 0 4px 12px;
+}
+
+.af-conv-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+  overflow: auto;
+  flex: 1;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.af-conv-list button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #e2e8f0;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: grid;
+  gap: 2px;
+  transition: background var(--dur) var(--ease);
+}
+
+.af-conv-list button:hover,
+.af-conv-list button.active {
+  background: rgba(37, 99, 235, 0.22);
+}
+
+.af-conv-list .title {
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.af-conv-list .status {
+  font-size: 0.72rem;
+  opacity: 0.55;
+}
+
+.af-app-sider-foot {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 8px 4px;
+  display: grid;
+  gap: 8px;
+}
+
+.af-app-user {
+  color: rgba(248, 250, 252, 0.75) !important;
+  font-size: 13px;
+  padding: 0 4px;
+}
+
+.af-app-sider-foot .ant-btn {
+  color: rgba(248, 250, 252, 0.72) !important;
+}
+
+.af-app-header {
+  background: transparent !important;
+  height: auto !important;
+  line-height: 1.3 !important;
+  padding: 20px 28px 8px !important;
+}
+
+.af-app-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.af-app-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.af-app-content {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: calc(100vh - 88px);
+  padding: 0 0 12px;
+}
+
+.af-chat-stage {
+  overflow: auto;
+  padding: 8px 28px 12px;
+  min-height: 0;
+}
+
+.af-message-list {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.af-chat-empty {
+  margin: 12vh auto 0;
+  text-align: center;
+  color: var(--muted);
+  max-width: 420px;
+}
+
+.af-chat-empty-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--brand), #7c3aed);
+  box-shadow: var(--shadow-sm);
+}
+
+.af-chat-empty h3 {
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.af-bubble {
+  max-width: min(720px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 16px;
+  box-shadow: var(--shadow-sm);
+  animation: af-fade-up 220ms var(--ease);
+}
+
+.af-bubble--user {
+  justify-self: end;
+  background: var(--brand-soft);
+  border-color: #bfdbfe;
+}
+
+.af-bubble--bot {
+  justify-self: start;
+}
+
+.af-bubble--staff {
+  justify-self: start;
+  border-color: #a78bfa;
+  background: linear-gradient(135deg, #f5f3ff, #fff);
+}
+
+.af-bubble--streaming {
+  opacity: 0.95;
+}
+
+.af-typing {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.af-handoff-banner {
+  margin-bottom: 4px;
+}
+
+.af-staff-chat {
+  margin-top: 8px;
+  display: grid;
+  gap: 10px;
+}
+
+.af-staff-msgs {
+  max-height: 360px;
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+
+.af-staff-msg {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.af-staff-msg--user {
+  background: var(--brand-soft);
+}
+
+.af-staff-msg--staff {
+  border-color: #c4b5fd;
+}
+
+.af-staff-msg-role {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.af-ticket-col .ant-card-body {
+  min-height: 160px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.af-ticket-card {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.af-ticket-card:hover {
+  border-color: var(--brand);
+}
+
+.af-ticket-card .meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.af-bubble-role {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.af-bubble-plain {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+}
+
+.af-bubble-meta {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.af-confidence {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.af-confidence--ok {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: transparent;
+}
+
+.af-confidence--warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: transparent;
+}
+
+.af-confidence--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: transparent;
+}
+
+.af-cite-btn {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--brand);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease);
+}
+
+.af-cite-btn:hover {
+  background: var(--brand-soft);
+}
+
+/* Markdown in assistant bubbles */
+.af-md {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.af-md p {
+  margin: 0 0 0.6em;
+}
+
+.af-md p:last-child {
+  margin-bottom: 0;
+}
+
+.af-md ul,
+.af-md ol {
+  margin: 0.4em 0 0.6em;
+  padding-left: 1.3em;
+}
+
+.af-md code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.1em 0.35em;
+}
+
+.af-md pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  overflow: auto;
+  margin: 0.6em 0;
+}
+
+.af-md pre code {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0;
+}
+
+.af-md a {
+  color: var(--brand);
+}
+
+.af-md table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.88rem;
+  margin: 0.6em 0;
+}
+
+.af-md th,
+.af-md td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+}
+
+.af-md blockquote {
+  margin: 0.5em 0;
+  padding: 0.2em 0 0.2em 12px;
+  border-left: 3px solid var(--brand);
+  color: var(--ink-2);
+}
+
+.af-composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 12px 28px 20px;
+}
+
+.af-composer-input {
+  border-radius: 14px !important;
+}
+
+.af-composer-send {
+  height: 44px;
+  border-radius: 12px;
+  min-width: 96px;
+}
+
+.af-source-list {
+  display: grid;
+  gap: 12px;
+}
+
+.af-source-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--panel-2);
+}
+
+.af-source-card header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+.af-source-idx {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.af-source-score {
+  margin-left: auto !important;
+  font-size: 12px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.af-source-snippet {
+  margin-bottom: 0 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.af-query-state {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  padding: 24px;
+}
+
+/* Documents upload zone */
+.af-upload-zone {
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 12px;
+  padding: 28px 20px;
+  text-align: center;
+  background: var(--panel-2);
+  transition:
+    border-color var(--dur) var(--ease),
+    background var(--dur) var(--ease);
+  cursor: pointer;
+}
+
+.af-upload-zone:hover,
+.af-upload-zone.dragover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.af-upload-zone p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 860px) {
+  .af-app-header,
+  .af-chat-stage,
+  .af-composer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

@@ -1,44 +1,41 @@
-import { useEffect, useState } from "react";
-import { Alert, Button, Card, Space, Table } from "antd";
-import { UserSwitchOutlined, RollbackOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
-import { PageHeader, StatusBadge } from "../../components/admin";
-
-type Handoff = {
-  id: string;
-  conversation_id: string;
-  status: string;
-  summary: string;
-  claimed_by: string | null;
-};
+import { useState } from "react";
+import { Alert, Button, Card, Space } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
+import { PageHeader } from "../../components/admin";
+import { HandoffInbox } from "../../components/handoff/Inbox";
+import { SessionDetail } from "../../components/handoff/SessionDetail";
+import {
+  useClaimHandoff,
+  useHandoffs,
+  useReturnHandoff,
+} from "../../hooks/use-ops";
+import type { Handoff } from "../../api/types";
 
 export function HandoffsPage() {
-  const [rows, setRows] = useState<Handoff[]>([]);
+  const [selected, setSelected] = useState<Handoff | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const handoffsQ = useHandoffs();
+  const claim = useClaimHandoff();
+  const ret = useReturnHandoff();
 
-  async function load() {
-    setRows(await api<Handoff[]>("/api/v1/admin/handoffs"));
-  }
-
-  useEffect(() => {
-    void load()
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function claim(id: string) {
+  async function onClaim(id: string) {
+    setError(null);
     try {
-      await api(`/api/v1/admin/handoffs/${id}/claim`, { method: "POST" });
-      await load();
+      const row = await claim.mutateAsync(id);
+      setSelected(row);
     } catch (e) {
       setError(e instanceof Error ? e.message : "认领失败");
     }
   }
 
-  async function ret(id: string) {
-    await api(`/api/v1/admin/handoffs/${id}/return`, { method: "POST" });
-    await load();
+  async function onReturn(id: string) {
+    setError(null);
+    try {
+      await ret.mutateAsync(id);
+      if (selected?.id === id) setSelected(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "交还失败");
+    }
   }
 
   return (
@@ -46,58 +43,45 @@ export function HandoffsPage() {
       <PageHeader
         eyebrow="客服运营"
         title="人工接管"
-        subtitle="转人工收件箱 — 认领会话或交还 AI"
+        subtitle="转人工收件箱 — 认领会话或交还 AI（15s 自动刷新）"
+        actions={
+          <Space>
+            <Button
+              icon={<ReloadOutlined />}
+              loading={handoffsQ.isFetching}
+              onClick={() => void handoffsQ.refetch()}
+            >
+              刷新
+            </Button>
+          </Space>
+        }
       />
       {error ? (
-        <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />
+        <Alert
+          type="error"
+          showIcon
+          message={error}
+          style={{ marginBottom: 16 }}
+          closable
+          onClose={() => setError(null)}
+        />
       ) : null}
       <Card>
-        <Table
-          loading={loading}
-          rowKey="id"
-          dataSource={rows}
-          pagination={{ pageSize: 10 }}
-          columns={[
-            {
-              title: "状态",
-              dataIndex: "status",
-              width: 110,
-              render: (s: string) => <StatusBadge value={s} />,
-            },
-            {
-              title: "会话",
-              dataIndex: "conversation_id",
-              render: (id: string) => <code className="af-mono">{id}</code>,
-            },
-            { title: "摘要", dataIndex: "summary" },
-            {
-              title: "操作",
-              key: "actions",
-              width: 220,
-              render: (_: unknown, h: Handoff) => (
-                <Space>
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<UserSwitchOutlined />}
-                    onClick={() => void claim(h.id)}
-                  >
-                    认领
-                  </Button>
-                  <Button
-                    size="small"
-                    icon={<RollbackOutlined />}
-                    onClick={() => void ret(h.id)}
-                  >
-                    交还 AI
-                  </Button>
-                </Space>
-              ),
-            },
-          ]}
-          locale={{ emptyText: "暂无接管会话" }}
+        <HandoffInbox
+          rows={handoffsQ.data ?? []}
+          loading={handoffsQ.isLoading}
+          claimingId={claim.isPending ? claim.variables ?? null : null}
+          returningId={ret.isPending ? ret.variables ?? null : null}
+          onClaim={(id) => void onClaim(id)}
+          onReturn={(id) => void onReturn(id)}
+          onSelect={setSelected}
         />
       </Card>
+      <SessionDetail
+        open={Boolean(selected)}
+        session={selected}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }

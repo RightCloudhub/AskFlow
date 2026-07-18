@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, Card, Col, Empty, List, Row, Spin, Table } from "antd";
 import { ThunderboltOutlined } from "@ant-design/icons";
 import {
@@ -8,29 +8,8 @@ import {
   StatusBadge,
   type ChartDatum,
 } from "../../components/admin";
-import { api } from "../../api/client";
-
-type SlaStatus = {
-  counts: Record<string, number>;
-  tickets: Array<{
-    id: string;
-    title: string;
-    priority: string;
-    status: string;
-    sla_state: string;
-    created_at?: string | null;
-  }>;
-};
-
-type ScanResult = {
-  scanned_changes: number;
-  changes: Array<{
-    ticket_id: string;
-    previous: string;
-    current: string;
-    reason: string;
-  }>;
-};
+import { useSlaScan, useSlaStatus } from "../../hooks/use-ops";
+import type { SlaScanResult } from "../../api/types";
 
 const COUNT_LABELS: Record<string, string> = {
   ok: "正常",
@@ -51,31 +30,12 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 export function SlaPage() {
-  const [status, setStatus] = useState<SlaStatus | null>(null);
-  const [scan, setScan] = useState<ScanResult | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  async function load() {
-    setStatus(await api<SlaStatus>("/api/v1/admin/sla/status"));
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
-
-  async function runScan() {
-    setBusy(true);
-    try {
-      const r = await api<ScanResult>("/api/v1/admin/sla/scan", { method: "POST" });
-      setScan(r);
-      await load();
-    } finally {
-      setBusy(false);
-    }
-  }
-
+  const [scan, setScan] = useState<SlaScanResult | null>(null);
+  const statusQ = useSlaStatus();
+  const scanM = useSlaScan();
+  const status = statusQ.data;
   const counts = status?.counts ?? {};
+
   const donut: ChartDatum[] = useMemo(
     () =>
       Object.entries(counts).map(([k, v]) => ({
@@ -91,8 +51,13 @@ export function SlaPage() {
                 ? "#52c41a"
                 : undefined,
       })),
-    [counts]
+    [counts],
   );
+
+  async function runScan() {
+    const r = await scanM.mutateAsync();
+    setScan(r);
+  }
 
   const ticketColumns = [
     { title: "标题", dataIndex: "title" },
@@ -123,14 +88,14 @@ export function SlaPage() {
           <Button
             type="primary"
             icon={<ThunderboltOutlined />}
-            loading={busy}
+            loading={scanM.isPending}
             onClick={() => void runScan()}
           >
             立即扫描并通知
           </Button>
         }
       />
-      <Spin spinning={loading}>
+      <Spin spinning={statusQ.isLoading}>
         <Row gutter={[16, 16]}>
           {Object.entries(counts).map(([k, v]) => (
             <Col xs={24} sm={12} lg={6} key={k}>
@@ -138,12 +103,16 @@ export function SlaPage() {
                 label={COUNT_LABELS[k] ?? k}
                 value={v}
                 tone={
-                  k === "breached" ? "danger" : k === "warning" ? "warn" : "default"
+                  k === "breached"
+                    ? "danger"
+                    : k === "warning"
+                      ? "warn"
+                      : "default"
                 }
               />
             </Col>
           ))}
-          {!Object.keys(counts).length && !loading ? (
+          {!Object.keys(counts).length && !statusQ.isLoading ? (
             <Col span={24}>
               <Empty description="暂无 SLA 计数" />
             </Col>
@@ -157,7 +126,7 @@ export function SlaPage() {
                 data={donut}
                 centerLabel="工单"
                 centerValue={String(
-                  Object.values(counts).reduce((s, n) => s + n, 0)
+                  Object.values(counts).reduce((s, n) => s + n, 0),
                 )}
               />
             </Card>

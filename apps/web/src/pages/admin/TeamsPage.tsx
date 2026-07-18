@@ -1,65 +1,36 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Button, Card, Input, Select, Space, Table, Tag } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
 import { PageHeader } from "../../components/admin";
-
-type Team = {
-  id: string;
-  name: string;
-  description: string;
-  intent_scope: string;
-  member_ids?: string[];
-  member_count?: number;
-};
-
-type UserRow = { id: string; username: string; email: string; role: string };
+import {
+  useAddTeamMember,
+  useCreateTeam,
+  useTeams,
+} from "../../hooks/use-ops";
+import { useUsers } from "../../hooks/use-governance";
+import type { Team } from "../../api/types";
 
 export function TeamsPage() {
-  const [rows, setRows] = useState<Team[]>([]);
-  const [users, setUsers] = useState<UserRow[]>([]);
   const [name, setName] = useState("");
   const [scope, setScope] = useState("");
   const [msg, setMsg] = useState("");
-  const [loading, setLoading] = useState(true);
+  const teamsQ = useTeams();
+  const usersQ = useUsers();
+  const create = useCreateTeam();
+  const addMember = useAddTeamMember();
 
-  async function load() {
-    const [teams, us] = await Promise.all([
-      api<Team[]>("/api/v1/admin/teams"),
-      api<UserRow[]>("/api/v1/admin/users"),
-    ]);
-    setRows(teams);
-    setUsers(us);
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
-
-  async function createTeam() {
+  async function onCreate() {
     if (!name.trim()) return;
-    await api("/api/v1/admin/teams", {
-      method: "POST",
-      body: JSON.stringify({
-        name: name.trim(),
-        intent_scope: scope.trim(),
-        description: "",
-      }),
-    });
+    await create.mutateAsync({ name: name.trim(), scope: scope.trim() });
     setName("");
     setScope("");
     setMsg("已创建技能组");
-    await load();
   }
 
-  async function addMember(teamId: string, userId: string) {
+  async function onAdd(teamId: string, userId: string) {
     if (!userId) return;
-    await api(`/api/v1/admin/teams/${teamId}/members`, {
-      method: "POST",
-      body: JSON.stringify({ user_id: userId }),
-    });
+    await addMember.mutateAsync({ teamId, userId });
     setMsg("已添加成员");
-    await load();
   }
 
   return (
@@ -87,7 +58,12 @@ export function TeamsPage() {
             onChange={(e) => setScope(e.target.value)}
             style={{ width: 240 }}
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => void createTeam()}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            loading={create.isPending}
+            onClick={() => void onCreate()}
+          >
             创建
           </Button>
         </Space>
@@ -95,9 +71,9 @@ export function TeamsPage() {
 
       <Card title="技能组列表">
         <Table
-          loading={loading}
+          loading={teamsQ.isLoading || usersQ.isLoading}
           rowKey="id"
-          dataSource={rows}
+          dataSource={teamsQ.data ?? []}
           pagination={false}
           columns={[
             { title: "名称", dataIndex: "name" },
@@ -120,11 +96,11 @@ export function TeamsPage() {
                 <Select
                   placeholder="选择用户"
                   style={{ width: 200 }}
-                  options={users.map((u) => ({
+                  options={(usersQ.data ?? []).map((u) => ({
                     value: u.id,
                     label: `${u.username} (${u.role})`,
                   }))}
-                  onChange={(uid) => void addMember(t.id, uid)}
+                  onChange={(uid) => void onAdd(t.id, uid)}
                   value={null as unknown as string}
                 />
               ),

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Button,
   Card,
@@ -10,28 +10,13 @@ import {
   Timeline,
 } from "antd";
 import { PlayCircleOutlined, SearchOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
 import { PageHeader } from "../../components/admin";
 import { JsonView } from "../../components/common/json";
-
-type RunRow = {
-  run_id: string;
-  route: string;
-  intent: string | null;
-  refused: boolean;
-  flags: string[];
-  steps: Array<{ kind: string; name: string; detail?: Record<string, unknown> }>;
-  cost_summary: Record<string, unknown>;
-  created_at?: string | null;
-};
-
-type RunDetail = RunRow & {
-  cost?: {
-    estimated_usd: number;
-    entry_count: number;
-    entries: Array<Record<string, unknown>>;
-  };
-};
+import {
+  useAgentRunDetail,
+  useAgentRuns,
+} from "../../hooks/use-governance";
+import type { AgentRun } from "../../api/types";
 
 const ROUTE_LABELS: Record<string, string> = {
   rag: "知识问答",
@@ -43,28 +28,20 @@ const ROUTE_LABELS: Record<string, string> = {
 };
 
 export function AgentRunsPage() {
-  const [rows, setRows] = useState<RunRow[]>([]);
-  const [detail, setDetail] = useState<RunDetail | null>(null);
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const runsQ = useAgentRuns();
+  const detailQ = useAgentRunDetail(selectedId);
+  const detail = detailQ.data;
 
-  async function load() {
-    setRows(await api<RunRow[]>("/api/v1/admin/agent-runs?limit=50"));
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
-
-  async function openRun(runId: string) {
-    const d = await api<RunDetail>(`/api/v1/admin/agent-runs/${runId}`);
-    setDetail(d);
+  function openRun(runId: string) {
+    setSelectedId(runId);
     setQuery(runId);
   }
 
-  async function lookup() {
+  function lookup() {
     if (!query.trim()) return;
-    await openRun(query.trim());
+    openRun(query.trim());
   }
 
   return (
@@ -80,9 +57,14 @@ export function AgentRunsPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="run_…"
-            onPressEnter={() => void lookup()}
+            onPressEnter={lookup}
           />
-          <Button type="primary" icon={<SearchOutlined />} onClick={() => void lookup()}>
+          <Button
+            type="primary"
+            icon={<SearchOutlined />}
+            loading={detailQ.isFetching && Boolean(selectedId)}
+            onClick={lookup}
+          >
             查询
           </Button>
         </Space.Compact>
@@ -94,7 +76,9 @@ export function AgentRunsPage() {
             <Descriptions.Item label="路由">
               {ROUTE_LABELS[detail.route] ?? detail.route}
             </Descriptions.Item>
-            <Descriptions.Item label="意图">{detail.intent || "—"}</Descriptions.Item>
+            <Descriptions.Item label="意图">
+              {detail.intent || "—"}
+            </Descriptions.Item>
             <Descriptions.Item label="拒答">
               {detail.refused ? (
                 <Tag color="warning">是</Tag>
@@ -122,9 +106,9 @@ export function AgentRunsPage() {
 
       <Card title="最近运行">
         <Table
-          loading={loading}
+          loading={runsQ.isLoading}
           rowKey="run_id"
-          dataSource={rows}
+          dataSource={runsQ.data ?? []}
           pagination={{ pageSize: 10 }}
           columns={[
             {
@@ -146,18 +130,18 @@ export function AgentRunsPage() {
               title: "步骤",
               dataIndex: "steps",
               width: 80,
-              render: (s: RunRow["steps"]) => (s || []).length,
+              render: (s: AgentRun["steps"]) => (s || []).length,
             },
             {
               title: "操作",
               key: "actions",
               width: 100,
-              render: (_: unknown, r: RunRow) => (
+              render: (_: unknown, r: AgentRun) => (
                 <Button
                   type="link"
                   size="small"
                   icon={<PlayCircleOutlined />}
-                  onClick={() => void openRun(r.run_id)}
+                  onClick={() => openRun(r.run_id)}
                 >
                   回放
                 </Button>

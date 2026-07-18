@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Card, Col, Empty, Row, Space, Spin, Table, Tag } from "antd";
 import {
   DonutChart,
@@ -7,28 +7,7 @@ import {
   StatusBadge,
   type ChartDatum,
 } from "../../components/admin";
-import { api } from "../../api/client";
-
-type Summary = {
-  agent_runs?: number;
-  refused_runs?: number;
-  refuse_rate?: number;
-  thumbs_up?: number;
-  thumbs_down?: number;
-  thumbs_down_rate?: number;
-  handoffs?: number;
-  messages?: number;
-  quality_score_avg?: number | null;
-};
-
-type LowRun = {
-  run_id: string;
-  route: string;
-  intent: string | null;
-  refused: boolean;
-  score: number;
-  flags: string[];
-};
+import { useQcLowQuality, useQcSummary } from "../../hooks/use-governance";
 
 const ROUTE_LABELS: Record<string, string> = {
   rag: "知识问答",
@@ -46,23 +25,11 @@ function scoreColor(score: number): string {
 }
 
 export function QcPage() {
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [runs, setRuns] = useState<LowRun[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        setSummary(await api<Summary>("/api/v1/admin/qc/summary"));
-        const low = await api<{ runs: LowRun[] }>(
-          "/api/v1/admin/qc/low-quality?limit=30"
-        );
-        setRuns(low.runs || []);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const summaryQ = useQcSummary();
+  const lowQ = useQcLowQuality();
+  const summary = summaryQ.data;
+  const runs = lowQ.data ?? [];
+  const loading = summaryQ.isLoading || lowQ.isLoading;
 
   const feedbackDonut: ChartDatum[] = useMemo(() => {
     if (!summary) return [];
@@ -180,7 +147,7 @@ export function QcPage() {
                     data={feedbackDonut}
                     centerLabel="反馈"
                     centerValue={String(
-                      (summary.thumbs_up ?? 0) + (summary.thumbs_down ?? 0)
+                      (summary.thumbs_up ?? 0) + (summary.thumbs_down ?? 0),
                     )}
                   />
                 </Card>

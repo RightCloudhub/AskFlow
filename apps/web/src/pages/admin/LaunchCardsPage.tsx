@@ -1,16 +1,12 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { Button, Card, Input, Progress, Space, Table } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { api } from "../../api/client";
 import { PageHeader, StatusBadge } from "../../components/admin";
-
-type CardRow = {
-  id: string;
-  title: string;
-  status: string;
-  expected_metrics: Record<string, number>;
-  measured_metrics: Record<string, number>;
-};
+import {
+  useCreateLaunchCard,
+  useLaunchCards,
+} from "../../hooks/use-governance";
+import type { LaunchCard } from "../../api/types";
 
 const STATUS_MAP: Record<string, string> = {
   planned: "规划中",
@@ -20,29 +16,14 @@ const STATUS_MAP: Record<string, string> = {
 };
 
 export function LaunchCardsPage() {
-  const [rows, setRows] = useState<CardRow[]>([]);
   const [title, setTitle] = useState("");
-  const [loading, setLoading] = useState(true);
+  const cardsQ = useLaunchCards();
+  const create = useCreateLaunchCard();
 
-  async function load() {
-    setRows(await api<CardRow[]>("/api/v1/admin/launch-cards"));
-  }
-
-  useEffect(() => {
-    void load().finally(() => setLoading(false));
-  }, []);
-
-  async function create(e: FormEvent) {
+  async function onCreate(e: FormEvent) {
     e.preventDefault();
-    await api("/api/v1/admin/launch-cards", {
-      method: "POST",
-      body: JSON.stringify({
-        title,
-        expected_metrics: { faq_resolve_rate: 0.7 },
-      }),
-    });
+    await create.mutateAsync(title);
     setTitle("");
-    await load();
   }
 
   return (
@@ -53,7 +34,7 @@ export function LaunchCardsPage() {
         subtitle="变更发布与关键指标度量"
       />
       <Card title="创建上线卡片" style={{ marginBottom: 16 }}>
-        <form onSubmit={(e) => void create(e)}>
+        <form onSubmit={(e) => void onCreate(e)}>
           <Space>
             <Input
               value={title}
@@ -62,7 +43,12 @@ export function LaunchCardsPage() {
               required
               style={{ width: 320 }}
             />
-            <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<PlusOutlined />}
+              loading={create.isPending}
+            >
               创建
             </Button>
           </Space>
@@ -71,9 +57,9 @@ export function LaunchCardsPage() {
 
       <Card title="卡片列表">
         <Table
-          loading={loading}
+          loading={cardsQ.isLoading}
           rowKey="id"
-          dataSource={rows}
+          dataSource={cardsQ.data ?? []}
           pagination={{ pageSize: 10 }}
           columns={[
             { title: "标题", dataIndex: "title" },
@@ -88,7 +74,7 @@ export function LaunchCardsPage() {
             {
               title: "预期 FAQ 解决率",
               key: "expected",
-              render: (_: unknown, c: CardRow) => {
+              render: (_: unknown, c: LaunchCard) => {
                 const v = c.expected_metrics?.faq_resolve_rate ?? 0;
                 return <Progress percent={Math.round(v * 100)} size="small" />;
               },
@@ -96,7 +82,7 @@ export function LaunchCardsPage() {
             {
               title: "实测 FAQ 解决率",
               key: "measured",
-              render: (_: unknown, c: CardRow) => {
+              render: (_: unknown, c: LaunchCard) => {
                 const v = c.measured_metrics?.faq_resolve_rate;
                 if (v === undefined || v === null) return "—";
                 return (
