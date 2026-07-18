@@ -39,14 +39,15 @@
 ## 仓库结构（摘要）
 
 ```
-apps/api          # FastAPI 后端
-apps/web          # React + Vite 前端
-packages/         # 共享类型与行为契约
-evals/            # 离线 golden / 拒答评测
-docs/             # 架构 · 可观测 · 契约 · ADR
-infra/            # Compose / 反代 / Prometheus / Grafana
-deploy/           # 生产检查清单与 Runbook
-data/samples/     # 含 query_synonyms.yaml 等样例
+apps/api           # FastAPI 后端（app/{api,core,middleware,models,plugins,schemas,services,utils,workers}）
+apps/web           # React + Vite 前端（src/{features,pages,api,plugins,routes,stores}）
+packages/          # 共享类型与行为契约（contracts / shared-types）
+evals/             # 离线 golden / 拒答评测（runners/run_eval.py）
+scripts/ops/       # check_code_metrics.py 等运维脚本
+docs/              # 架构 · 可观测 · 契约 · ADR · PRD
+infra/             # Compose（dev/prod）/ 反代 / Prometheus / Grafana / k8s
+deploy/            # 生产检查清单与 Runbook
+data/samples/      # 含 query_synonyms.yaml 等样例
 ```
 
 详见 [docs/prd/STRUCTURE.md](./docs/prd/STRUCTURE.md)。
@@ -72,17 +73,19 @@ data/samples/     # 含 query_synonyms.yaml 等样例
 | 上下文组装 | `apps/api/app/services/rag/context/` |
 | Honest RAG | `apps/api/app/services/rag/` |
 | 意图 / Harness | `apps/api/app/services/agent/` |
-| 工单 / 暖转 | `services/ticket/` · `services/handoff/` |
-| 知识 / Gap | `services/knowledge/` |
-| 指标埋点 | `middleware/` · `api/v1/health` |
-| 用户台 / Admin | `apps/web/src/features/` |
+| 工单 | `apps/api/app/services/ticket/`（board / repository / sla） |
+| 暖转 | `apps/api/app/services/handoff/`（claim / queue / summary / timeout） |
+| 知识 / Gap | `apps/api/app/services/knowledge/`（chunker / draft / gap / indexer / parser / storage） |
+| 后台任务 | `apps/api/app/workers/`（`enterprise_jobs` / `handoff_sweeper` / `index_worker`） |
+| 指标埋点 | `apps/api/app/middleware/` · `apps/api/app/api/v1/health` |
+| 用户台 / Admin | `apps/web/src/features/`（admin / auth / chat / settings / tickets） |
 
 ## 状态
 
 **详细对照见 [docs/STATUS.md](./docs/STATUS.md)**（完成线 = PRD §12.1 + **§12.2 企业代码**）。
 
 - 状态码：`ENTERPRISE-READY`（代码层；生产需接真实 IdP/Webhook）  
-- API 自动化：**66+ pytest** + eval runner；Honest RAG / out_of_scope 拒答  
+- API 自动化：**110+ pytest** + 离线 eval runner；Honest RAG / out_of_scope 拒答  
 - 企业层：SLA · 通知 · OIDC · 连接器 · 技能组 · 用户导出删除 · 成本 · Launch Card · MCP  
 - 可选增强：真实 Chroma/LLM 流式、正式 JWKS、IM 渠道  
 
@@ -109,13 +112,25 @@ cd apps/web && npm install && npm run dev
 - 用户台：http://localhost:5173  
 
 ```bash
+# API 测试（每例隔离内存 SQLite + ASGITransport）
 cd apps/api && source .venv/bin/activate && PYTHONPATH=. pytest -q
+#   - tests/unit（纯逻辑）/ tests/integration（API+DB）/ tests/e2e（占位）
+
+# 离线评测（golden / refusals；CI 也跑）
+PYTHONPATH=apps/api python evals/runners/run_eval.py
+
+# 代码硬性指标门禁
+python3 scripts/ops/check_code_metrics.py
+
+# Web 构建检查（含 tsc --noEmit）与最小 client 检查
+cd apps/web && npm run build && npm run test:client
 ```
 
 ## 建议下一步
 
-1. 知识库异步索引（`workers/index_worker`）+ Admin 文档页  
+1. 知识库异步索引（`apps/api/app/workers/index_worker`）+ Admin 文档页  
 2. 接入 OpenAI 兼容 LLM（生成 / 分类 / 摘要）与真实 WS 流式  
 3. Admin：意图 / Prompt / Gap / Draft / 审计看板  
 4. Chroma 向量通道替换当前 BM25 语义占位  
 5. golden / refusal eval runner 与 CI 门禁  
+
