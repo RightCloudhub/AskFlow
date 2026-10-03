@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   ApiOutlined,
+  AppstoreOutlined,
   AuditOutlined,
   ClusterOutlined,
   DashboardOutlined,
@@ -37,6 +38,7 @@ const MAP: Record<string, ReactNode> = {
   audit: <AuditOutlined />,
   connector: <ApiOutlined />,
   launch: <RocketOutlined />,
+  plugin: <AppstoreOutlined />,
 };
 
 export function navIcon(name?: string): ReactNode {

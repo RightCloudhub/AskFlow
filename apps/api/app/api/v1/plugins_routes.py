@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.deps import require_agent_or_admin
 from app.models.user import User
-from app.plugins.loader import features_public_view
+from app.plugins.discovery import EMPTY_FEATURES_VIEW, features_public_view
 from app.plugins.runtime import get_app_context
 
 router = APIRouter()
@@ -18,12 +18,5 @@ async def list_features(
 ) -> dict:
     ctx = get_app_context()
     if ctx is None:
-        return {
-            "profile": "unknown",
-            "features": [],
-            "loaded": [],
-            "admin_nav": [],
-            "route_handlers": [],
-            "side_effects": [],
-        }
+        return dict(EMPTY_FEATURES_VIEW)
     return features_public_view(ctx)

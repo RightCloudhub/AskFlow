@@ -32,3 +32,4 @@ class CorePlugin:
         ctx.admin_router.include_router(features_router, prefix="/features", tags=["features"])
         ctx.add_nav(AdminNavItem("core", "/admin/audit", "审计", order=90))
         ctx.add_nav(AdminNavItem("core", "/admin/users", "用户", order=91))
+        ctx.add_nav(AdminNavItem("core", "/admin/plugins", "插件", order=95))

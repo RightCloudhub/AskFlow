@@ -61,7 +61,8 @@ class Plugin(Protocol):
 - `tool_registry`
 - `admin_nav`
 
-查询已加载：`GET /api/v1/admin/features`（agent/admin）。
+查询已加载：`GET /api/v1/admin/features`（agent/admin）。  
+Admin 管理页：`/admin/plugins`（core 插件，只读展示 profile / 插件目录 / 扩展点）。
 
 ## 5. 数据层策略
 

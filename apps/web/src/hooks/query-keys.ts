@@ -85,3 +85,7 @@ export const QcKeys = {
   summary: () => ["qc", "summary"] as const,
   lowQuality: () => ["qc", "low-quality"] as const,
 };
+
+export const FeaturesKeys = {
+  discovery: () => ["features", "discovery"] as const,
+};

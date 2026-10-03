@@ -48,10 +48,20 @@ export type AdminRouteDef = {
   page: string;
 };
 
+export type PluginCatalogItem = {
+  id: string;
+  depends: string[];
+  enabled: boolean;
+  loaded: boolean;
+};
+
 export type FeaturesResponse = {
   profile: string;
   features: string[];
   loaded: string[];
+  feature_deltas?: string;
+  profiles?: string[];
+  plugins?: PluginCatalogItem[];
   admin_nav: { plugin_id: string; to: string; label: string; order: number }[];
   route_handlers: string[];
   side_effects: string[];

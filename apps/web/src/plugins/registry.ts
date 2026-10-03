@@ -170,6 +170,15 @@ export const ADMIN_NAV: AdminNavItem[] = [
     icon: "launch",
     hint: "变更与度量",
   },
+  {
+    pluginId: "core",
+    to: "/admin/plugins",
+    label: "插件与能力",
+    order: 95,
+    group: "system",
+    icon: "plugin",
+    hint: "Profile 与插件装配",
+  },
 ];
 
 export const ADMIN_ROUTES: AdminRouteDef[] = [
@@ -190,6 +199,7 @@ export const ADMIN_ROUTES: AdminRouteDef[] = [
   { path: "costs", pluginId: "cost", page: "costs" },
   { path: "launch-cards", pluginId: "launch", page: "launch-cards" },
   { path: "agent-runs", pluginId: "agent", page: "agent-runs" },
+  { path: "plugins", pluginId: "core", page: "plugins" },
 ];
 
 /** Fail-closed baseline when discovery fails or list is empty (AC4). */
