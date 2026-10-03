@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 ALLOWED_KINDS = frozenset({"image", "file", "screenshot"})
@@ -51,5 +51,7 @@ def normalize_attachments(raw: list[dict[str, Any]] | None) -> list[dict[str, An
 def attachment_prompt_suffix(attachments: list[dict[str, Any]]) -> str:
     if not attachments:
         return ""
-    lines = [f"- {a.get('kind')}: {a.get('name') or a.get('url') or 'unnamed'}" for a in attachments]
+    lines = [
+        f"- {a.get('kind')}: {a.get('name') or a.get('url') or 'unnamed'}" for a in attachments
+    ]
     return "\n[用户附件]\n" + "\n".join(lines)

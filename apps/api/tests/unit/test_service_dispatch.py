@@ -51,8 +51,10 @@ async def test_dispatch_failures_leave_valid_task_owned(store, monkeypatch):
     original = task()
     await store.create(original)
     await enqueue(store, original.task_id)
+
     async def broken(_store, _claim):
         raise RuntimeError("worker failed")
+
     monkeypatch.setattr("app.workers.service_tasks.dispatch_one", broken)
     for _ in range(3):
         async with store.sessions.begin() as db:
@@ -69,13 +71,17 @@ async def test_one_claim_failure_does_not_block_other_jobs(store, monkeypatch):
     await enqueue(store, "bad")
     await enqueue(store, "good")
     original_claim = DispatchQueue.claim
+
     async def claim(queue, task_id):
         if task_id == "bad":
             raise RuntimeError("broken claim")
         return await original_claim(queue, task_id)
+
     called = []
+
     async def dispatch(_store, claim):
         called.append(claim.task_id)
+
     monkeypatch.setattr(DispatchQueue, "claim", claim)
     monkeypatch.setattr("app.workers.service_tasks.dispatch_one", dispatch)
     counts = await run_once(sessions=store.sessions)
@@ -91,8 +97,9 @@ async def test_old_lease_cannot_finish_reclaimed_job(store):
     queue = DispatchQueue(store.sessions)
     first = await queue.claim(original.task_id)
     async with store.sessions.begin() as db:
-        await db.execute(update(ServiceDispatch).values(
-            lease_until=datetime.now(UTC) - timedelta(seconds=1)))
+        await db.execute(
+            update(ServiceDispatch).values(lease_until=datetime.now(UTC) - timedelta(seconds=1))
+        )
     second = await queue.claim(original.task_id)
     await finish_dispatch(store, first, original)
     async with store.sessions() as db:
@@ -135,23 +142,32 @@ async def test_repeated_delivery_is_idempotent(store):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("result", ["ok", "wrong_customer", "wrong_order", "mock", "forbidden", "retry"])
+@pytest.mark.parametrize(
+    "result", ["ok", "wrong_customer", "wrong_order", "mock", "forbidden", "retry"]
+)
 async def test_scoped_http_contract(monkeypatch, result):
     settings = get_settings()
     monkeypatch.setattr(settings, "order_lookup_url", "https://orders.test/status")
     monkeypatch.setattr(settings, "order_lookup_token", "test-token")
+
     async def handler(request):
         assert request.url.params["customer_id"] == SCOPE.customer_id
         assert request.headers["Authorization"] == "Bearer test-token"
         status = {"forbidden": 403, "retry": 503}.get(result, 200)
-        return httpx.Response(status, json={
-            "order_id": "other" if result == "wrong_order" else "owned",
-            "customer_id": "other" if result == "wrong_customer" else SCOPE.customer_id,
-            "status": "mock" if result == "mock" else "shipped",
-        })
+        return httpx.Response(
+            status,
+            json={
+                "order_id": "other" if result == "wrong_order" else "owned",
+                "customer_id": "other" if result == "wrong_customer" else SCOPE.customer_id,
+                "status": "mock" if result == "mock" else "shipped",
+            },
+        )
+
     client_class = httpx.AsyncClient
-    monkeypatch.setattr("app.services.agent.service.chat_order.httpx.AsyncClient",
-                        lambda **kwargs: client_class(transport=httpx.MockTransport(handler), **kwargs))
+    monkeypatch.setattr(
+        "app.services.agent.service.chat_order.httpx.AsyncClient",
+        lambda **kwargs: client_class(transport=httpx.MockTransport(handler), **kwargs),
+    )
     receipt = await scoped_order(call(), SCOPE)
     assert (receipt.status == "succeeded") is (result == "ok")
     if result == "retry":

@@ -90,7 +90,9 @@ class BM25Index:
         if not self._bm25 or not self._docs:
             return []
         raw_scores = self._bm25.get_scores(_tokenize(query))
-        ranked = sorted(enumerate(raw_scores), key=lambda x: x[1], reverse=True)[: max(top_k * 3, top_k)]
+        ranked = sorted(enumerate(raw_scores), key=lambda x: x[1], reverse=True)[
+            : max(top_k * 3, top_k)
+        ]
         hits: list[SearchHit] = []
         for idx, raw in ranked:
             if raw <= 0:

@@ -23,9 +23,7 @@ async def sla_status(
     limit: int = Query(default=DEFAULT_SLA_TICKET_LIMIT, ge=1, le=MAX_SLA_TICKET_LIMIT),
 ) -> dict:
     """Open tickets with non-ok SLA + aggregate counts for Admin UI."""
-    by_state = await db.execute(
-        select(Ticket.sla_state, func.count()).group_by(Ticket.sla_state)
-    )
+    by_state = await db.execute(select(Ticket.sla_state, func.count()).group_by(Ticket.sla_state))
     counts = {str(s or "ok"): int(n or 0) for s, n in by_state.all()}
     result = await db.execute(
         select(Ticket)

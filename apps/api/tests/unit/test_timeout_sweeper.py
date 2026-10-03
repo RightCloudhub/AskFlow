@@ -5,14 +5,14 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.config import Settings
 from app.core.database import Base
+from app.core.security import hash_password
 from app.models.conversation import Conversation
 from app.models.enums import ConversationStatus, HandoffStatus, UserRole
 from app.models.handoff import HandoffSession
 from app.models.user import User
-from app.core.security import hash_password
 from app.services.handoff.timeout import HandoffTimeoutSweeper
-from app.core.config import Settings
 
 
 @pytest.mark.asyncio

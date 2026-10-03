@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from fastapi import APIRouter
 
 from app.core.config import Settings
 from app.plugins.types import AdminNavItem, SideEffectHandler, empty_admin_router, empty_api_router
-from app.services.tools.registry import ToolRegistry, registry as default_tool_registry
+from app.services.tools.registry import ToolRegistry
+from app.services.tools.registry import registry as default_tool_registry
 
 # Route handlers are callables: TurnContext -> PipelineResult (async)
 RouteHandlerFn = Callable[..., Any]

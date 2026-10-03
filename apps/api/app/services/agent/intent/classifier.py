@@ -14,7 +14,7 @@ RULE_PATTERNS: list[tuple[Intent, re.Pattern[str], float]] = [
         Intent.ORDER_QUERY,
         re.compile(
             r"(订单|快递|物流|发货|运单|到哪了|order|shipping|tracking|物流状态|单号)",
-            re.I,
+            re.IGNORECASE,
         ),
         0.7,
     ),
@@ -23,29 +23,33 @@ RULE_PATTERNS: list[tuple[Intent, re.Pattern[str], float]] = [
         re.compile(
             r"(报错|错误码?|bug|故障|crash|崩溃|打不开|无法使用|异常|"
             r"HTTP\s*500|状态码\s*500|internal\s*server\s*error)",
-            re.I,
+            re.IGNORECASE,
         ),
         0.7,
     ),
     (
         Intent.COMPLAINT,
-        re.compile(r"(投诉|差评|不满|抱怨|complain|太差|坑|欺诈)", re.I),
+        re.compile(r"(投诉|差评|不满|抱怨|complain|太差|坑|欺诈)", re.IGNORECASE),
         0.7,
     ),
 ]
 
 # Handoff requires co-occurrence of human-request + transfer verbs (PRD red-line)
-HANDOFF_HUMAN = re.compile(r"(人工|真人|客服|坐席|专员|human|agent\s*service|live\s*agent)", re.I)
-HANDOFF_TRANSFER = re.compile(r"(转|找|接入|联系|talk\s*to|speak\s*(to|with)|connect|transfer)", re.I)
+HANDOFF_HUMAN = re.compile(
+    r"(人工|真人|客服|坐席|专员|human|agent\s*service|live\s*agent)", re.IGNORECASE
+)
+HANDOFF_TRANSFER = re.compile(
+    r"(转|找|接入|联系|talk\s*to|speak\s*(to|with)|connect|transfer)", re.IGNORECASE
+)
 # Bare "agent" alone must NOT trigger handoff
-BARE_AGENT = re.compile(r"\bagent\b", re.I)
+BARE_AGENT = re.compile(r"\bagent\b", re.IGNORECASE)
 
 # Domain out-of-scope (enterprise E4) — medical/legal/crypto gambling etc.
 OUT_OF_SCOPE_RE = re.compile(
     r"(诊断|开药|处方|癌症治疗方案|法律意见|代写诉状|炒币建议|内幕交易|"
     r"how\s+to\s+(hack|make\s+a\s+bomb)|medical\s+diagnosis|legal\s+advice\s+for\s+court|"
     r"月球天气|量子纠缠天气预报|外星签证)",
-    re.I,
+    re.IGNORECASE,
 )
 
 
@@ -64,7 +68,9 @@ class IntentClassifier:
     def __init__(self, llm_client: object | None = None) -> None:
         self.llm_client = llm_client
 
-    async def classify(self, text: str, history: list[dict[str, str]] | None = None) -> IntentResult:
+    async def classify(
+        self, text: str, history: list[dict[str, str]] | None = None
+    ) -> IntentResult:
         _ = history  # reserved for LLM path
         rule = self._rule_classify(text)
 

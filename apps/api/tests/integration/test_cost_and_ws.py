@@ -55,30 +55,29 @@ async def test_ws_auth_and_message_stream(client: AsyncClient):
     # Reuse the same engine/SessionLocal already patched by the client fixture
     application = create_app()
 
-    with TestClient(application) as tc:
-        with tc.websocket_connect("/api/v1/chat/ws") as ws:
-            ws.send_text(json.dumps({"type": "auth", "token": token}))
-            auth_ok = ws.receive_json()
-            assert auth_ok["type"] == "auth_ok"
-            ws.send_text(
-                json.dumps(
-                    {
-                        "type": "message",
-                        "conversation_id": conv_id,
-                        "content": "发票怎么开",
-                    }
-                )
+    with TestClient(application) as tc, tc.websocket_connect("/api/v1/chat/ws") as ws:
+        ws.send_text(json.dumps({"type": "auth", "token": token}))
+        auth_ok = ws.receive_json()
+        assert auth_ok["type"] == "auth_ok"
+        ws.send_text(
+            json.dumps(
+                {
+                    "type": "message",
+                    "conversation_id": conv_id,
+                    "content": "发票怎么开",
+                }
             )
-            frames = []
-            for _ in range(40):
-                data = ws.receive_json()
-                frames.append(data)
-                if data.get("type") == "message_end":
-                    break
-            types = [f.get("type") for f in frames]
-            assert "token" in types or "message_end" in types
-            end = next(f for f in frames if f.get("type") == "message_end")
-            assert end.get("message_id")
-            assert end.get("route")
-            # prove we hit the patched DB (user existed)
-            assert dbmod.SessionLocal is not None
+        )
+        frames = []
+        for _ in range(40):
+            data = ws.receive_json()
+            frames.append(data)
+            if data.get("type") == "message_end":
+                break
+        types = [f.get("type") for f in frames]
+        assert "token" in types or "message_end" in types
+        end = next(f for f in frames if f.get("type") == "message_end")
+        assert end.get("message_id")
+        assert end.get("route")
+        # prove we hit the patched DB (user existed)
+        assert dbmod.SessionLocal is not None

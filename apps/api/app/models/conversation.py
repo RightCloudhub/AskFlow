@@ -19,13 +19,17 @@ JSONType = JSON().with_variant(SQLITE_JSON(), "sqlite")
 class Conversation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "conversations"
 
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id"), index=True, nullable=False
+    )
     title: Mapped[str] = mapped_column(String(255), default="新会话", nullable=False)
     status: Mapped[str] = mapped_column(
         String(32), default=ConversationStatus.ACTIVE.value, index=True, nullable=False
     )
     # merge-patch only (PRD §6.3)
-    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSONType, default=dict, nullable=False)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONType, default=dict, nullable=False
+    )
 
     user = relationship("User", back_populates="conversations")
     messages = relationship(

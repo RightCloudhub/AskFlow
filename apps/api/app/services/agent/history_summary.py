@@ -27,7 +27,7 @@ def compress_history(
     if len(history) <= threshold:
         return history, False
 
-    older = history[: -keep]
+    older = history[:-keep]
     recent = history[-keep:]
     body = _build_summary_body(older)
     summary_msg = {"role": SUMMARY_ROLE, "content": f"{SUMMARY_PREFIX}{body}"}

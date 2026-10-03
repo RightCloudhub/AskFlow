@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 import httpx
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -38,9 +38,11 @@ async def test_notify_emit_signed_and_sink():
         rec = await svc.emit("pilot.test", {"hello": "world"})
         assert rec["signature"]
         assert rec["headers"]["X-AskFlow-Signature"] == rec["signature"]
-        body = __import__("json").dumps(
-            rec["body"], ensure_ascii=False, separators=(",", ":")
-        ).encode()
+        body = (
+            __import__("json")
+            .dumps(rec["body"], ensure_ascii=False, separators=(",", ":"))
+            .encode()
+        )
         ts = rec["headers"]["X-AskFlow-Timestamp"]
         from app.core.config import get_settings
 

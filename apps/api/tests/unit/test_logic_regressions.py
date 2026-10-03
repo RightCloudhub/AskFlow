@@ -145,8 +145,9 @@ async def test_widget_isolation_and_sanitize_roundtrip():
         b = await WidgetService(db).open_session(visitor_key="vb")
         assert a.user_id != b.user_id
         assert a.visitor_key == sanitize_visitor_key("va@evil")
-        from app.services.chat.session.service import ChatService
         from fastapi import HTTPException
+
+        from app.services.chat.session.service import ChatService
 
         with pytest.raises(HTTPException) as ei:
             await ChatService(db).list_messages(a.conversation_id, b.user_id)
@@ -164,8 +165,9 @@ async def test_widget_colliding_raw_keys_stay_isolated():
         assert a.visitor_key != b.visitor_key
         assert a.user_id != b.user_id
         assert a.conversation_id != b.conversation_id
-        from app.services.chat.session.service import ChatService
         from fastapi import HTTPException
+
+        from app.services.chat.session.service import ChatService
 
         with pytest.raises(HTTPException) as ei:
             await ChatService(db).list_messages(a.conversation_id, b.user_id)
@@ -193,7 +195,9 @@ async def test_agent_run_persists_after_side_effect():
         db.add(user)
         await db.flush()
         ledger = CostLedger(run_id)
-        ledger.record(purpose="rag_generate", model="gpt-4o-mini", prompt_tokens=10, completion_tokens=5)
+        ledger.record(
+            purpose="rag_generate", model="gpt-4o-mini", prompt_tokens=10, completion_tokens=5
+        )
         cost = ledger.summary()
         turn = ChatTurnContext(
             db=db,
@@ -285,12 +289,15 @@ async def test_feishu_two_open_ids_isolated_users():
         r1 = await handle("ou_a", "你好")
         r2 = await handle("ou_b", "你好")
         assert r1.kind == "message" and r2.kind == "message"
-        from app.models.user import User as U
         from sqlalchemy import select
 
+        from app.models.user import User as U
+
         users = (
-            await db.execute(select(U).where(U.email.like("feishu.%@channel.askflow.local")))
-        ).scalars().all()
+            (await db.execute(select(U).where(U.email.like("feishu.%@channel.askflow.local"))))
+            .scalars()
+            .all()
+        )
         assert len(users) >= 2
         ids = {u.id for u in users}
         assert len(ids) >= 2

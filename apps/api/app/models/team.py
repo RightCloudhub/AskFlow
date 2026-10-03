@@ -22,6 +22,10 @@ class TeamMember(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "team_members"
     __table_args__ = (UniqueConstraint("team_id", "user_id", name="uq_team_member"),)
 
-    team_id: Mapped[str] = mapped_column(String(36), ForeignKey("teams.id"), index=True, nullable=False)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True, nullable=False)
+    team_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("teams.id"), index=True, nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id"), index=True, nullable=False
+    )
     role_in_team: Mapped[str] = mapped_column(String(32), default="member", nullable=False)

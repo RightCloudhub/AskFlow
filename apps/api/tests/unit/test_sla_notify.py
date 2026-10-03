@@ -11,7 +11,12 @@ from app.core.security import hash_password
 from app.models.enums import TicketPriority, TicketStatus, UserRole
 from app.models.ticket import Ticket
 from app.models.user import User
-from app.services.notify.service import NotifyService, clear_notify_sink, get_notify_sink, sign_payload
+from app.services.notify.service import (
+    NotifyService,
+    clear_notify_sink,
+    get_notify_sink,
+    sign_payload,
+)
 from app.services.ticket.sla.engine import SLAEngine
 
 
@@ -89,7 +94,11 @@ async def test_notify_signed_sink_non_blocking():
         rec = await svc.emit_safe("ticket.created", {"ticket_id": "t1"})
         assert rec is not None
         assert rec["signature"]
-        body = __import__("json").dumps(rec["body"], ensure_ascii=False, separators=(",", ":")).encode()
+        body = (
+            __import__("json")
+            .dumps(rec["body"], ensure_ascii=False, separators=(",", ":"))
+            .encode()
+        )
         ts = rec["headers"]["X-AskFlow-Timestamp"]
         from app.core.config import get_settings
 

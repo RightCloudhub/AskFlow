@@ -20,13 +20,16 @@ class AgentPlugin:
         from app.api.v1.admin.agent_runs.routes import router as agent_runs_router
         from app.api.v1.agent.preferences import router as preferences_router
         from app.api.v1.agent.routes import router as agent_router
-        from app.api.v1.agent.tasks import router as tasks_router, staff_router
+        from app.api.v1.agent.tasks import router as tasks_router
+        from app.api.v1.agent.tasks import staff_router
         from app.services.agent.pipeline.handlers.clarify import handle_clarify
         from app.services.agent.pipeline.handlers.refuse import handle_refuse
         from app.services.chat.side_effects.agent_run import AgentRunSideEffect
 
         ctx.api_router.include_router(agent_router, prefix="/agent", tags=["agent"])
-        ctx.api_router.include_router(preferences_router, prefix="/agent/preferences", tags=["agent"])
+        ctx.api_router.include_router(
+            preferences_router, prefix="/agent/preferences", tags=["agent"]
+        )
         ctx.api_router.include_router(tasks_router, prefix="/agent/tasks", tags=["agent"])
         ctx.admin_router.include_router(staff_router, prefix="/service-tasks", tags=["agent"])
         ctx.admin_router.include_router(

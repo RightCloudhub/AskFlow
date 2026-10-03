@@ -1,10 +1,10 @@
 """The first migration can add/remove task storage alongside existing application tables."""
 
 import os
-from pathlib import Path
 import sqlite3
 import subprocess
 import sys
+from pathlib import Path
 
 
 def test_task_migration_round_trip(tmp_path):
@@ -20,8 +20,13 @@ def test_task_migration_round_trip(tmp_path):
         assert connection.execute("PRAGMA table_info(customer_preferences)").fetchall()
         assert connection.execute("PRAGMA table_info(service_dispatches)").fetchall()
         assert {column[1] for column in columns} == {
-            "id", "organization_id", "customer_id", "version", "checkpoint",
-            "created_at", "updated_at",
+            "id",
+            "organization_id",
+            "customer_id",
+            "version",
+            "checkpoint",
+            "created_at",
+            "updated_at",
         }
     _migrate(root, env, direction="downgrade", target="base")
     with sqlite3.connect(database) as connection:
@@ -34,5 +39,12 @@ def test_task_migration_round_trip(tmp_path):
 
 
 def _migrate(root, env, *, direction, target):
-    subprocess.run([sys.executable, "-m", "alembic", direction, target], cwd=root,
-                   env=env, check=True, capture_output=True, text=True, timeout=30)
+    subprocess.run(
+        [sys.executable, "-m", "alembic", direction, target],
+        cwd=root,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )

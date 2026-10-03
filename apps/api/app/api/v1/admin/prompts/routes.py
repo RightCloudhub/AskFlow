@@ -12,7 +12,9 @@ router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 @router.get("", response_model=list[PromptTemplateOut])
-async def list_prompts(db: DbSession, _user: User = Depends(require_admin)) -> list[PromptTemplateOut]:
+async def list_prompts(
+    db: DbSession, _user: User = Depends(require_admin)
+) -> list[PromptTemplateOut]:
     svc = PromptService(db)
     await svc.ensure_defaults()
     rows = await svc.list_templates()
@@ -27,9 +29,7 @@ async def add_version(
     user: CurrentUser,
 ) -> PromptVersionOut:
     svc = PromptService(db)
-    ver = await svc.add_version(
-        key, payload.content, created_by=user.id, activate=payload.activate
-    )
+    ver = await svc.add_version(key, payload.content, created_by=user.id, activate=payload.activate)
     await AuditService(db).log(
         action="prompt.version",
         resource_type="prompt",

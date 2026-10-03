@@ -43,9 +43,7 @@ class UserAdminService:
         user = await self.db.get(User, user_id)
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
-        convs = await self.db.execute(
-            select(Conversation).where(Conversation.user_id == user_id)
-        )
+        convs = await self.db.execute(select(Conversation).where(Conversation.user_id == user_id))
         conversations = list(convs.scalars().all())
         conv_ids = [c.id for c in conversations]
         messages: list[Message] = []
@@ -92,15 +90,11 @@ class UserAdminService:
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
 
-        convs = await self.db.execute(
-            select(Conversation).where(Conversation.user_id == user_id)
-        )
+        convs = await self.db.execute(select(Conversation).where(Conversation.user_id == user_id))
         conversations = list(convs.scalars().all())
         n_msg = 0
         for c in conversations:
-            msg_r = await self.db.execute(
-                select(Message).where(Message.conversation_id == c.id)
-            )
+            msg_r = await self.db.execute(select(Message).where(Message.conversation_id == c.id))
             for m in msg_r.scalars().all():
                 await self.db.delete(m)
                 n_msg += 1
@@ -129,4 +123,9 @@ class UserAdminService:
             actor_id=actor_id,
             detail={"messages": n_msg, "tickets": n_ticket, "feedbacks": n_fb},
         )
-        return {"messages": n_msg, "conversations": len(conversations), "tickets": n_ticket, "feedbacks": n_fb}
+        return {
+            "messages": n_msg,
+            "conversations": len(conversations),
+            "tickets": n_ticket,
+            "feedbacks": n_fb,
+        }

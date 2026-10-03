@@ -29,7 +29,10 @@ class PromptVersion(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __table_args__ = (UniqueConstraint("template_id", "version", name="uq_prompt_version"),)
 
     template_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("prompt_templates.id", ondelete="CASCADE"), index=True, nullable=False
+        String(36),
+        ForeignKey("prompt_templates.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)

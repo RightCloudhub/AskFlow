@@ -98,9 +98,7 @@ class RAGPipeline:
             context_trace=bundle.trace,
         )
 
-    async def _retrieve_fused(
-        self, query: str, *, top_k: int, flags: list[str]
-    ) -> list[Any]:
+    async def _retrieve_fused(self, query: str, *, top_k: int, flags: list[str]) -> list[Any]:
         cache = get_retrieval_cache()
         key = cache.make_key(query, top_k)
         cached = cache.get(key)

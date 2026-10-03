@@ -38,11 +38,15 @@ async def get_current_user(
     try:
         payload = decode_access_token(credentials.credentials)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        ) from exc
 
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject"
+        )
 
     if _is_guest_payload(payload) and not _path_allows_guest(request.url.path):
         raise HTTPException(
@@ -53,7 +57,9 @@ async def get_current_user(
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or missing")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or missing"
+        )
     return user
 
 

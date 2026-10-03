@@ -4,8 +4,9 @@ Revision ID: 20261003_service_dispatches
 Revises: 20261003_customer_preferences
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "20261003_service_dispatches"
 down_revision = "20261003_customer_preferences"

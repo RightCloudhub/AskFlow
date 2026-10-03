@@ -14,8 +14,11 @@ PREFERENCE_LENGTH = 32
 
 class CustomerPreference(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "customer_preferences"
-    __table_args__ = (UniqueConstraint("organization_id", "customer_id", "key",
-                                      name="uq_customer_preference_scope_key"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "customer_id", "key", name="uq_customer_preference_scope_key"
+        ),
+    )
 
     organization_id: Mapped[str] = mapped_column(String(SCOPE_LENGTH), nullable=False)
     customer_id: Mapped[str] = mapped_column(String(SCOPE_LENGTH), nullable=False)

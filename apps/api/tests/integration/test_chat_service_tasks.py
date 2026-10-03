@@ -27,13 +27,18 @@ async def create_chat_task(client):
     path = f"/api/v1/chat/conversations/{conv_id}/messages"
     response = await client.post(path, headers=headers, json={"content": f"查询订单 {ORDER_ID}"})
     assert response.status_code == 200, response.text
-    task_id = response.json()["assistant_message"]["meta"]["side_effects"]["service_task"]["task_id"]
+    task_id = response.json()["assistant_message"]["meta"]["side_effects"]["service_task"][
+        "task_id"
+    ]
     return headers, conv_id, path, task_id
 
 
 async def live_order(call, scope):
-    return _receipt(call, scope, data={"order_id": ORDER_ID, "customer_id": scope.customer_id,
-                                      "status": "shipped"})
+    return _receipt(
+        call,
+        scope,
+        data={"order_id": ORDER_ID, "customer_id": scope.customer_id, "status": "shipped"},
+    )
 
 
 async def task_for(task_id):
@@ -69,11 +74,13 @@ async def test_order_result_is_delivered_once(client, monkeypatch):
 @pytest.mark.asyncio
 async def test_retry_is_durable_and_cannot_run_before_due(client, monkeypatch):
     calls = []
+
     async def flaky(call, scope):
         calls.append(call.key)
         if len(calls) == 1:
             return Receipt(status="failed", error_kind="transient")
         return await live_order(call, scope)
+
     monkeypatch.setattr("app.services.agent.service.chat_order.scoped_order", flaky)
     _, _, _, task_id = await create_chat_task(client)
     await run_once()
@@ -98,8 +105,9 @@ async def test_expired_worker_lease_can_be_reclaimed(client, monkeypatch):
     assert claimed is not None
     assert (await run_once())["processed"] == 0
     async with database.SessionLocal.begin() as db:
-        await db.execute(update(ServiceDispatch).values(
-            lease_until=datetime.now(UTC) - timedelta(seconds=1)))
+        await db.execute(
+            update(ServiceDispatch).values(lease_until=datetime.now(UTC) - timedelta(seconds=1))
+        )
     assert (await run_once())["processed"] == 1
     assert (await task_for(task_id)).status == "resolved"
 
@@ -108,9 +116,11 @@ async def test_expired_worker_lease_can_be_reclaimed(client, monkeypatch):
 @pytest.mark.parametrize("terminal", ["closed_unresolved", "handed_off"])
 async def test_cancelled_or_handed_off_task_never_executes(client, monkeypatch, terminal):
     calls = []
+
     async def must_not_run(call, scope):
         calls.append(call)
         return await live_order(call, scope)
+
     monkeypatch.setattr("app.services.agent.service.chat_order.scoped_order", must_not_run)
     _, _, _, task_id = await create_chat_task(client)
     task = await task_for(task_id)
@@ -125,10 +135,16 @@ async def test_cancelled_or_handed_off_task_never_executes(client, monkeypatch, 
 @pytest.mark.parametrize("invalid", ["wrong_customer", "mock"])
 async def test_unverified_result_does_not_resolve_or_leak(client, monkeypatch, invalid):
     async def invalid_order(call, scope):
-        return _receipt(call, scope, data={
-            "order_id": ORDER_ID, "customer_id": "other-customer",
-            "status": "mock" if invalid == "mock" else "private-status",
-        })
+        return _receipt(
+            call,
+            scope,
+            data={
+                "order_id": ORDER_ID,
+                "customer_id": "other-customer",
+                "status": "mock" if invalid == "mock" else "private-status",
+            },
+        )
+
     monkeypatch.setattr("app.services.agent.service.chat_order.scoped_order", invalid_order)
     headers, _, path, task_id = await create_chat_task(client)
     await run_once()
@@ -140,12 +156,19 @@ async def test_unverified_result_does_not_resolve_or_leak(client, monkeypatch, i
 async def test_chat_failure_rolls_back_task_and_dispatch(client, monkeypatch):
     headers = await _admin(client, "rollback_customer")
     conv = await client.post("/api/v1/chat/conversations", headers=headers, json={})
+
     def fail_meta(_result):
         raise RuntimeError("response persistence failed")
-    monkeypatch.setattr("app.services.chat.session.turn.ChatTurn._response_meta", staticmethod(fail_meta))
+
+    monkeypatch.setattr(
+        "app.services.chat.session.turn.ChatTurn._response_meta", staticmethod(fail_meta)
+    )
     with pytest.raises(RuntimeError):
-        await client.post(f"/api/v1/chat/conversations/{conv.json()['id']}/messages",
-                          headers=headers, json={"content": f"查询订单 {ORDER_ID}"})
+        await client.post(
+            f"/api/v1/chat/conversations/{conv.json()['id']}/messages",
+            headers=headers,
+            json={"content": f"查询订单 {ORDER_ID}"},
+        )
     async with database.SessionLocal() as db:
         for model in [ServiceTask, ServiceDispatch, Message]:
             assert await db.scalar(select(func.count()).select_from(model)) == 0

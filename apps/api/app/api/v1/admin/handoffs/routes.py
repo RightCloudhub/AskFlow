@@ -30,9 +30,7 @@ async def claim_handoff(
     user: CurrentUser,
     db: DbSession,
 ) -> HandoffOut:
-    session = await HandoffService(db).claim(
-        handoff_id, user.id, agent_role=user.role
-    )
+    session = await HandoffService(db).claim(handoff_id, user.id, agent_role=user.role)
     return HandoffOut.model_validate(session)
 
 
@@ -54,9 +52,7 @@ async def list_handoff_messages(
     user: CurrentUser,
     db: DbSession,
 ) -> list[MessageOut]:
-    rows = await HandoffStaffOps(db).list_messages(
-        handoff_id, user.id, agent_role=user.role
-    )
+    rows = await HandoffStaffOps(db).list_messages(handoff_id, user.id, agent_role=user.role)
     return [MessageOut.model_validate(r) for r in rows]
 
 

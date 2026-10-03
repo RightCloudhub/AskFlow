@@ -2,16 +2,27 @@
 
 from datetime import UTC, datetime, timedelta
 
-from app.services.agent.service.contracts import Operation, OperationCall, Receipt, RecoverySignal, Task
+from app.services.agent.service.contracts import (
+    Operation,
+    OperationCall,
+    Receipt,
+    RecoverySignal,
+    Task,
+)
 
 RETRY_BASE_SECONDS = 5
 RECOVERY_REVIEW_SECONDS = 60
 MAX_BACKOFF_SECONDS = 60
 MAX_BACKOFF_EXPONENT = 4
 READ_FAILURE_ACTIONS = {
-    "transient": "retry", "unavailable": "fallback", "permission": "owner_review",
-    "invalid_input": "ask_customer", "conflict": "fallback", "permanent": "owner_review",
-    "unknown": "owner_review", "simulated": "fallback",
+    "transient": "retry",
+    "unavailable": "fallback",
+    "permission": "owner_review",
+    "invalid_input": "ask_customer",
+    "conflict": "fallback",
+    "permanent": "owner_review",
+    "unknown": "owner_review",
+    "simulated": "fallback",
 }
 
 
@@ -29,8 +40,9 @@ def apply_recovery(task: Task, call: OperationCall, *, op: Operation, receipt: R
     attempts = sum(e.call.operation_id == call.operation_id for e in task.ledger)
     if action == "retry" and attempts > op.max_retries:
         action = "fallback"
-    signal = RecoverySignal(operation_id=call.operation_id, request_key=call.key,
-                            kind=kind, action=action)
+    signal = RecoverySignal(
+        operation_id=call.operation_id, request_key=call.key, kind=kind, action=action
+    )
     task.recovery_signals.append(signal)
     _schedule(task, signal, attempts=attempts)
 
@@ -47,7 +59,7 @@ def _schedule(task: Task, signal: RecoverySignal, *, attempts: int) -> None:
         task.status = "waiting_customer"
     if signal.action == "retry":
         exponent = min(max(0, attempts - 1), MAX_BACKOFF_EXPONENT)
-        delay = min(RETRY_BASE_SECONDS * (2 ** exponent), MAX_BACKOFF_SECONDS)
+        delay = min(RETRY_BASE_SECONDS * (2**exponent), MAX_BACKOFF_SECONDS)
         signal.retry_at = now + timedelta(seconds=delay)
         task.review_at = signal.retry_at
 

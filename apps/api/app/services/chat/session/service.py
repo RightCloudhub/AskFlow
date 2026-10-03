@@ -9,9 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation, Message
-from app.models.enums import MessageRole
 from app.schemas.chat import ConversationCreate, ConversationUpdate
 from app.services.agent.pipeline.context import PipelineResult
+
 
 class ChatService:
     def __init__(self, db: AsyncSession) -> None:
@@ -32,12 +32,18 @@ class ChatService:
         )
         return list(result.scalars().all())
 
-    async def get_conversation(self, conversation_id: str, user_id: str | None = None) -> Conversation:
+    async def get_conversation(
+        self, conversation_id: str, user_id: str | None = None
+    ) -> Conversation:
         conv = await self.db.get(Conversation, conversation_id)
         if conv is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
+            )
         if user_id is not None and conv.user_id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your conversation")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Not your conversation"
+            )
         return conv
 
     async def update_conversation(
@@ -50,7 +56,9 @@ class ChatService:
             # Block user self-escalation to transferred / arbitrary statuses
             allowed = {"active", "closed"}
             if payload.status not in allowed:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_status")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_status"
+                )
             conv.status = payload.status
         await self.db.flush()
         await self.db.refresh(conv)
@@ -96,7 +104,14 @@ class ChatService:
     ) -> tuple[Message, Message, PipelineResult]:
         from app.services.chat.session.turn import ChatInput, ChatTurn
 
-        return await ChatTurn(self, ChatInput(
-            conversation_id=conversation_id, user_id=user_id, content=content,
-            attachments=attachments, bot_id=bot_id, locale=locale,
-        )).run()
+        return await ChatTurn(
+            self,
+            ChatInput(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                content=content,
+                attachments=attachments,
+                bot_id=bot_id,
+                locale=locale,
+            ),
+        ).run()

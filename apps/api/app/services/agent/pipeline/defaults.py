@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from app.plugins.types import SideEffectHandler
 from app.services.agent.pipeline.context import PipelineResult, TurnContext
 from app.services.agent.pipeline.handlers.clarify import handle_clarify
 from app.services.agent.pipeline.handlers.handoff import handle_handoff
@@ -12,7 +13,6 @@ from app.services.agent.pipeline.handlers.rag import handle_rag
 from app.services.agent.pipeline.handlers.refuse import handle_refuse
 from app.services.agent.pipeline.handlers.ticket import handle_ticket
 from app.services.agent.pipeline.handlers.tool import handle_tool
-from app.plugins.types import SideEffectHandler
 
 RouteHandlerFn = Callable[[TurnContext], Awaitable[PipelineResult]]
 

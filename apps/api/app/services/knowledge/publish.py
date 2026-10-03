@@ -72,4 +72,4 @@ def save_revision_from_chunks(
 def _raw_from_snapshot(snap: RevisionSnapshot) -> bytes:
     body = "\n\n".join(snap.chunks)
     title = snap.source or "rollback"
-    return f"# {title}\n\n{body}\n".encode("utf-8")
+    return f"# {title}\n\n{body}\n".encode()

@@ -35,8 +35,11 @@ async def test_customer_task_scope_and_projection(client):
     assert "ledger" not in detail.json()
     assert (await client.get(URL, headers=bob)).json()["items"] == []
     assert (await client.get(f"{URL}/{original.task_id}", headers=bob)).status_code == 404
-    denied = await client.post(f"{URL}/{original.task_id}/cancel", headers=bob,
-                               json={"expected_version": 0, "reason": "cancel"})
+    denied = await client.post(
+        f"{URL}/{original.task_id}/cancel",
+        headers=bob,
+        json={"expected_version": 0, "reason": "cancel"},
+    )
     assert denied.status_code == 404
 
 
@@ -45,11 +48,13 @@ async def test_customer_cancellation_requires_current_version(client):
     headers = await _admin(client, "tasks_cancel")
     original = await seed_task(client, headers)
     endpoint = f"{URL}/{original.task_id}/cancel"
-    invalid = await client.post(endpoint, headers=headers,
-                                json={"expected_version": 1, "reason": "cancel"})
+    invalid = await client.post(
+        endpoint, headers=headers, json={"expected_version": 1, "reason": "cancel"}
+    )
     assert invalid.status_code == 409
-    cancelled = await client.post(endpoint, headers=headers,
-                                  json={"expected_version": 0, "reason": "No longer needed"})
+    cancelled = await client.post(
+        endpoint, headers=headers, json={"expected_version": 0, "reason": "No longer needed"}
+    )
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "closed_unresolved"
     assert cancelled.json()["version"] == 1
@@ -60,8 +65,9 @@ async def test_task_pagination_has_no_cross_customer_items(client):
     headers = await _admin(client, "tasks_pages")
     originals = [await seed_task(client, headers) for _ in range(3)]
     page = (await client.get(URL, headers=headers, params={"limit": 2})).json()
-    rest = (await client.get(URL, headers=headers,
-                             params={"limit": 2, "after": page["next_cursor"]})).json()
+    rest = (
+        await client.get(URL, headers=headers, params={"limit": 2, "after": page["next_cursor"]})
+    ).json()
     returned = [item["task_id"] for item in page["items"] + rest["items"]]
     assert returned == sorted(original.task_id for original in originals)
     assert rest["next_cursor"] is None
@@ -74,9 +80,12 @@ async def test_staff_takeover_uses_claimed_handoff_identity(client):
     staff_user = (await client.get("/api/v1/admin/auth/me", headers=staff)).json()
     original = await seed_task(client, customer)
     async with database.SessionLocal.begin() as db:
-        handoff = HandoffSession(user_id=original.scope.customer_id,
-                                 conversation_id=original.conversation_id, status="claimed",
-                                 claimed_by=staff_user["id"])
+        handoff = HandoffSession(
+            user_id=original.scope.customer_id,
+            conversation_id=original.conversation_id,
+            status="claimed",
+            claimed_by=staff_user["id"],
+        )
         db.add(handoff)
         await db.flush()
         handoff_id = handoff.id

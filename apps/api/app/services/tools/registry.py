@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
-from app.services.tools.search_order.handler import search_order
 from app.services.tools.search_knowledge.handler import search_knowledge
+from app.services.tools.search_order.handler import search_order
 
 ToolHandler = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 

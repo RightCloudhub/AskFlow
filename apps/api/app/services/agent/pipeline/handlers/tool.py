@@ -13,11 +13,7 @@ async def handle_tool(ctx: TurnContext) -> PipelineResult:
     if not order_id:
         patch = ctx.slots.start_order_slot(ctx.metadata)
         final = ctx.harness.finalize(ORDER_SLOT_PROMPT)
-        intent = (
-            ctx.intent_result.intent.value
-            if ctx.intent_result
-            else Intent.ORDER_QUERY.value
-        )
+        intent = ctx.intent_result.intent.value if ctx.intent_result else Intent.ORDER_QUERY.value
         confidence = ctx.intent_result.confidence if ctx.intent_result else 0.9
         return PipelineResult(
             run_id=ctx.run_id,
@@ -41,9 +37,7 @@ async def _run_order_lookup(ctx: TurnContext, order_id: str) -> PipelineResult:
         from app.services.tools.registry import registry
 
         loop = LoopEngine(registry.as_loop_map())
-    intent = (
-        ctx.intent_result.intent.value if ctx.intent_result else Intent.ORDER_QUERY.value
-    )
+    intent = ctx.intent_result.intent.value if ctx.intent_result else Intent.ORDER_QUERY.value
     loop_result = await loop.run(
         tool_name="search_order",
         arguments={"order_id": order_id},

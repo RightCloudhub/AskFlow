@@ -23,9 +23,7 @@ class TeamService:
 
     async def add_member(self, team_id: str, user_id: str) -> TeamMember:
         existing = await self.db.execute(
-            select(TeamMember).where(
-                TeamMember.team_id == team_id, TeamMember.user_id == user_id
-            )
+            select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
         )
         row = existing.scalar_one_or_none()
         if row:
@@ -41,9 +39,7 @@ class TeamService:
         return list(result.scalars().all())
 
     async def list_members(self, team_id: str) -> list[TeamMember]:
-        result = await self.db.execute(
-            select(TeamMember).where(TeamMember.team_id == team_id)
-        )
+        result = await self.db.execute(select(TeamMember).where(TeamMember.team_id == team_id))
         return list(result.scalars().all())
 
     async def user_team_ids(self, user_id: str) -> list[str]:

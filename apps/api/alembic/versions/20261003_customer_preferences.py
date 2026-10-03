@@ -4,8 +4,9 @@ Revision ID: 20261003_customer_preferences
 Revises: 20261003_service_tasks
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "20261003_customer_preferences"
 down_revision = "20261003_service_tasks"
@@ -27,8 +28,9 @@ def upgrade() -> None:
         sa.Column("version", sa.Integer(), nullable=False),
         sa.Column("verified_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint("organization_id", "customer_id", "key",
-                            name="uq_customer_preference_scope_key"),
+        sa.UniqueConstraint(
+            "organization_id", "customer_id", "key", name="uq_customer_preference_scope_key"
+        ),
     )
 
 

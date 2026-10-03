@@ -15,7 +15,7 @@ from app.models.handoff import HandoffSession
 from app.models.team import Team, TeamMember
 from app.services.agent.history_summary import SUMMARY_PREFIX, compress_history
 from app.services.rag.pipeline import RAGPipeline
-from app.services.rag.retrieval_cache import get_retrieval_cache, reset_retrieval_cache
+from app.services.rag.retrieval_cache import reset_retrieval_cache
 from app.services.team.service import TeamService
 
 

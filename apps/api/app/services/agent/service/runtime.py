@@ -1,20 +1,32 @@
 """Observe, choose a feasible micro-step, execute, and verify on the next tick."""
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Awaitable, Callable
 
+from app.services.agent.memory.context import with_memory
+from app.services.agent.memory.facts import FactStore
+from app.services.agent.memory.store import PreferenceStore
 from app.services.agent.service.contracts import (
-    Candidate, Decision, Environment, RecoverySignal, Scope, Task,
+    Candidate,
+    Decision,
+    Environment,
+    RecoverySignal,
+    Scope,
+    Task,
 )
 from app.services.agent.service.executor import Executor
-from app.services.agent.service.registry import OperationRegistry
 from app.services.agent.service.recovery import candidate_rejection
+from app.services.agent.service.registry import OperationRegistry
+from app.services.agent.service.selection import (
+    budget_stop,
+    fresh_environment,
+    over_budget,
+    select_candidate,
+)
 from app.services.agent.service.store import TaskStore
-from app.services.agent.memory.context import with_preferences
-from app.services.agent.memory.store import PreferenceStore
 
 POLICY_TIMEOUT_SECONDS = 10.0
 OWNER_REVIEW_SECONDS = 60
@@ -35,6 +47,7 @@ class ServiceAgent:
         self.store, self.registry, self.policy = store, registry, policy
         self.executor = Executor(registry, store)
         self.preferences = PreferenceStore(store.sessions)
+        self.facts = FactStore(store.sessions)
 
     async def tick(self, task_id: str, scope: Scope) -> Task:
         task = await self.store.load(task_id, scope)
@@ -47,7 +60,8 @@ class ServiceAgent:
             return await self._wait(task, "reconcile_running_operation")
         try:
             env = await asyncio.wait_for(
-                self.policy.observe(task.model_copy(deep=True)), timeout=POLICY_TIMEOUT_SECONDS,
+                self.policy.observe(task.model_copy(deep=True)),
+                timeout=POLICY_TIMEOUT_SECONDS,
             )
         except Exception:
             return await self._policy_failed(task, "observe")
@@ -56,7 +70,9 @@ class ServiceAgent:
         return await self._advance(task, env)
 
     async def _advance(self, task: Task, env: Environment) -> Task:
-        env = await with_preferences(env, self.preferences)
+        env = fresh_environment(
+            await with_memory(env, preferences=self.preferences, facts=self.facts)
+        )
         view = self._fresh_view(task)
         try:
             verified = bool(view.evidence and self.policy.verify(view, env))
@@ -66,18 +82,22 @@ class ServiceAgent:
             task.status, task.wake_condition, task.review_at = "resolved", None, None
             await self.store.save(task)
             return task
-        if task.calls_used >= task.max_calls:
-            return await self._wait(task, "owner_review:task_budget_exhausted")
+        stop = budget_stop(task)
+        if stop:
+            return await self._wait(task, stop)
         try:
             candidates = await asyncio.wait_for(
-                self.policy.propose(view, deepcopy(env)), timeout=POLICY_TIMEOUT_SECONDS,
+                self.policy.propose(view, deepcopy(env)),
+                timeout=POLICY_TIMEOUT_SECONDS,
             )
-            call = self._choose(task, candidates, env=env)
+            selected = self._choose(task, candidates, env=env)
         except Exception:
             return await self._policy_failed(task, "propose")
-        if call is None:
+        if selected is None:
+            if "budget_exceeded" in task.decisions[-1].rejected.values():
+                return await self._wait(task, "owner_review:task_budget_exhausted")
             return await self._wait(task, "owner_review:no_feasible_action")
-        await self.executor.execute(task, call, env=env)
+        await self.executor.execute(task, selected.call, env=env, estimated_cost=selected.cost)
         return task
 
     def _choose(self, task: Task, candidates: list[Candidate], *, env: Environment):
@@ -93,25 +113,34 @@ class ServiceAgent:
                 rejected[candidate.call.operation_id] = reason
             else:
                 feasible.append(candidate)
-        selected = min(feasible, key=lambda c: c.priority) if feasible else None
-        task.decisions.append(Decision(
-            candidates=[c.call.operation_id for c in candidates], rejected=rejected,
-            selected=selected.call.operation_id if selected else None,
-            reason=selected.reason if selected else "No feasible operation",
-        ))
-        return selected.call if selected else None
+        selected = select_candidate(feasible)
+        task.decisions.append(
+            Decision(
+                candidates=[c.call.operation_id for c in candidates],
+                rejected=rejected,
+                selected=selected.call.operation_id if selected else None,
+                reason=selected.reason if selected else "No feasible operation",
+                expected_result=selected.expected_result if selected else None,
+                stop_conditions=selected.stop_conditions if selected else [],
+            )
+        )
+        return selected
 
     def _rejection(self, task: Task, candidate: Candidate, *, env: Environment) -> str | None:
+        if over_budget(task, candidate.cost):
+            return "budget_exceeded"
         if any(e.call.key == candidate.call.key for e in task.ledger):
             return "already_attempted"
         if self._uncertain_write(task, candidate):
             return "reconcile_required"
-        return (self.registry.rejection(candidate.call, env)
-                or candidate_rejection(task, candidate.call))
+        return self.registry.rejection(candidate.call, env) or candidate_rejection(
+            task, candidate.call
+        )
 
     def _retry_candidate(self, task: Task, candidate: Candidate) -> Candidate:
-        signals = [s for s in task.recovery_signals
-                   if s.operation_id == candidate.call.operation_id]
+        signals = [
+            s for s in task.recovery_signals if s.operation_id == candidate.call.operation_id
+        ]
         if not signals or signals[-1].action != "retry":
             return candidate
         op = self.registry.operations.get(candidate.call.operation_id)
@@ -122,10 +151,14 @@ class ServiceAgent:
         return candidate
 
     async def _policy_failed(self, task: Task, stage: str) -> Task:
-        task.recovery_signals.append(RecoverySignal(
-            operation_id=f"policy.{stage}", request_key=f"checkpoint:{task.version}",
-            kind="permanent", action="owner_review",
-        ))
+        task.recovery_signals.append(
+            RecoverySignal(
+                operation_id=f"policy.{stage}",
+                request_key=f"checkpoint:{task.version}",
+                kind="permanent",
+                action="owner_review",
+            )
+        )
         return await self._wait(task, f"owner_review:policy_{stage}_failed")
 
     async def _wait(self, task: Task, reason: str) -> Task:
@@ -138,8 +171,9 @@ class ServiceAgent:
     def _fresh_view(task: Task) -> Task:
         now = datetime.now(UTC)
         view = task.model_copy(deep=True)
-        view.evidence = [e for e in view.evidence
-                         if not e.simulated and e.observed_at <= now < e.expires_at]
+        view.evidence = [
+            e for e in view.evidence if not e.simulated and e.observed_at <= now < e.expires_at
+        ]
         return view
 
     def _uncertain_write(self, task: Task, candidate: Candidate) -> bool:
@@ -150,8 +184,9 @@ class ServiceAgent:
     @staticmethod
     def _in_flight(task: Task) -> bool:
         now = datetime.now(UTC)
-        return any(e.status == "running" and e.deadline_at and e.deadline_at > now
-                   for e in task.ledger)
+        return any(
+            e.status == "running" and e.deadline_at and e.deadline_at > now for e in task.ledger
+        )
 
     @staticmethod
     def _mark_interrupted(task: Task) -> None:

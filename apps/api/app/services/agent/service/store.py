@@ -22,11 +22,15 @@ class TaskStore:
         if task.version != 0:
             raise ValueError("New tasks must start at version zero")
         async with self.sessions.begin() as db:
-            db.add(ServiceTask(
-                id=task.task_id, organization_id=task.scope.organization_id,
-                customer_id=task.scope.customer_id, version=task.version,
-                checkpoint=task.model_dump(mode="json"),
-            ))
+            db.add(
+                ServiceTask(
+                    id=task.task_id,
+                    organization_id=task.scope.organization_id,
+                    customer_id=task.scope.customer_id,
+                    version=task.version,
+                    checkpoint=task.model_dump(mode="json"),
+                )
+            )
 
     @staticmethod
     def _scope(task_id: str, scope: Scope):
@@ -55,15 +59,21 @@ class TaskStore:
         """Participate in a host transaction; caller increments version only after commit."""
         checkpoint = task.model_dump(mode="json")
         checkpoint["version"] = task.version + 1
-        statement = update(ServiceTask).where(
-            *self._scope(task.task_id, task.scope), ServiceTask.version == task.version,
-        ).values(checkpoint=checkpoint, version=task.version + 1)
+        statement = (
+            update(ServiceTask)
+            .where(
+                *self._scope(task.task_id, task.scope),
+                ServiceTask.version == task.version,
+            )
+            .values(checkpoint=checkpoint, version=task.version + 1)
+        )
         result = await db.execute(statement)
         if result.rowcount != 1:
             raise TaskConflict("Stale task checkpoint")
 
-    async def list(self, scope: Scope, *, limit: int = DEFAULT_TASK_PAGE_SIZE,
-                   after: str | None = None) -> list[Task]:
+    async def list(
+        self, scope: Scope, *, limit: int = DEFAULT_TASK_PAGE_SIZE, after: str | None = None
+    ) -> list[Task]:
         if not 1 <= limit <= MAX_TASK_PAGE_SIZE:
             raise ValueError("Invalid task page size")
         statement = select(ServiceTask).where(

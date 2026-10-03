@@ -35,6 +35,11 @@ class AcceptRequest(Record):
 
 
 def summarize(task: Task) -> TaskSummary:
-    return TaskSummary(task_id=task.task_id, goal=task.goal, status=task.status,
-                       version=task.version, review_at=task.review_at,
-                       has_unsettled_operations=unsettled(task))
+    return TaskSummary(
+        task_id=task.task_id,
+        goal=task.goal,
+        status=task.status,
+        version=task.version,
+        review_at=task.review_at,
+        has_unsettled_operations=unsettled(task),
+    )

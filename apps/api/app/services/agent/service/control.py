@@ -36,8 +36,9 @@ def unsettled(task: Task) -> bool:
 
 
 def transition(task: Task, *, status: str, actor: str, reason: str) -> None:
-    task.transitions.append(TaskTransition(previous=task.status, current=status,
-                                           actor_id=actor, reason=reason))
+    task.transitions.append(
+        TaskTransition(previous=task.status, current=status, actor_id=actor, reason=reason)
+    )
     task.status = status
     task.wake_condition, task.review_at = None, None
     if unsettled(task):
@@ -45,8 +46,9 @@ def transition(task: Task, *, status: str, actor: str, reason: str) -> None:
         task.review_at = datetime.now(UTC) + timedelta(seconds=CONTROL_REVIEW_SECONDS)
 
 
-async def cancel_task(store: TaskStore, task_id: str, *, scope: Scope,
-                      expected_version: int, reason: str) -> Task:
+async def cancel_task(
+    store: TaskStore, task_id: str, *, scope: Scope, expected_version: int, reason: str
+) -> Task:
     task = await store.load(task_id, scope)
     check_control(task, expected_version)
     transition(task, status="closed_unresolved", actor=scope.customer_id, reason=reason)
@@ -57,22 +59,29 @@ async def cancel_task(store: TaskStore, task_id: str, *, scope: Scope,
 async def accept_handoff(store: TaskStore, request: HandoffAcceptance) -> Task:
     async with store.sessions.begin() as db:
         # This conditional update locks the claim on SQLite as well as PostgreSQL.
-        claimed = await db.execute(update(HandoffSession).where(
-            HandoffSession.id == request.handoff_id,
-            HandoffSession.claimed_by == request.actor_id,
-            HandoffSession.status == "claimed",
-        ).values(status="claimed"))
+        claimed = await db.execute(
+            update(HandoffSession)
+            .where(
+                HandoffSession.id == request.handoff_id,
+                HandoffSession.claimed_by == request.actor_id,
+                HandoffSession.status == "claimed",
+            )
+            .values(status="claimed")
+        )
         if claimed.rowcount != 1:
             raise LookupError("Claimed handoff not found")
-        handoff = await db.scalar(select(HandoffSession).where(
-            HandoffSession.id == request.handoff_id))
-        task = await store.load_in_transaction(db, request.task_id,
-                                               scope=customer_scope(handoff.user_id))
+        handoff = await db.scalar(
+            select(HandoffSession).where(HandoffSession.id == request.handoff_id)
+        )
+        task = await store.load_in_transaction(
+            db, request.task_id, scope=customer_scope(handoff.user_id)
+        )
         if task.conversation_id != handoff.conversation_id:
             raise LookupError("Task does not belong to this handoff")
         check_control(task, request.expected_version)
-        transition(task, status="handed_off", actor=request.actor_id,
-                   reason=f"handoff:{handoff.id}")
+        transition(
+            task, status="handed_off", actor=request.actor_id, reason=f"handoff:{handoff.id}"
+        )
         task.owner = request.actor_id
         task.review_at = datetime.now(UTC) + timedelta(seconds=CONTROL_REVIEW_SECONDS)
         task.wake_condition = task.wake_condition or f"handoff_review:{handoff.id}"

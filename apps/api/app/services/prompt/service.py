@@ -29,7 +29,9 @@ class PromptService:
             "clarify.default": "我还不太确定您的具体需求，能否补充更多细节？",
         }
         for key, content in defaults.items():
-            existing = await self.db.execute(select(PromptTemplate).where(PromptTemplate.key == key))
+            existing = await self.db.execute(
+                select(PromptTemplate).where(PromptTemplate.key == key)
+            )
             if existing.scalar_one_or_none() is None:
                 await self.create_template(key, content, description=f"default {key}")
 

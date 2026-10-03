@@ -36,7 +36,9 @@ class Settings(BaseSettings):
     )
     debug: bool = False
     api_prefix: str = "/api/v1"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"])
+    cors_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
+    )
 
     # --- security ---
     secret_key: str = Field(default=DEFAULT_SECRET, validation_alias="SECRET_KEY")
@@ -64,7 +66,9 @@ class Settings(BaseSettings):
     llm_model_rewrite: str = Field(default="gpt-4o-mini", validation_alias="LLM_MODEL_REWRITE")
     llm_model_generate: str = Field(default="gpt-4o-mini", validation_alias="LLM_MODEL_GENERATE")
     llm_model_summary: str = Field(default="gpt-4o-mini", validation_alias="LLM_MODEL_SUMMARY")
-    embedding_model: str = Field(default="text-embedding-3-small", validation_alias="EMBEDDING_MODEL")
+    embedding_model: str = Field(
+        default="text-embedding-3-small", validation_alias="EMBEDDING_MODEL"
+    )
     embedding_base_url: str | None = Field(default=None, validation_alias="EMBEDDING_BASE_URL")
     embedding_api_key: str | None = Field(default=None, validation_alias="EMBEDDING_API_KEY")
     embedding_dim: int = Field(default=384, validation_alias="EMBEDDING_DIM")
@@ -79,7 +83,9 @@ class Settings(BaseSettings):
     # --- knowledge index worker ---
     index_async: bool = Field(default=False, validation_alias="INDEX_ASYNC")
     index_worker_enabled: bool = Field(default=True, validation_alias="INDEX_WORKER_ENABLED")
-    index_worker_poll_seconds: float = Field(default=1.0, validation_alias="INDEX_WORKER_POLL_SECONDS")
+    index_worker_poll_seconds: float = Field(
+        default=1.0, validation_alias="INDEX_WORKER_POLL_SECONDS"
+    )
     index_queue_key: str = Field(default="askflow:index_jobs", validation_alias="INDEX_QUEUE_KEY")
     revision_store_dir: str = Field(
         default="./data/revisions",
@@ -141,7 +147,9 @@ class Settings(BaseSettings):
 
     # --- enterprise notify / OIDC / MCP ---
     notify_webhook_url: str | None = Field(default=None, validation_alias="NOTIFY_WEBHOOK_URL")
-    notify_webhook_secret: str | None = Field(default=None, validation_alias="NOTIFY_WEBHOOK_SECRET")
+    notify_webhook_secret: str | None = Field(
+        default=None, validation_alias="NOTIFY_WEBHOOK_SECRET"
+    )
     oidc_issuer: str | None = Field(default=None, validation_alias="OIDC_ISSUER")
     oidc_client_id: str | None = Field(default=None, validation_alias="OIDC_CLIENT_ID")
     oidc_mock: bool = Field(default=False, validation_alias="OIDC_MOCK")
@@ -194,7 +202,6 @@ class Settings(BaseSettings):
     askflow_profile: str = Field(default="full", validation_alias="ASKFLOW_PROFILE")
     askflow_features: str = Field(default="", validation_alias="ASKFLOW_FEATURES")
 
-
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors(cls, v: object) -> object:
@@ -230,8 +237,7 @@ class Settings(BaseSettings):
             )
         if self.oidc_mock:
             raise RuntimeError(
-                "Refusing to start: OIDC_MOCK=1 is not allowed when "
-                f"ASKFLOW_ENV={self.env}."
+                f"Refusing to start: OIDC_MOCK=1 is not allowed when ASKFLOW_ENV={self.env}."
             )
 
 

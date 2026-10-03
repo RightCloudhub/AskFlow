@@ -111,16 +111,12 @@ class MessagePipeline:
         gate: SlotGateOutcome,
     ) -> PipelineResult:
         if gate.kind == "ask" and gate.decision is not None:
-            return slot_ask_result(
-                ids, self.harness, gate.decision.message, gate.meta_patch
-            )
+            return slot_ask_result(ids, self.harness, gate.decision.message, gate.meta_patch)
         if gate.kind == "filled" and gate.decision and gate.decision.order_id:
             payload.meta_patch = gate.meta_patch
             return await self._slot_filled(ids, payload, gate.decision.order_id)
         if gate.kind == "abandon" and gate.decision is not None:
-            return slot_abandon_result(
-                ids, self.harness, gate.decision.message, gate.meta_patch
-            )
+            return slot_abandon_result(ids, self.harness, gate.decision.message, gate.meta_patch)
         payload.meta_patch = gate.meta_patch
         if gate.kind == "continue" and gate.intent_result is not None:
             return await self._dispatch_known_intent(ids, payload, gate.intent_result)

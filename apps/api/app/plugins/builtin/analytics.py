@@ -17,7 +17,5 @@ class AnalyticsPlugin:
     def register(self, ctx: AppContext) -> None:
         from app.api.v1.admin.analytics.routes import router as analytics_router
 
-        ctx.admin_router.include_router(
-            analytics_router, prefix="/analytics", tags=["analytics"]
-        )
+        ctx.admin_router.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
         ctx.add_nav(AdminNavItem("analytics", "/admin", "看板", order=10))

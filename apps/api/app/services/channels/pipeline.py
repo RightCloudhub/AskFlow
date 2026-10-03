@@ -41,9 +41,7 @@ async def run_channel_turn(
         title=title,
         external_chat_key=chat_key or external_user_id,
     )
-    _user_msg, asst_msg, result = await ChatService(db).handle_user_message(
-        conv.id, user.id, text
-    )
+    _user_msg, asst_msg, result = await ChatService(db).handle_user_message(conv.id, user.id, text)
     CHAT_TURNS.labels(route=result.route, intent=result.intent or "none").inc()
     await AuditService(db).log(
         action=f"{channel}.message",

@@ -10,7 +10,14 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.database import Base
 from app.services.agent.service.contracts import (
-    Candidate, Environment, Evidence, Operation, OperationCall, Receipt, Scope, Task,
+    Candidate,
+    Environment,
+    Evidence,
+    Operation,
+    OperationCall,
+    Receipt,
+    Scope,
+    Task,
 )
 from app.services.agent.service.executor import Executor
 from app.services.agent.service.registry import OperationRegistry
@@ -25,19 +32,30 @@ class OrderInput(BaseModel):
 
 
 def task():
-    return Task(scope=SCOPE, goal="Find order", completion_condition="Live order status",
-                owner="support")
+    return Task(
+        scope=SCOPE, goal="Find order", completion_condition="Live order status", owner="support"
+    )
 
 
 def environment(*names, allowed=True):
-    return Environment(scope=SCOPE, available_operations=frozenset(names),
-                       permissions=frozenset({"orders.read"}) if allowed else frozenset())
+    return Environment(
+        scope=SCOPE,
+        available_operations=frozenset(names),
+        permissions=frozenset({"orders.read"}) if allowed else frozenset(),
+    )
 
 
 def operation(name, handler, *, effect="read", **kwargs):
-    return Operation(operation_id=name, version="1", effect=effect, permission="orders.read",
-                     input_schema=OrderInput, handler=handler,
-                     precondition=lambda args, env: args.order_id == "owned", **kwargs)
+    return Operation(
+        operation_id=name,
+        version="1",
+        effect=effect,
+        permission="orders.read",
+        input_schema=OrderInput,
+        handler=handler,
+        precondition=lambda args, env: args.order_id == "owned",
+        **kwargs,
+    )
 
 
 def call(name="order.read", *, key="request-1"):
@@ -45,10 +63,15 @@ def call(name="order.read", *, key="request-1"):
 
 
 async def success(request):
-    return Receipt(status="succeeded", evidence=Evidence(
-        operation_id=request.operation_id, source="order-api", data={"delivered": True},
-        expires_at=datetime.now(UTC) + timedelta(minutes=1),
-    ))
+    return Receipt(
+        status="succeeded",
+        evidence=Evidence(
+            operation_id=request.operation_id,
+            source="order-api",
+            data={"delivered": True},
+            expires_at=datetime.now(UTC) + timedelta(minutes=1),
+        ),
+    )
 
 
 @pytest_asyncio.fixture
@@ -66,8 +89,10 @@ async def test_checkpoint_survives_new_store_and_scope_isolation(store):
     await store.create(original)
     restored = await TaskStore(store.sessions).load(original.task_id, SCOPE)
     assert restored == original
-    for scope in [Scope(organization_id="other", customer_id="customer"),
-                  Scope(organization_id="shop", customer_id="other")]:
+    for scope in [
+        Scope(organization_id="other", customer_id="customer"),
+        Scope(organization_id="shop", customer_id="other"),
+    ]:
         with pytest.raises(LookupError):
             await store.load(original.task_id, scope)
 
@@ -114,19 +139,21 @@ async def test_write_timeout_is_unknown_and_cannot_be_replayed(store):
 
     original = task()
     await store.create(original)
-    registry = OperationRegistry([
-        operation("refund.submit", timeout, effect="write", timeout_seconds=0.01),
-    ])
+    registry = OperationRegistry(
+        [
+            operation("refund.submit", timeout, effect="write", timeout_seconds=0.01),
+        ]
+    )
     executor = Executor(registry, store)
-    receipt = await executor.execute(original, call("refund.submit"),
-                                     env=environment("refund.submit"))
+    receipt = await executor.execute(
+        original, call("refund.submit"), env=environment("refund.submit")
+    )
     restored = await store.load(original.task_id, SCOPE)
     assert receipt.status == "unknown"
     assert restored.status == "waiting_external"
     assert restored.wake_condition == "reconcile:request-1"
     with pytest.raises(ValueError, match="task_not_active"):
-        await executor.execute(restored, call("refund.submit"),
-                               env=environment("refund.submit"))
+        await executor.execute(restored, call("refund.submit"), env=environment("refund.submit"))
 
 
 @pytest.mark.asyncio
@@ -153,15 +180,23 @@ async def agent_for(store, *, available, handler=success):
         return environment(*available)
 
     async def propose(_task, _env):
-        return [Candidate(call=call(name, key=f"request-{index + 1}"),
-                          priority=index, reason="Configured priority")
-                for index, name in enumerate(["order.live", "order.alternate"])]
+        return [
+            Candidate(
+                call=call(name, key=f"request-{index + 1}"),
+                priority=index,
+                reason="Configured priority",
+            )
+            for index, name in enumerate(["order.live", "order.alternate"])
+        ]
 
-    registry = OperationRegistry([operation(name, handler)
-                                  for name in ["order.live", "order.alternate"]])
-    policy = AgentPolicy(observe=observe, propose=propose,
-                         verify=lambda task, env: any(e.data.get("delivered")
-                                                      for e in task.evidence))
+    registry = OperationRegistry(
+        [operation(name, handler) for name in ["order.live", "order.alternate"]]
+    )
+    policy = AgentPolicy(
+        observe=observe,
+        propose=propose,
+        verify=lambda task, env: any(e.data.get("delivered") for e in task.evidence),
+    )
     return ServiceAgent(store, registry, policy)
 
 
@@ -203,8 +238,10 @@ async def test_budget_persists_across_runs(store):
     original = task()
     original.max_calls = 1
     await store.create(original)
+
     async def fail(_request):
         return Receipt(status="failed", error_kind="unavailable")
+
     agent = await agent_for(store, available=["order.live"], handler=fail)
     await agent.tick(original.task_id, SCOPE)
     result = await agent.tick(original.task_id, SCOPE)
@@ -217,6 +254,7 @@ async def test_budget_persists_across_runs(store):
 async def test_cancellation_keeps_running_intent_for_reconciliation(store):
     async def interrupted(_request):
         raise asyncio.CancelledError()
+
     original = task()
     await store.create(original)
     agent = await agent_for(store, available=["order.live"], handler=interrupted)

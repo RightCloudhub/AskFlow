@@ -52,7 +52,7 @@ class IndexQueue:
             return job
         try:
             return await asyncio.wait_for(self._local.get(), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
 
     async def _redis_push(self, job: IndexJob) -> None:

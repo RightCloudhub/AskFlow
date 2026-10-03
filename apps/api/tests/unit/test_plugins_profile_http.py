@@ -18,9 +18,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 
 async def _make_client(profile: str) -> AsyncGenerator[AsyncClient, None]:
     os.environ["ASKFLOW_PROFILE"] = profile
+    from app.core import database as dbmod
     from app.core.config import get_settings
     from app.core.database import Base, get_db
-    from app.core import database as dbmod
     from app.main import create_app
     from app.plugins.runtime import set_app_context
 

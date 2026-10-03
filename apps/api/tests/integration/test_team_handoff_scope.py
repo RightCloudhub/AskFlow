@@ -7,14 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core import database as dbmod
 from app.core.security import hash_password
 from app.models.conversation import Conversation
-from app.models.enums import ConversationStatus, HandoffStatus, UserRole
-from app.models.handoff import HandoffSession
+from app.models.enums import ConversationStatus, UserRole
 from app.models.user import User
 from app.services.handoff.service import HandoffService
 from app.services.team.service import TeamService
 
 
-async def _register_login(client: AsyncClient, name: str, *, first_admin: bool = False) -> tuple[dict, str]:
+async def _register_login(
+    client: AsyncClient, name: str, *, first_admin: bool = False
+) -> tuple[dict, str]:
     """Return (headers, user_id). First call may bootstrap admin."""
     await client.post(
         "/api/v1/admin/auth/register",

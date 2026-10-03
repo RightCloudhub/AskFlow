@@ -84,11 +84,7 @@ def _records_from_chunks(
         chunk_index = int(ch.get("chunk_index", i))
         generation = ch.get("generation")
         rid = str(ch.get("id") or f"{doc_id}:{generation}:{chunk_index}")
-        meta = {
-            k: v
-            for k, v in ch.items()
-            if k not in {"text", "id"}
-        }
+        meta = {k: v for k, v in ch.items() if k not in {"text", "id"}}
         records.append(
             VectorRecord(
                 id=rid,

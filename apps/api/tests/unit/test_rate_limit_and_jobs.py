@@ -13,7 +13,6 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from app.core.config import Settings, get_settings
 from app.core.database import Base
 from app.core.security import hash_password
 from app.middleware.rate_limit import RateLimitMiddleware

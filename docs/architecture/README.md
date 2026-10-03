@@ -22,6 +22,8 @@ AskFlow 技术架构与上下文/检索/Agent 专题。产品需求以 [PRD.md](
 | [customer-service-runtime.md](./customer-service-runtime.md) | 持久服务任务、操作执行、故障恢复与当前实施边界 |
 | [customer-preference-memory.md](./customer-preference-memory.md) | 客户确认偏好 API、纠正、删除与 Agent 读取 |
 | [customer-service-lifecycle.md](./customer-service-lifecycle.md) | 任务查看、取消、验证人工接管与代码导航 |
+| [agent-conformance.md](./agent-conformance.md) | 客服助手与 Agent 定义的差异、严格化设计与收敛路线 |
+| [agent-refactoring-plan.md](./agent-refactoring-plan.md) | 严格化重构总体计划：目标结构、动作清单、阶段切片与验收门 |
 | [plugins.md](./plugins.md) | L2 可插拔：profile、SPI、Pipeline handlers、前端装配 |
 
 ## 可观测性

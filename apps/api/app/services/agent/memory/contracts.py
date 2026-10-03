@@ -4,8 +4,8 @@ from typing import Literal
 
 from pydantic import AwareDatetime, Field, StrictBool, model_validator
 
-from app.services.agent.service.contracts import Record
 from app.services.agent.identity import DEPLOYMENT_SCOPE as DEPLOYMENT_SCOPE
+from app.services.agent.service.contracts import Record
 
 MAX_RETENTION_DAYS = 90
 DEFAULT_RETENTION_DAYS = 30
@@ -23,8 +23,9 @@ class PreferenceChange(Record):
     value: str = Field(max_length=MAX_PREFERENCE_VALUE_LENGTH)
     consent: StrictBool
     expected_version: int = Field(ge=0, strict=True)
-    retention_days: int = Field(default=DEFAULT_RETENTION_DAYS, ge=1,
-                                le=MAX_RETENTION_DAYS, strict=True)
+    retention_days: int = Field(
+        default=DEFAULT_RETENTION_DAYS, ge=1, le=MAX_RETENTION_DAYS, strict=True
+    )
 
     @model_validator(mode="after")
     def check_value(self):

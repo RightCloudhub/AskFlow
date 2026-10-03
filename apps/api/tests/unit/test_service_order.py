@@ -11,17 +11,24 @@ __all__ = ["store"]
 
 
 async def observation(_task):
-    return Environment(scope=SCOPE, permissions=frozenset({"orders.read"}),
-                       available_operations=frozenset({ORDER_OPERATION}),
-                       facts={"order_owners": {"owned": SCOPE.customer_id}})
+    return Environment(
+        scope=SCOPE,
+        permissions=frozenset({"orders.read"}),
+        available_operations=frozenset({ORDER_OPERATION}),
+        facts={"order_owners": {"owned": SCOPE.customer_id}},
+    )
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("source", ["live", "mock", "wrong_order", "invalid_status"])
 async def test_order_scenario_with_connector_outcomes(store, monkeypatch, source):
     async def connector(_args):
-        result = {"status": "ok", "order_id": "owned", "data_source": "webhook",
-                  "data": {"status": "shipped"}}
+        result = {
+            "status": "ok",
+            "order_id": "owned",
+            "data_source": "webhook",
+            "data": {"status": "shipped"},
+        }
         if source == "mock":
             result.update(status="mock", data_source="mock")
         if source == "wrong_order":
@@ -29,6 +36,7 @@ async def test_order_scenario_with_connector_outcomes(store, monkeypatch, source
         if source == "invalid_status":
             result["data"]["status"] = ""
         return result
+
     monkeypatch.setattr("app.services.agent.service.order.search_order", connector)
     original = task()
     original.inputs = {"order_id": "owned"}
@@ -42,8 +50,10 @@ async def test_order_scenario_with_connector_outcomes(store, monkeypatch, source
 @pytest.mark.asyncio
 async def test_order_ownership_cannot_be_granted_by_memory(store, monkeypatch):
     invoked = []
+
     async def connector(args):
         invoked.append(args)
+
     monkeypatch.setattr("app.services.agent.service.order.search_order", connector)
     original = task()
     original.inputs = {"order_id": "not-owned"}

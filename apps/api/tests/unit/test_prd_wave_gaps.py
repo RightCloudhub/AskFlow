@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -14,7 +12,7 @@ from app.core.database import Base
 from app.models.document import Document
 from app.models.enums import DocumentStatus
 from app.services.audit.logger.service import AuditService
-from app.services.audit.masking.mask import mask_detail, mask_string
+from app.services.audit.masking.mask import mask_string
 from app.services.cancel_registry import (
     CancelRegistry,
     get_cancel_registry,
@@ -24,9 +22,8 @@ from app.services.knowledge.indexer.service import IndexerService
 from app.services.knowledge.publish import PublishService
 from app.services.knowledge.revisions import RevisionStore
 from app.services.knowledge.storage.local import LocalObjectStorage
-from app.services.rag.generator.service import CANCELLED_ANSWER, AnswerGenerator
 from app.services.llm.client import LLMClient
-
+from app.services.rag.generator.service import CANCELLED_ANSWER, AnswerGenerator
 
 # --- E9 extended PII ---
 

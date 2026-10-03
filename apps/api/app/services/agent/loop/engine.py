@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from app.core.config import Settings, get_settings
 from app.models.enums import LoopPhase

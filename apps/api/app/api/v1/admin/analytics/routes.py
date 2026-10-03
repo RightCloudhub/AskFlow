@@ -5,7 +5,6 @@ from sqlalchemy import func, select
 
 from app.core.deps import DbSession, require_admin
 from app.models.conversation import Message
-from app.models.cost_entry import CostLedgerEntry
 from app.models.feedback import Feedback
 from app.models.handoff import HandoffSession
 from app.models.knowledge import KnowledgeGap
@@ -39,9 +38,7 @@ async def analytics_summary(db: DbSession, _user: User = Depends(require_admin))
         select(func.count()).select_from(Ticket).where(Ticket.sla_state == "breached")
     )
     handoff_timeouts = await db.execute(
-        select(func.count())
-        .select_from(HandoffSession)
-        .where(HandoffSession.status == "timed_out")
+        select(func.count()).select_from(HandoffSession).where(HandoffSession.status == "timed_out")
     )
     notifies = await count(NotificationLog)
     messages = await count(Message)
