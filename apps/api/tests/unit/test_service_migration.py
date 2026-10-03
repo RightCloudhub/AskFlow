@@ -17,6 +17,8 @@ def test_task_migration_round_trip(tmp_path):
     _migrate(root, env, direction="upgrade", target="head")
     with sqlite3.connect(database) as connection:
         columns = connection.execute("PRAGMA table_info(service_tasks)").fetchall()
+        assert connection.execute("PRAGMA table_info(customer_preferences)").fetchall()
+        assert connection.execute("PRAGMA table_info(service_dispatches)").fetchall()
         assert {column[1] for column in columns} == {
             "id", "organization_id", "customer_id", "version", "checkpoint",
             "created_at", "updated_at",
@@ -24,6 +26,8 @@ def test_task_migration_round_trip(tmp_path):
     _migrate(root, env, direction="downgrade", target="base")
     with sqlite3.connect(database) as connection:
         assert connection.execute("PRAGMA table_info(service_tasks)").fetchall() == []
+        assert connection.execute("PRAGMA table_info(customer_preferences)").fetchall() == []
+        assert connection.execute("PRAGMA table_info(service_dispatches)").fetchall() == []
         assert connection.execute("SELECT id FROM existing_business_data").fetchall() == [
             ("preserved",),
         ]

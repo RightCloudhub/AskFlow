@@ -13,6 +13,8 @@ from app.services.agent.service.executor import Executor
 from app.services.agent.service.registry import OperationRegistry
 from app.services.agent.service.recovery import candidate_rejection
 from app.services.agent.service.store import TaskStore
+from app.services.agent.memory.context import with_preferences
+from app.services.agent.memory.store import PreferenceStore
 
 POLICY_TIMEOUT_SECONDS = 10.0
 OWNER_REVIEW_SECONDS = 60
@@ -32,6 +34,7 @@ class ServiceAgent:
     def __init__(self, store: TaskStore, registry: OperationRegistry, policy: AgentPolicy) -> None:
         self.store, self.registry, self.policy = store, registry, policy
         self.executor = Executor(registry, store)
+        self.preferences = PreferenceStore(store.sessions)
 
     async def tick(self, task_id: str, scope: Scope) -> Task:
         task = await self.store.load(task_id, scope)
@@ -53,6 +56,7 @@ class ServiceAgent:
         return await self._advance(task, env)
 
     async def _advance(self, task: Task, env: Environment) -> Task:
+        env = await with_preferences(env, self.preferences)
         view = self._fresh_view(task)
         try:
             verified = bool(view.evidence and self.policy.verify(view, env))

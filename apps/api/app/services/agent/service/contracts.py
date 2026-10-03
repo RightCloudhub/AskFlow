@@ -75,9 +75,18 @@ class Decision(Record):
     rejected: dict[str, str] = Field(default_factory=dict)
 
 
+class TaskTransition(Record):
+    previous: TaskStatus
+    current: TaskStatus
+    actor_id: str
+    reason: str
+    occurred_at: AwareDatetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class Task(Record):
     task_id: str = Field(default_factory=lambda: str(uuid4()))
     scope: Scope
+    conversation_id: str | None = None
     goal: str = Field(min_length=1)
     inputs: dict[str, Any] = Field(default_factory=dict)
     completion_condition: str = Field(min_length=1)
@@ -92,6 +101,7 @@ class Task(Record):
     recovery_signals: list[RecoverySignal] = Field(default_factory=list)
     wake_condition: str | None = None
     review_at: AwareDatetime | None = None
+    transitions: list[TaskTransition] = Field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -102,6 +112,8 @@ class Environment:
     permissions: frozenset[str] = frozenset()
     available_operations: frozenset[str] = frozenset()
     facts: dict[str, Any] = field(default_factory=dict)
+    preferences: dict[str, str] = field(default_factory=dict)
+    preference_status: Literal["not_loaded", "loaded", "unavailable"] = "not_loaded"
 
 
 @dataclass(frozen=True)
