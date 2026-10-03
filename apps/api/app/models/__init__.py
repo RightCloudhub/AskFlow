@@ -13,6 +13,7 @@ from app.models.knowledge import KnowledgeDraft, KnowledgeGap
 from app.models.launch_card import LaunchCard
 from app.models.notify import NotificationLog
 from app.models.prompt import PromptTemplate, PromptVersion
+from app.models.service_task import ServiceTask
 from app.models.team import Team, TeamMember
 from app.models.ticket import Ticket
 from app.models.user import User
@@ -38,4 +39,5 @@ __all__ = [
     "NotificationLog",
     "CostLedgerEntry",
     "AgentRun",
+    "ServiceTask",
 ]

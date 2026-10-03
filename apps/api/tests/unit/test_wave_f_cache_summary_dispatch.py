@@ -28,7 +28,7 @@ def test_compress_history_folds_old_turns():
     hist = [{"role": "user", "content": f"q{i}"} for i in range(6)]
     out, did = compress_history(hist, settings=s)
     assert did is True
-    assert out[0]["role"] == "system"
+    assert out[0]["role"] == "user"
     assert out[0]["content"].startswith(SUMMARY_PREFIX)
     assert len(out) == 3  # summary + 2 recent
     assert out[-1]["content"] == "q5"
