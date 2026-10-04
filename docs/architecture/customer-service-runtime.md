@@ -1,28 +1,35 @@
 # 客服 Agent 运行基础与故障恢复
 
-本次交付对应 [客服 Agent 提案](../prd/customer-service-agent.md) 的操作基础、目标闭环和任务记忆核心。它是可独立调用的后端模块，尚未替换聊天流水线，也未开放真实退款写入。订单场景复用现有订单连接器；其他业务需要各自的业务适配器与验收。
+更新：2026-10-04，对照 `2bc7cd4`。本模块实现 [客服 Agent 方案](../prd/customer-service-agent.md) 的持久操作基础，并已通过聊天受理与 worker 接入部分目标；完整业务范围仍待验收。
 
-## 1. 交付边界
+## 1. 交付与启用边界
 
-| 已实现 | 入口 |
+| 能力 | 代码与当前边界 |
 |---|---|
-| 独立操作、输入输出校验、权限与对象归属前置条件 | `app/services/agent/service/contracts.py`、`registry.py` |
-| 执行前持久记录、请求键与操作版本、并发版本校验 | `executor.py`、`store.py` |
-| 按新环境重新筛选候选、记录排除原因、独立验证完成条件 | `runtime.py` |
-| 错误分类、有限重试、持久退避、替代路径与待查证状态 | `recovery.py` |
-| 跨实例读取任务、按组织和客户隔离、证据有效期 | `store.py`、`runtime.py` |
-| 有界运行、已验证事件唤醒、重复唤醒拒绝 | `driver.py`、`lifecycle.py` |
-| 实际订单连接器适配、归属校验、mock 不结案 | `order.py` |
-| 客户确认的偏好管理、版本化纠正和删除、每轮按范围读取 | `app/services/agent/memory/`；[接口与边界](./customer-preference-memory.md) |
-| 任务查看、取消、已领取人工转交的验证接管 | `service/control.py`、`api/v1/agent/tasks.py`；[生命周期与代码导航](./customer-service-lifecycle.md) |
+| 目标受理 | `intake/chat.py`、`judge.py`、`open_task.py`；同事务创建任务、派发和消息 |
+| 持久任务 | `service/contracts.py`、`store.py`；范围隔离、版本 CAS、检查点与操作台账 |
+| 操作执行 | `registry.py`、`executor.py`；权限、输入与前置条件检查，先提交意图再调用 |
+| 判断与恢复 | `runtime.py`、`selection.py`、`recovery.py`；候选过滤、比较、预算、退避和待查证状态 |
+| 策略装配 | `policies.py`；默认注册订单、工单与人工转交三个目标 |
+| 后台派发 | `workers/service_tasks.py`、`service/dispatch.py`；数据库租约与重启恢复 |
+| 客户记忆 | `memory/`；偏好与事实每轮读取，事件和经验的接入范围见 [记忆文档](./customer-preference-memory.md) |
+| 任务控制 | 客户查看、按版本取消、已领取转交的验证接管，见 [生命周期](./customer-service-lifecycle.md) |
 
-尚未实现：聊天入口绑定、后台定时扫描与事件订阅、自动创建/领取人工转交、退款连接器、自由文本客户事实、经验检索、按业务对象跨任务加锁、计划依赖图、费用与任务总时限预算。这些边界不能作为已上线能力宣传。
+以上相对路径除 worker 外均位于 `apps/api/app/services/agent/`。
 
-## 2. 调用方式与授权边界
+| 目标 | 操作 / 完成语义 | 默认接入 |
+|---|---|---|
+| `order_status` | `order.get_status`；具体订单状态与客户归属均匹配 | 默认聊天目标 + worker |
+| `ticket_resolution` | `ticket.create`；当前仅验证工单已登记，不能证明问题解决 | 目标白名单启用后由 worker 执行 |
+| `human_handoff` | `handoff.enqueue`；入队不等于接单，策略还需观察 `claimed` | 目标白名单启用；接单后自动唤醒未接入 |
+| `notification` | `notify.send.chat` / `notify.send.email`；需要消息回执 ID | 独立适配器，宿主提供 sender；不在默认 worker |
+| `refund_request` | `refund.submit` / `refund.get_status`；申请受理不等于到账 | 独立适配器，宿主提供提交/查询；无真实退款连接器或默认 worker |
 
-宿主从认证结果构造 `Scope`，创建 `TaskStore(SessionLocal)`。任务中的 `goal`、`inputs` 与证据都是数据，不能授予权限。
+聊天目标白名单 `SERVICE_TASKS_GOALS` 默认仅 `order_status`。通知和退款虽然在目标目录中，但没有聊天意图映射和默认 builder；仅配置名称不会启用这些业务。完整环境变量和订单 webhook 响应格式见 [API README](../../apps/api/README.md#service-tasks-and-order-connector)。
 
-订单任务示例：
+## 2. 调用与授权边界
+
+独立宿主从认证结果构造 `Scope`，创建 `TaskStore(SessionLocal)`。任务中的目标、输入、历史和记忆都是数据，不能授予权限。
 
 ```python
 task = Task(
@@ -37,71 +44,63 @@ agent = order_agent(store, observe_order_environment)
 result = await advance(agent, task.task_id, scope=authenticated_scope)
 ```
 
-相关类型与入口分别从 `service.contracts`、`service.store`、`service.order` 和 `service.driver` 导入。`observe_order_environment(task)` 是宿主必须实现的认证边界：每次运行从可信业务服务重新取得订单归属、操作权限及连接器健康状态，然后返回 `Environment`。`facts["order_owners"]` 必须来自业务系统，不能从客户文本或模型推断构造。
+类型与入口来自 `service.contracts`、`service.store`、`domains.order` 和 `service.driver`。`observe_order_environment` 必须从可信业务服务重新取得权限、订单归属和可用操作；`facts["order_owners"]` 不能从客户文本或模型输出构造。
 
-可用能力包含 `order.get_status`，权限包含 `orders.read`，且订单归属匹配时才会调用现有 `search_order`。真实订单证据只能满足订单状态查询，不能证明退款、物流异常已解决等其他目标。
+聊天使用同一订单域中的 scoped adapter：请求带认证客户 ID，并校验 webhook 的 `customer_id`、`order_id` 与具体状态。未配置、mock 或归属不符不会产生真实完成证据。`service/order.py`、`service/chat_order.py` 保留为兼容入口，业务实现已移至 `domains/order.py`。
 
-`AgentPolicy.propose` 可使用规则或结构化模型提出候选。当前排序使用明确的 `priority`（数值越小越优先），没有编造成功率或全局最优保证。权限、参数、归属与故障冷却先过滤候选，剩余候选再比较。`verify` 必须是宿主提供的确定性业务判定，不能直接信任模型的“已解决”判断。
+策略只能提出候选；完成条件由应用的 `verify` 回调裁定。当前运行时仍是确定性策略，未接入 LLM propose、通用计划依赖图或多目标编排。
 
-运行时每轮装载 `Environment.preferences`，供策略读取有效的客户确认偏好。本轮明确选择优先，偏好读取故障不会中断普通任务。偏好不进入任务检查点，也不修改事实和权限。
+## 3. 候选比较、预算与对象锁
 
-## 3. 异常消化与恢复链
+每轮先装载偏好和事实，过滤模拟或过期的任务证据及 `sourced_facts`，再独立验证目标。未完成时检查预算、提出候选、校验权限/参数/可用性/冷却和待查证状态，最后选择一个操作。
+
+`selection.py` 对相同操作与参数去重。有来源的效用估计优先按效用排序，其后依次比较 priority、风险、估计成本、延迟和稳定性；无来源的 utility 不参与效用排序。`Decision` 保存候选、排除原因、选择理由、预期结果和停止条件。通知域已有 chat/email 多候选与渠道健康过滤；订单域仍为单候选，不能据此声称全业务具备最优计划能力。
+
+| 任务预算 | 默认 / 行为 |
+|---|---|
+| `max_calls` | 20；调用前累计持久化，续跑不重置 |
+| `no_progress_limit` | 5；没有新鲜、非模拟且内容新颖的成功证据时累计 |
+| `max_cost` | 默认未设置；按候选提供的估计成本预扣 |
+| `deadline` | 默认未设置；到期停止发起新操作 |
+| 单操作超时 / 只读重试 | 默认 10 秒 / 2 次，操作可声明不同值 |
+
+预算触顶转为 `waiting_external` 并记录 `owner_review:*`。费用是估计值累计，未自动关联 Cost Ledger 或真实费用；未给成本估计的候选按零累计。聊天默认任务没有设置费用上限或总截止时间。
+
+worker 对带 `order_id` 的任务取得 `order:<id>` 对象租约，范围包含组织与客户，租期 300 秒，完成本次推进后释放。同一范围内不同任务不能同时持有该对象。直接调用 `ServiceAgent` 的宿主需自行组合 `ObjectLockStore`；对象锁不会替代外部业务系统的幂等与版本校验。
+
+## 4. 异常与恢复
 
 ```mermaid
 flowchart TD
-    A[感知环境与提出候选] --> B[校验权限 输入 前置条件]
-    B --> C[原子提交 running 台账与累计预算]
-    C --> D[调用一个业务操作]
-    D --> E[校验并保存回执]
-    E --> F{结果信号}
-    F -->|真实成功| G[下一轮独立验证目标]
-    F -->|只读临时失败| H[持久退避与有限重试]
-    F -->|不可用或冲突| I[冷却失败操作并选择替代路径]
-    F -->|写入结果未知| J[等待按原请求键查证]
-    F -->|参数或权限问题| K[等待客户或责任人处理]
+    A[观察环境与读取记忆] --> B[独立验证目标]
+    B -->|未完成| C[预算与候选校验]
+    C --> D[提交 running 台账和累计消耗]
+    D --> E[调用一个操作并保存回执]
+    E -->|新证据| A
+    E -->|只读临时失败| F[持久退避与有限重试]
+    E -->|写入结果未知| G[按原请求键查证或交责任人]
+    E -->|不可用或冲突| H[冷却操作并重选]
+    F --> A
     H --> A
-    I --> A
-    J --> A
-    K --> A
 ```
 
-| 信号 | 行为 | 不变量 |
-|---|---|---|
-| 超时、连接错误 | 只读操作进入退避；写操作进入 `unknown` | 不将传输失败解释成业务未发生 |
-| 只读临时失败 | 默认最多重试两次，退避时间持久保存 | 重启不清零任务调用预算；提前唤醒被拒绝 |
-| 工具不可用、冲突、mock | 冷却该操作，下一轮尝试其他可行候选 | 没有替代候选时保留责任人与复查时间 |
-| 明确的参数错误 | 只读任务等待客户补充 | 写操作不自动重发 |
-| 权限不足、不可恢复错误 | 等待责任人检查 | 不靠重试或换工具绕过权限 |
-| 模型输出格式错误、观察或验证回调异常 | 保存对应阶段的错误信号并等待检查 | 不执行任意工具、不输出未验证完成状态 |
-| 台账提交失败 | 中断当前调度并向宿主传播存储异常 | 意图提交失败时没有外部写操作 |
-| 写入后回执保存失败、进程退出 | 保留原 `running` 意图，过执行期限后转为待查证 | 原写请求不会因恢复而再次发出 |
-| 并发更新或人工状态变更 | `TaskConflict` 向宿主传播，重新读取任务 | 旧快照不能提交新执行意图 |
+| 信号 | 行为与不变量 |
+|---|---|
+| 只读超时 / 连接错误 | 分类恢复，有限退避；提前唤醒被拒绝 |
+| 写入超时 / 无效回执 | 记 `unknown`；不得把传输失败当成业务未发生，不盲目重发 |
+| 不可用、冲突或 mock | 冷却失败操作；重选候选，无可行操作则保留责任人与复查条件 |
+| 参数 / 权限问题 | 等待客户或责任人处理；不换工具绕过权限 |
+| 策略回调异常 | 保存阶段错误并等待检查；不执行模型指定的任意工具 |
+| 执行意图提交失败 | 存储异常传播；尚未调用外部操作 |
+| 回执提交失败 / 进程退出 | 原 running 意图保留；过执行期限后转为待查证，写请求不自动重放 |
+| 并发更新 / 人工状态变更 | `TaskConflict`，重新读取；旧版本不能提交新意图 |
 
-故障信息存储在 `Task.recovery_signals`，包括操作、请求键、错误分类、恢复动作与时间。原始异常字符串不直接写入客户可见状态，避免暴露连接器凭据或内部响应。操作台账保留结构化回执与证据。
+`RecoverySignal` 保存错误分类、恢复动作和时间；客户摘要不暴露原始异常、操作参数或内部回执。`Operation.compensation` 目前只是补偿/不可逆性声明，执行器没有通用自动补偿调度。退款未知结果也仍需宿主对账流程，不能宣传为全自动退款恢复闭环。
 
-## 4. 宿主调度职责
+## 5. 调度、数据与剩余验收
 
-`advance` 每次最多执行有限个微步骤；返回 `active` 表示应重新排队，返回等待态表示需要相应事件。正在执行且未超过期限的操作直接返回，不让另一个 worker 抢占或重放。超出期限的意图变成待查证数据，而不是自动重试写操作。
+`advance` 每次只运行有界微步骤。worker 自动重新安排 active 任务，并按 `review_at` 唤醒 `retry:*` 等待态；其他等待条件不会仅因复查时间到了而自动执行。外部事件验签、人工接单唤醒及未知写入对账由可信宿主接入。`VerifiedWakeup` 是内部类型，不执行网络验签。
 
-宿主持久安排 `review_at`，校验事件来源、任务归属及对应 `wake_condition` 后，构造 `VerifiedWakeup` 并调用 `resume`。这个类型只是内部接口名称，本身不验证外部签名。网络事件验签、任务查找和授权必须在进入接口前完成。重复事件不会再次把 active 或 resolved 任务唤醒。
+数据库已包含任务、偏好、派发、统一记忆和对象锁五类表；最新迁移为 `20261004_agent_memories_locks`。任务预算字段在检查点 JSON 内。升级步骤及 `create_all` 与 Alembic 的区别见 [数据库迁移](../../apps/api/README.md#database-upgrades)。
 
-遇到 `TaskConflict`，宿主重新载入后再调度；遇到数据库异常，宿主使用自己的有界重试队列。运行时不会吞掉存储异常并继续交易。`waiting_external` 的责任人目前是任务数据，不代表人工队列已经接单；宿主必须对接队列并核实受理后才能标记 `handed_off`。
-
-当前已提供验证接管接口：要求已有转交记录由当前人员领取，并核对任务客户和会话，再原子设置 `handed_off`。队列创建和领取仍使用现有人工协作流程，不由运行时自动发起。
-
-外部写入适配器必须将原请求键传给业务系统，并提供按同一键查证的只读操作。不同任务操作同一业务对象时仍依赖业务系统幂等、版本检查或宿主对象锁。本模块不提供跨业务系统的“恰好一次”保证。操作处理器必须遵守协程取消及连接器网络超时；Python 无法强行终止主动忽略取消的协程。
-
-## 5. 数据库与验证
-
-新增 `service_tasks` 表只保存任务检查点，组织和客户范围位于独立索引列。每次提交以旧版本作条件更新，受影响行数不为一则拒绝继续。操作意图和累计预算在外部调用之前由独立事务提交。
-
-生产迁移：在 `apps/api` 使用项目环境运行 `python -m alembic upgrade head`。这是仓库首个提交的版本迁移，只新增本表，不重建已有业务表。开发环境现有的 `init_db` 也会创建本表；已通过 `create_all` 创建表的开发数据库不要直接重复执行同一建表迁移。
-
-验证入口：
-
-```bash
-cd apps/api
-.venv/bin/python -m pytest tests/unit/test_service_agent.py tests/unit/test_service_recovery.py tests/unit/test_service_order.py tests/unit/test_service_migration.py -q
-```
-
-测试覆盖组织与客户隔离、断点恢复、权限和归属、重复请求、并发执行、写入超时、回执保存失败、台账不可写、退避重试耗尽、替代路径、错误模型输出、证据过期、mock、实际订单适配与迁移往返。真实退款到账、外部队列受理及生产 PostgreSQL 故障切换仍需要各自的集成验收。
+自动化覆盖运行恢复、派发去重、租约、对象锁、预算、记忆隔离、域操作和聊天回写，复跑命令见 [API 验证](../../apps/api/README.md#verification)。真实退款到账、自动补偿、跨会话续办、多目标计划、外部事件订阅、生产 PostgreSQL 故障切换与多实例负载仍需独立验收。

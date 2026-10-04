@@ -3,9 +3,8 @@
 | 项 | 内容 |
 |----|------|
 | **产品** | AskFlow — 企业智能客服（RAG + Agent） |
-| **对照 PRD** | `docs/prd/PRD.md` v1.1 |
 | **完成线** | **§12.1 MVP + §12.2 + 试点 + Widget + 飞书 + 质检骨架 + SIEM** |
-| **文档日期** | 2026-07-18 |
+| **文档日期** | 2026-10-04（对照 `2bc7cd4` 及此前四次提交） |
 | **整体状态** | **PILOT-READY + MULTI-CHANNEL（代码）** |
 | **对照 PRD** | `docs/prd/PRD.md` **v1.3** |
 | **闭环/安全审查** | `docs/engineering/business-loop-security-fallback-review.md` |
@@ -13,14 +12,24 @@
 
 ---
 
-## 客服 Agent 增量进展（2026-10-03）
+## 客服 Agent 与插件增量（2026-10-04）
 
 对应独立方案 [customer-service-agent.md](./prd/customer-service-agent.md)，完整业务范围尚未验收：
 
-- 已实现运行基础、持久任务与操作台账、失败恢复、订单场景适配。
-- 已实现客户确认偏好 API、版本化纠正和删除，以及新运行时的每轮读取。
-- 已实现客户任务查看与取消、基于已领取转交记录的验证接管；目录与事务边界见 [生命周期与代码导航](./architecture/customer-service-lifecycle.md)。
-- 相关测试 77 项通过；未接入聊天自动建任务、后台复查调度、真实退款连接器及生产 PostgreSQL 故障切换验收。
+| 能力 | 进展与边界 |
+|---|---|
+| 持久运行时 | 检查点、操作台账、失败分类、只读退避、未知写入保护与版本 CAS |
+| 聊天与派发 | 消息/任务/派发同事务；数据库租约调度、到期重试和去重回写已接入；无后台结果 WS 广播 |
+| 目标与业务域 | 通用 intake、策略注册、domains 已拆分；默认订单，工单/人工转交可配置接管 |
+| 通知与退款 | 独立操作适配模块已有；无默认聊天/worker 接入，仍需可信宿主与真实连接器 |
+| 判断与预算 | 候选过滤/去重/比较、决策字段、对象锁、调用/无进展预算及可选费用/截止时间 |
+| 客户记忆 | 偏好 API、版本化纠正/删除；事实验证与每轮读取、事件时间线、条件匹配经验存储 |
+| 任务控制 | 认证客户查看/取消；基于当前人员已领取转交的验证接管 |
+| 插件发现 | `/admin/plugins` 只读展示 profile、插件依赖与扩展点；`GET /api/v1/admin/features` 提供数据 |
+
+仍待完成：多目标依赖图、跨会话自动续办、人工接单/外部事件自动唤醒、真实退款与自动补偿、经验自动生产/消费、统一记忆管理与生产 PostgreSQL 故障切换。费用目前为候选估计累计，默认聊天任务未设置费用上限或 deadline；工单目标完成当前表示登记成功。
+
+实现边界见 [运行时](./architecture/customer-service-runtime.md)、[生命周期](./architecture/customer-service-lifecycle.md)、[客户记忆](./architecture/customer-preference-memory.md) 与 [Agent 差距](./architecture/agent-conformance.md)。最近五次提交对照见 [README](../README.md#近期进展与路线图)。
 
 ## 1. 范围说明
 
@@ -111,10 +120,22 @@
 
 ## 4. 验证记录
 
+下表为既有企业基线记录，不代表本次文档更新重新完成了全量或生产验收。最新客服 Agent 专项命令见 [API README](../apps/api/README.md#verification)；测试文件覆盖范围见 [Agent 差距清单](./architecture/agent-conformance.md#6-验证入口)。
+
+2026-10-04 文档同步复验（代码基线 `2bc7cd4`）：
+
+| 检查 | 本次结果 |
+|---|---|
+| API README 中的专项 pytest 命令 | **198 passed**；覆盖 service/intake/domains/memory、插件与四组集成测试，非全量 suite |
+| Markdown 文档检查 | 本地链接与锚点、代码围栏、改动文件 ≤300 行检查通过 |
+| `git diff --check` | 通过；本次仅修改文档 |
+
+专项测试在沙箱内异步 SQLite fixture 阶段停滞，沙箱外复跑通过。本次未复跑全量 pytest、离线 eval 或 Web build，也未执行生产验收。
+
 | 检查 | 结果 |
 |------|------|
-| `pytest` (apps/api) | **156+ passed**（含 E9/E10/E12 波次缺口 + RAG/向量/索引） |
-| Eval runner | **passed=8 failed=0** |
+| `pytest` (apps/api) | 历史记录：**156+ passed**（非当前测试总量） |
+| Eval runner | 历史记录：**passed=8 failed=0** |
 | Web build | 见最新 CI / 本地 `npm run build` |
 | CI workflow | 文件就位：api-pytest + offline-eval + web-build |
 
@@ -146,6 +167,7 @@ cd ../web && npm run build
 |------|:----:|------|
 | P0 Manifest + 条件路由 + Admin/前端隐藏 | ✅ | `packages/contracts/features.yaml` · `app/plugins/*` |
 | P1 Pipeline RouteHandler + side effects | ✅ | 含 `agent_run` side effect |
+| 插件发现与只读管理页 | ✅ | `plugins/discovery.py` · `/admin/plugins`；配置修改后重启 API |
 | P2–P4 企业/核心域深拆 + profile 矩阵 CI | ⏳ | 骨架已就绪 |
 | 文档 | ✅ | `docs/architecture/plugins.md` |
 
@@ -161,6 +183,7 @@ cd ../web && npm run build
 6. 可选 LLM：`LLM_BASE_URL` + `LLM_API_KEY`（生成/流式；未配则抽取式）  
 7. 可选向量：`EMBEDDING_*` 与 `CHROMA_HOST`/`CHROMA_PERSIST_DIR`（未配则 offline hash + 内存索引）  
 8. 可选异步索引：`INDEX_ASYNC=1` +（可选）`REDIS_URL`；进程内 `index_worker` 默认随 API 启动  
+9. 服务任务：按 [迁移说明](../apps/api/README.md#database-upgrades) 升级；配置 `ORDER_LOOKUP_URL` / `ORDER_LOOKUP_TOKEN`，响应须包含匹配的客户/订单及具体状态；目标白名单默认仅订单
 
 详见：`deploy/checklists/pilot-integration.md`
 

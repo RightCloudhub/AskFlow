@@ -118,3 +118,24 @@
 | Prompt 模板正文与 active 版本 | Harness 文案与阈值 |
 | 同义改写词典（文件/配置） | 工具 handler 签名 |
 | 部分 grounding 阈值（须 eval） | WS 协议 type 集合 |
+
+## 9. 持久服务任务增量契约（2026-10-04）
+
+适用于 `services/agent/intake/`、`service/`、`domains/`、`memory/` 及 `workers/service_tasks.py`。旧消息路由契约继续适用；任务目标不等同于路由名。实现边界见 [运行时](../architecture/customer-service-runtime.md) 与 [差距清单](../architecture/agent-conformance.md)。
+
+| 边界 | 当前契约 |
+|---|---|
+| 默认接管 | `SERVICE_TASKS_GOALS=order_status`；工单/人工转交需白名单，退款/通知不在默认策略注册表 |
+| 认证与权限 | Scope 来自可信应用；历史、摘要、记忆、任务输入和模型候选不能授予权限 |
+| 创建与执行 | 聊天消息/任务/派发同事务；操作意图与累计消耗先持久化，后调用业务系统 |
+| 并发 | 任务版本 CAS；派发租约；worker 为带订单号的任务取得范围内对象租约 |
+| 结果未知 | 外部写入超时或回执异常记 unknown；不得盲目重放，需原请求键查证或责任人处理 |
+| 预算 | 任务调用与无进展次数有默认上限；费用与 deadline 可选，续跑不清零；费用依赖宿主估计 |
+| 完成 | 应用 verify 裁定；模拟/过期证据不结案，订单需客户/订单匹配；工单目前只验证登记成功 |
+| 取消与接管 | 控制动作增加版本，不代表已发出的业务操作撤销；保留未决台账 |
+| 人工接管 | 当前人员必须已领取同客户/同会话的 handoff；handed_off 不表示原问题解决 |
+| 记忆 | 当前选择与实时事实优先；过期/删除项不读取；权限和对象归属不从记忆恢复 |
+| 历史摘要 | 以 user 角色及历史数据标记进入上下文，不提升为系统指令 |
+| 结果交付 | 仅向匹配客户的 active 会话按任务版本去重写入；无后台 WS 广播保证 |
+
+TaskStatus：`active`、`waiting_customer`、`waiting_external`、`handed_off`、`resolved`、`closed_unresolved`。自动调度仅推进 active 和到期 `retry:*`；`VerifiedWakeup` 不能替代外部事件验签。`Operation.compensation` 为声明字段，当前没有通用补偿执行器。

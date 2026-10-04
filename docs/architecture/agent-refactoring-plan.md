@@ -1,8 +1,10 @@
 # 客服助手严格化重构总体计划
 
-状态：执行计划（基于 [agent-conformance.md](./agent-conformance.md) 的差异与设计），2026-10-03。
+状态：阶段执行计划；2026-10-03 制定，2026-10-04 按 `2bc7cd4` 更新进度。当前差距以 [agent-conformance.md](./agent-conformance.md) 为准。
 范围：`apps/api/app/services/agent/`、`apps/api/app/services/chat/`、`apps/api/app/workers/`、对应 API、迁移与测试。
 总目标：把「一条完整 Agent 路径（仅订单查询）+ 一条传统消息管线（其余全部业务）」收敛为「**一个统一运行时处理全部业务目标，旧管线只保留直接回答与降级兜底**」。
+
+进度：intake、policies、domains、事实/事件/经验存储、对象锁和预算已有代码；默认订单接管，工单/人工转交可选接管。通知/退款默认接入、自动续办、多目标依赖、经验消费、自动补偿和影子模式仍待完成。以下 §2–3 的“现状/before”保留计划制定时的基线，§4 表示当前阶段进展；设计动作不等于已完成承诺。
 
 非目标（本计划明确不做）：
 - 不改 RAG 检索质量、插件/配置框架、认证与多租户模型；
@@ -18,9 +20,9 @@
 5. **指标与文档同步**：新代码满足 code-metrics；每阶段更新 runtime / conformance / lifecycle / STATUS，不夸大（模拟证据不计入验收）。
 6. **兼容约束**：SQLite / PostgreSQL 双支持；离线可测（无 LLM、无外部服务即可跑全部测试）。
 
-## 2. 目标结构（before → after）
+## 2. 目标结构（计划基线 → 目标设计）
 
-现状（关键部分）：
+2026-10-03 计划制定时的基线（当前导航见 [STRUCTURE](../prd/STRUCTURE.md)）：
 
 ```
 app/services/agent/
@@ -75,7 +77,7 @@ app/services/agent/
   - 去重键：`uuid5(会话 + goal + 业务对象)`，从现有订单规则泛化。
   - 建任务与消息持久化同事务（沿用 `insert_once` 模式）。
 - 改动：`chat/session/turn.py` 调用点改为 intake；`chat/service_tasks.py` 迁入 `intake/open_task.py` 后删除。
-- 测试：intake 单测（五类 intent × 有无业务对象 × 有无在办任务）；现有 67 项回归保持全绿；重发不重复建任务。
+- 测试：intake 单测（五类 intent × 有无业务对象 × 有无在办任务）；已有受理/任务回归保持全绿；重发不重复建任务。
 - 风险：误建任务。对策：只有「业务动作意图 + 明确业务对象或可收集槽位」才建任务；其余直答或澄清。
 
 ### M2 策略解析去硬编码（P2）
@@ -134,17 +136,17 @@ app/services/agent/
 - 全业务接管 + 降级演练（关闭 ServiceSettings 后旧管线可用）通过后：评估删除 tool / ticket / handoff 处理器与 loop 引擎。
 - 文档：runtime / conformance / lifecycle / STATUS 同步现状，去掉过时边界。
 
-## 4. 阶段与 PR 切片
+## 4. 阶段与 PR 切片（2026-10-04 进度）
 
-| 阶段 | 切片（可独立合入） | 放行门 |
-|------|--------------------|--------|
-| P1 | intake 抽取；intent→goal 映射；turn 调用点迁移 | 回归全绿；intake 单测；重发去重；FAQ 不误建 |
-| P2 | policies 注册表；domains/order 合并 | 行为回归；第二 goal 冒烟 |
-| P3 | ticket.create；handoff.enqueue；notify.send；GOALS 开关 | 契约 + 幂等测试；新旧路径等价 |
-| P4 | Decision 扩展；环境字段；notify 多候选 | 环境场景测试；决策记录断言 |
-| P5 | facts / events / experience；读管线接入 | 记忆生命周期测试；删除传播 |
-| P6 | refund 域；对象锁；补偿；预算 | unknown 写 / 锁 / 预算测试 |
-| P7 | 冻结与文档收敛 | 降级演练；文档一致性 |
+| 阶段 | 已实现 | 剩余放行项 |
+|------|--------|------------|
+| P1 | intake 抽取、intent→goal、turn 接入与去重 | 聊天 open_task 查询/resume、多目标 |
+| P2 | policies 注册表、domains/order 合并 | 兼容入口仍保留；新域逐项验收 |
+| P3 | ticket/handoff 可选接管；notify 操作与 GOALS 开关 | notify builder/真实渠道、人工接单唤醒 |
+| P4 | Decision 扩展、sourced_facts、候选排序与 notify 多候选 | 真实环境源、依赖计划和完整重规划 |
+| P5 | facts/events/experience、偏好/事实读管线、删除关联经验 | 自动采集/经验消费、客户 API 与完整保留闭环 |
+| P6 | refund 适配、对象锁、费用/时限/无进展预算 | 真实退款、未知结果对账、自动补偿、费用来源 |
+| P7 | 开关分流与本文档同步 | 全业务迁移、影子模式、降级演练与旧代码清理 |
 
 依赖关系：
 
@@ -161,10 +163,10 @@ flowchart LR
 
 ## 5. 流量迁移与开关
 
-- `SERVICE_TASKS_ENABLED`（现有总开关）：关闭 = 降级模式，旧管线全量兜底、能力冻结。
-- `SERVICE_TASKS_GOALS`（新增）：接管清单，默认 `order`；每个域验收通过后加入。
-- 影子模式（新增，按域配置）：观察 + 决策记录但不执行写操作，用于新域放量前的只读演练（PRD §10 要求：影子决策不得产生真实业务副作用）。
-- 回滚：从 GOALS 移除该域即回退旧管线；已创建任务按生命周期正常收尾（取消或转人工）。
+- `SERVICE_TASKS_ENABLED`：默认 true；关闭并重启 API 后，新聊天走旧管线，API 后台任务 worker 也停止。
+- `SERVICE_TASKS_GOALS`：接管清单，默认 `order_status`；支持 `order/ticket/handoff` 别名。只有订单、工单、人工转交有默认 builder。
+- 影子模式：仍为待实现设计；不能把现有开关当成只读模拟执行。
+- 回滚：从 GOALS 移除该域仅使新受理回退；已排队任务仍由注册策略推进，需按生命周期取消或接管。总开关停止调度不等于外部业务撤销。
 
 ## 6. 数据库与迁移
 

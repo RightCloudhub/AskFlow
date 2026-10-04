@@ -1,6 +1,32 @@
 # 服务任务生命周期与代码导航
 
-本阶段将 [客服 Agent 方案](../prd/customer-service-agent.md) 中的客户任务查看、取消和人工接管落到认证接口。任务仍由可信业务宿主创建；没有新增客户端任意创建目标、注入授权或指定工具的接口。
+更新：2026-10-04，对照 `2bc7cd4`。[客服 Agent 方案](../prd/customer-service-agent.md) 已接入聊天受理、持久派发、客户任务查看、取消与验证接管。任务由认证聊天入口或可信宿主创建，没有客户端任意指定目标和工具的创建接口。
+
+## 聊天受理与后台派发
+
+`chat/session/turn.py` 在会话为 active 时先调用 `agent/intake/chat.py`。受理前运行 Harness，分类后由 `judge.py` 判定目标、直答或澄清；订单缺号继续使用原槽位流程。默认只接管 `order_status`，`ticket_resolution` 与 `human_handoff` 需加入 `SERVICE_TASKS_GOALS`。未接管消息回到原流水线，已建任务不再重复执行原工单/转交副作用。
+
+任务 ID 由会话、目标和可选业务对象推导，同一会话重复请求复用同一任务。订单以订单号区分，工单/转交当前以会话和目标去重，不能据此宣称同会话多项工单目标或跨会话自动续办。`judge(open_task=...)` 虽支持 resume 判定，聊天入口尚未查询在办任务或执行该分支。
+
+用户消息、受理回复、`service_tasks` 检查点与 `service_dispatches` 记录在同一事务提交；任何一步失败整体回滚。客户先收到受理确认，worker 随后通过目标策略推进任务。
+
+| 派发机制 | 当前行为 |
+|---|---|
+| 启动条件 | Agent 插件启用且 `SERVICE_TASKS_ENABLED=true`；test 环境不启动后台循环 |
+| 扫描 | 默认每 5 秒；每批最多 20 项，数据库条件更新领取 300 秒租约 |
+| 执行 | 按 `completion_condition` 查 builder；单次派发最长 240 秒 |
+| 自动续跑 | active 任务重新排队；`waiting_external` 且 `wake_condition=retry:*` 按 `review_at` 唤醒 |
+| 对象冲突 | 订单对象租约竞争失败则重新排队，不执行该对象的操作 |
+| 派发故障 | 有界重试；失败耗尽进入责任人检查，存储仍失败时需运维修复 |
+| 其他等待 | `owner_review:*`、客户补充、人工接单和外部事件不自动订阅或扫描唤醒 |
+
+关闭总开关并重启 API 会同时停用受理与 worker；从目标白名单移除某项只影响新受理，已有任务仍按注册策略推进。配置与回滚行为见 [API README](../../apps/api/README.md#service-tasks-and-order-connector)。
+
+## 结果回写
+
+`finish_dispatch` 同事务释放租约、安排下一次执行并按任务版本去重写入助手消息。只向当前客户的 active 会话写入；取消或接管后的任务不再追加自动回复。回写前再检查任务版本，避免把旧结果写入已变化的任务。
+
+验证通过的订单状态或工单登记结果可回写；未解决任务只显示需支持人员检查，不暴露未验证回执。当前没有后台结果 WebSocket 广播，重新读取会话消息即可取得更新。工单任务的 `resolved` 当前表示登记成功，不能解释为原故障已修复。
 
 ## 接口与使用场景
 
@@ -33,7 +59,7 @@
 
 领取记录通过条件更新锁定，任务读取与版本更新在同一数据库事务中执行。此方式兼容 SQLite 的写锁和 PostgreSQL 的行锁。条件失效、会话不匹配、任务版本冲突时整体回滚。
 
-成功接管后，任务状态为 `handed_off`、责任人为当前人员，记录转交编号与复查时间；不标记原目标已解决。当前没有自动创建转交记录或自动领取队列的步骤，客户端必须先完成现有人工转交流程。业务宿主需在任务创建时绑定可信会话 ID；未绑定的旧任务无法直接接管。
+成功接管后，任务状态为 `handed_off`、责任人为当前人员，记录转交编号与复查时间；不标记原目标已解决。启用 `human_handoff` 可由任务操作自动入队，但当前仍无自动领取和接单事件唤醒；人员须先完成现有队列领取，再调用本接口。宿主创建的任务也需绑定可信会话 ID；未绑定的旧任务无法直接接管。
 
 ## 已发出操作的处理
 
@@ -50,6 +76,9 @@
 | HTTP 边界 | `apps/api/app/api/v1/agent/tasks.py`、`preferences.py` | 认证、请求校验、状态码映射 |
 | 对外任务结构 | `apps/api/app/api/v1/agent/task_schemas.py` | 客户可见摘要，屏蔽内部台账 |
 | 身份映射 | `apps/api/app/services/agent/identity.py` | 任务与偏好接口共享部署和客户范围 |
+| 目标受理 | `apps/api/app/services/agent/intake/` | 判定、目标目录、去重和同事务建任务 |
+| 域与策略装配 | `apps/api/app/services/agent/domains/`、`service/policies.py` | 独立操作与目标 builder |
+| 后台派发 / 回写 | `apps/api/app/workers/service_tasks.py`、`services/agent/service/dispatch.py`、`delivery.py` | 租约、到期重试与按版本回写 |
 | 业务状态转换 | `apps/api/app/services/agent/service/control.py` | 取消、人工接管、版本与归属校验 |
 | 事件唤醒 | `apps/api/app/services/agent/service/lifecycle.py` | 可信事件唤醒，重试退避校验 |
 | 决策与操作 | `apps/api/app/services/agent/service/runtime.py`、`executor.py`、`recovery.py` | 观察、选择、执行、恢复 |
@@ -65,4 +94,6 @@
 
 同时回归运行基础、偏好 API 与迁移测试。实际生产 PostgreSQL 并发与故障切换仍需独立环境验证。
 
-尚未接入：聊天自动创建任务、自动匹配跨会话目标、后台复查调度、外部事件验签、自动创建/领取人工转交、真实退款连接器、任务费用和总时限预算。接口存在不代表这些能力已经上线。
+新增验证入口：`tests/integration/test_chat_service_tasks.py`、`test_agent_conformance.py` 与 `tests/unit/test_service_dispatch.py`、`test_service_locks.py`，覆盖消息/任务事务回滚、重发去重、租约到期恢复、到期重试、工单接管和结果回写。
+
+尚未接入：自动匹配跨会话目标、聊天 waiting_customer 续办、多目标依赖图、外部事件验签、自动领取人工转交及真实退款连接器。任务费用/截止时间已有运行时校验，但默认聊天任务未设置这两项；费用还依赖宿主提供估计。完整边界见 [差距清单](./agent-conformance.md)。
