@@ -41,7 +41,7 @@ AskFlow 将 Honest RAG、受约束的 Agent、工单与人工协作放在同一�
 ### 环境准备
 
 - Python **3.11+**（CI 使用 3.12）
-- Node.js **20** 与 npm（与 CI 一致）
+- Node.js **24** 与 npm（与 CI 一致）
 - Git；Docker Compose 仅在需要 PostgreSQL / Redis / MinIO 时使用
 
 ```bash
