@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -77,9 +78,7 @@ def claims_from_payload(data: dict[str, Any]) -> OIDCClaims:
     if isinstance(roles, str):
         roles = [roles]
     email = str(data.get("email") or f"{data.get('sub', 'user')}@sso.local")
-    username = str(
-        data.get("preferred_username") or data.get("name") or email.split("@")[0]
-    )
+    username = str(data.get("preferred_username") or data.get("name") or email.split("@")[0])
     return OIDCClaims(
         sub=str(data.get("sub") or new_id()),
         email=email,

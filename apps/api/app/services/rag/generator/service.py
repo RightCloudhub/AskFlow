@@ -7,9 +7,9 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from app.core.config import Settings, get_settings
+from app.middleware.metrics import CANCEL_HONORED_TOTAL
 from app.models.enums import LLMPurpose
 from app.services.agent.model_router.router import ModelRouter
-from app.middleware.metrics import CANCEL_HONORED_TOTAL
 from app.services.cancel_registry import get_cancel_registry
 from app.services.llm.client import ChatRequest, LLMClient, get_llm_client
 from app.services.rag.generator.token_sink import emit_token

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,7 +44,9 @@ class SLAEngine:
     def _policy(self, priority: str) -> tuple[int, int, float]:
         return self.policies.get(priority, self.policies["medium"])
 
-    def evaluate_ticket(self, ticket: Ticket, now: datetime | None = None) -> tuple[str, str | None]:
+    def evaluate_ticket(
+        self, ticket: Ticket, now: datetime | None = None
+    ) -> tuple[str, str | None]:
         """Return (state, reason) without mutating."""
         now = now or self.now_fn()
         if ticket.status in {TicketStatus.RESOLVED.value, TicketStatus.CLOSED.value}:

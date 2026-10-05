@@ -1,5 +1,7 @@
 """Enterprise admin APIs: connectors, launch cards, costs, users, SLA, MCP, SSO."""
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -8,7 +10,6 @@ from app.core import database as dbmod
 from app.models.enums import TicketPriority, TicketStatus
 from app.models.ticket import Ticket
 from app.services.auth.oidc import encode_mock_id_token
-from datetime import UTC, datetime, timedelta
 
 
 async def _admin(client: AsyncClient, name: str = "entadmin") -> dict[str, str]:
@@ -125,9 +126,7 @@ async def test_sso_login_and_user_export_delete(client: AsyncClient):
     assert sso.json()["user"]["role"] == "admin"
 
     # delete data
-    deleted = await client.delete(
-        f"/api/v1/admin/users/{victim['id']}/data", headers=headers
-    )
+    deleted = await client.delete(f"/api/v1/admin/users/{victim['id']}/data", headers=headers)
     assert deleted.status_code == 200
     assert deleted.json()["ok"] is True
 

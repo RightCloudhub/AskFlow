@@ -16,7 +16,7 @@ from app.models.document import Document
 from app.models.enums import DocumentStatus
 from app.services.knowledge.indexer.service import IndexerService
 from app.services.knowledge.storage.local import LocalObjectStorage
-from app.services.llm.client import ChatRequest, LLMClient
+from app.services.llm.client import LLMClient
 from app.services.rag.generator.service import AnswerGenerator
 from app.services.rag.generator.token_sink import reset_token_sink, set_token_sink
 from app.services.rag.vector.store import get_default_vector_store, reset_default_vector_store

@@ -1,7 +1,9 @@
 # Agent 消息处理流水线
 
 > 对应 PRD v1.1 §3.2、§3.5、§4.3–4.7、**§4.13 Multi-step Loop**、§4.14 Model Router。  
-> 代码：`apps/api/app/services/agent/pipeline/`、`loop/`、`model_router/`（规划中）。
+> 代码：`apps/api/app/services/agent/pipeline/`、`loop/`、`model_router/`。
+
+2026-10-04 更新：本文描述原消息流水线。`ChatTurn` 已先尝试 [目标受理与持久任务](./customer-service-lifecycle.md)：默认订单查询、白名单内工单/人工转交进入 `intake → service → worker`，未接管消息继续走本文路径。两条路径的范围见 [Agent 差距清单](./agent-conformance.md)。
 
 ---
 
@@ -12,14 +14,14 @@ WS message
   → 鉴权 / 限流
   → 会话状态？
        transferred → 仅落库 + 通知坐席（不调 AI）
-       active      → Agent 流水线
+       active      → 目标受理；未接管则进入以下 Agent 流水线
   → 用户消息落库
   → Harness.prepare
   → 槽位续跑判定
   → 意图分类（ModelRouter purpose=intent_classify）
   → 路由（运营配置 → 内置 → 合法集）
   → Harness.choose_route
-  → 分支：rag | tool(Loop) | ticket | handoff | clarify
+  → 分支：rag | tool(Loop) | ticket | handoff | clarify | refuse
   → Harness 输出约束
   → CostLedger 记账
   → 助手消息落库
@@ -27,7 +29,7 @@ WS message
   → WS：token* · source · intent · ticket/handoff · message_end
 ```
 
-合法路由集：`{rag, ticket, handoff, clarify, tool}`。
+合法路由集：`{rag, ticket, handoff, clarify, tool, refuse}`。持久任务的目标、操作和预算是另一组契约，不用路由名代替目标完成条件。
 
 ### Multi-step Loop（tool 路径，PRD §4.13）
 
@@ -59,6 +61,8 @@ PLAN → ACT → OBSERVE → RECOVER ↺（未完成且未超预算）→ FINALI
 
 `faq` · `product` · `order_query` · `fault_report` · `complaint` · `handoff`
 
+企业扩展已有 `out_of_scope`，对应 `refuse`；该路由继续由消息流水线处理。
+
 策略：规则 → LLM JSON 比高；过低 clarify；失败回落 faq/规则。  
 `handoff` 须共现，禁止仅 “agent” 误触发。
 
@@ -82,6 +86,7 @@ PLAN → ACT → OBSERVE → RECOVER ↺（未完成且未超预算）→ FINALI
 | ticket | 统一仓储建单（去重红线） |
 | handoff | 摘要(硬超时) + 入队 + transferred |
 | clarify | 澄清话术 |
+| refuse | out_of_scope 确定性拒答 |
 
 ### 2.6 finalize
 

@@ -1,0 +1,1443 @@
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/agent_runs/routes.py:37:19
+   |
+35 | async def list_agent_runs(
+36 |     db: DbSession,
+37 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+38 |     limit: int = Query(default=DEFAULT_LIST_LIMIT, ge=1, le=MAX_LIST_LIMIT),
+39 | ) -> list[dict]:
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/agent_runs/routes.py:48:19
+   |
+46 |     run_id: str,
+47 |     db: DbSession,
+48 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+49 | ) -> dict:
+50 |     store = AgentRunStore(db)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/analytics/routes.py:20:58
+   |
+19 | @router.get("/summary")
+20 | async def analytics_summary(db: DbSession, _user: User = Depends(require_admin)) -> dict:
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^
+21 |     async def count(model) -> int:
+22 |         r = await db.execute(select(func.count()).select_from(model))
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/audit_logs/routes.py:31:19
+   |
+29 |     action: str | None = None,
+30 |     limit: int = 100,
+31 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+32 | ) -> list[AuditLogOut]:
+33 |     rows = await AuditService(db).list_logs(action=action, limit=min(limit, LIST_CAP))
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/audit_logs/routes.py:40:19
+   |
+38 | async def export_siem(
+39 |     db: DbSession,
+40 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+41 |     action: str | None = None,
+42 |     limit: int = Query(default=DEFAULT_EXPORT_LIMIT, ge=1, le=MAX_EXPORT_LIMIT),
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/audit_logs/routes.py:53:19
+   |
+51 |     body: SiemPushBody,
+52 |     db: DbSession,
+53 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+54 | ) -> dict:
+55 |     """Export audit events and optionally POST to SIEM_WEBHOOK_URL."""
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/bots/routes.py:18:35
+   |
+17 | @router.get("")
+18 | async def bots_list(_user: User = Depends(require_admin)) -> dict:
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^
+19 |     return {"bots": list_bots()}
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/bots/routes.py:23:39
+   |
+22 | @router.get("/runtime-flags")
+23 | async def runtime_flags(_user: User = Depends(require_admin)) -> dict:
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^
+24 |     s = get_settings()
+25 |     return {
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/bots/routes.py:34:46
+   |
+33 | @router.get("/{bot_id}")
+34 | async def bot_get(bot_id: str, _user: User = Depends(require_admin)) -> dict:
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^
+35 |     b = get_bot(bot_id)
+36 |     return {
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/connectors/routes.py:32:56
+   |
+31 | @router.get("")
+32 | async def list_connectors(db: DbSession, _user: User = Depends(require_admin)) -> list[dict]:
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^
+33 |     svc = ConnectorService(db)
+34 |     await svc.ensure_defaults()
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/connectors/routes.py:77:19
+   |
+75 |     body: InvokeIn,
+76 |     db: DbSession,
+77 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+78 | ) -> dict:
+79 |     return await ConnectorService(db).invoke(name, params=body.params)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/costs/routes.py:13:53
+   |
+12 | @router.get("/summary")
+13 | async def cost_summary(db: DbSession, _user: User = Depends(require_admin)) -> dict:
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^
+14 |     return await CostStore(db).aggregate()
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/documents/routes.py:22:55
+   |
+21 | @router.get("", response_model=list[DocumentOut])
+22 | async def list_documents(db: DbSession, _user: User = Depends(require_admin)) -> list[DocumentOut]:
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^
+23 |     rows = await DocumentService(db).list_documents()
+24 |     return [DocumentOut.model_validate(r) for r in rows]
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/documents/routes.py:49:19
+   |
+47 |     document_id: str,
+48 |     db: DbSession,
+49 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+50 | ) -> dict:
+51 |     doc = await db.get(Document, document_id)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/documents/routes.py:68:19
+   |
+66 |     from_generation: int = Query(..., ge=1),
+67 |     to_generation: int = Query(..., ge=1),
+68 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+69 | ) -> dict:
+70 |     try:
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/drafts/routes.py:18:19
+   |
+16 |     db: DbSession,
+17 |     status: str | None = None,
+18 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+19 | ) -> list[DraftOut]:
+20 |     rows = await DraftService(db).list_drafts(status=status)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/gaps/routes.py:15:50
+   |
+14 | @router.get("", response_model=list[GapOut])
+15 | async def list_gaps(db: DbSession, _user: User = Depends(require_admin)) -> list[GapOut]:
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^
+16 |     rows = await GapService(db).list_open()
+17 |     return [GapOut.model_validate(r) for r in rows]
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/gaps/routes.py:21:65
+   |
+20 | @router.post("/{gap_id}/dismiss", response_model=GapOut)
+21 | async def dismiss_gap(gap_id: str, db: DbSession, _user: User = Depends(require_admin)) -> GapOut:
+   |                                                                 ^^^^^^^^^^^^^^^^^^^^^^
+22 |     gap = await GapService(db).dismiss(gap_id)
+23 |     if gap is None:
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/handoffs/routes.py:20:18
+   |
+18 | async def list_handoffs(
+19 |     db: DbSession,
+20 |     user: User = Depends(require_agent_or_admin),
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+21 | ) -> list[HandoffOut]:
+22 |     rows = await HandoffService(db).list_queue(agent_id=user.id, agent_role=user.role)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/intents/routes.py:19:34
+   |
+17 | @router.get("", response_model=list[IntentConfigOut])
+18 | async def list_intents(
+19 |     db: DbSession, _user: User = Depends(require_admin)
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^
+20 | ) -> list[IntentConfigOut]:
+21 |     result = await db.execute(select(IntentConfig).order_by(IntentConfig.intent))
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/launch_cards/routes.py:28:51
+   |
+27 | @router.get("")
+28 | async def list_cards(db: DbSession, _user: User = Depends(require_admin)) -> list[dict]:
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^
+29 |     rows = await LaunchCardService(db).list_cards()
+30 |     return [_ser(r) for r in rows]
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/launch_cards/routes.py:54:19
+   |
+52 |     body: LaunchCardMeasure,
+53 |     db: DbSession,
+54 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+55 | ) -> dict:
+56 |     try:
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/mcp/routes.py:13:55
+   |
+12 | @router.post("/sync")
+13 | async def sync_mcp_tools(db: DbSession, _user: User = Depends(require_admin)) -> dict:
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^
+14 |     registered = await register_mcp_tools_from_settings(db)
+15 |     return {
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/mcp/routes.py:23:36
+   |
+22 | @router.get("/tools")
+23 | async def list_tools(_user: User = Depends(require_admin)) -> dict:
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^
+24 |     return {
+25 |         "tools": registry.names(),
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/notify/routes.py:30:19
+   |
+28 |     body: TestEmitBody,
+29 |     db: DbSession,
+30 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+31 | ) -> dict:
+32 |     """Exercise signed webhook / sink without touching chat path."""
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/notify/routes.py:45:19
+   |
+43 | async def list_notify_logs(
+44 |     db: DbSession,
+45 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+46 |     limit: int = Query(default=DEFAULT_LOG_LIMIT, ge=1, le=MAX_LOG_LIMIT),
+47 | ) -> list[dict]:
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/prompts/routes.py:16:34
+   |
+14 | @router.get("", response_model=list[PromptTemplateOut])
+15 | async def list_prompts(
+16 |     db: DbSession, _user: User = Depends(require_admin)
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^
+17 | ) -> list[PromptTemplateOut]:
+18 |     svc = PromptService(db)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/prompts/routes.py:65:61
+   |
+64 | @router.get("/{key}/active")
+65 | async def get_active(key: str, db: DbSession, _user: User = Depends(require_admin)) -> dict:
+   |                                                             ^^^^^^^^^^^^^^^^^^^^^^
+66 |     content = await PromptService(db).get_active_content(key)
+67 |     if content is None:
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/qc/routes.py:15:51
+   |
+14 | @router.get("/summary")
+15 | async def qc_summary(db: DbSession, _user: User = Depends(require_admin)) -> dict:
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^
+16 |     return await QcService(db).summary()
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/qc/routes.py:22:19
+   |
+20 | async def qc_low_quality(
+21 |     db: DbSession,
+22 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+23 |     threshold: int = Query(default=DEFAULT_LOW_SCORE, ge=0, le=100),
+24 |     limit: int = Query(default=LIST_DEFAULT, ge=1, le=LIST_MAX),
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/sla/routes.py:22:19
+   |
+20 | async def sla_status(
+21 |     db: DbSession,
+22 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+23 |     limit: int = Query(default=DEFAULT_SLA_TICKET_LIMIT, ge=1, le=MAX_SLA_TICKET_LIMIT),
+24 | ) -> dict:
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/sla/routes.py:52:49
+   |
+51 | @router.post("/scan")
+52 | async def scan_sla(db: DbSession, _user: User = Depends(require_admin)) -> dict:
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^
+53 |     engine = SLAEngine(db)
+54 |     changes = await engine.scan()
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/system/routes.py:18:19
+   |
+16 | async def admin_health(
+17 |     db: DbSession,
+18 |     _user: User = Depends(require_agent_or_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+19 | ) -> dict:
+20 |     from app.api.v1.health.routes import health
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/system/routes.py:29:19
+   |
+27 | async def run_handoff_sweep(
+28 |     db: DbSession,
+29 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+30 | ) -> dict:
+31 |     outcomes = await HandoffTimeoutSweeper(db).sweep()
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/system/routes.py:37:19
+   |
+35 | @router.post("/enterprise-jobs/run")
+36 | async def run_enterprise_jobs_once(
+37 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+38 | ) -> dict:
+39 |     """Manual trigger: handoff timeout sweep + SLA scan + notify (same as background loop)."""
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/system/routes.py:48:19
+   |
+46 | async def force_expire_for_test(
+47 |     db: DbSession,
+48 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+49 | ) -> dict:
+50 |     """Test helper: backdate queued handoffs past timeout then sweep."""
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/teams/routes.py:26:19
+   |
+24 | async def list_teams(
+25 |     db: DbSession,
+26 |     _user: User = Depends(require_agent_or_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+27 | ) -> list[dict]:
+28 |     svc = TeamService(db)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/teams/routes.py:50:19
+   |
+48 |     body: TeamCreate,
+49 |     db: DbSession,
+50 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+51 | ) -> dict:
+52 |     t = await TeamService(db).create_team(
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/teams/routes.py:62:19
+   |
+60 |     team_id: str,
+61 |     db: DbSession,
+62 |     _user: User = Depends(require_agent_or_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+63 | ) -> list[dict]:
+64 |     members = await TeamService(db).list_members(team_id)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/teams/routes.py:73:19
+   |
+71 |     body: MemberIn,
+72 |     db: DbSession,
+73 |     _user: User = Depends(require_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+74 | ) -> dict:
+75 |     m = await TeamService(db).add_member(team_id, body.user_id)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/teams/routes.py:83:19
+   |
+81 |     team_id: str,
+82 |     db: DbSession,
+83 |     _user: User = Depends(require_agent_or_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+84 | ) -> dict:
+85 |     """E3: least open claimed load among team members."""
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/tickets/routes.py:19:19
+   |
+17 |     db: DbSession,
+18 |     status: str | None = None,
+19 |     _user: User = Depends(require_agent_or_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20 | ) -> list[TicketOut]:
+21 |     rows = await TicketRepository(db).list_all(status=status)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/tickets/routes.py:30:19
+   |
+28 |     payload: TicketUpdate,
+29 |     db: DbSession,
+30 |     _user: User = Depends(require_agent_or_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+31 | ) -> TicketOut:
+32 |     repo = TicketRepository(db)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/users/routes.py:19:51
+   |
+18 | @router.get("", response_model=list[UserOut])
+19 | async def list_users(db: DbSession, _user: User = Depends(require_admin)) -> list[UserOut]:
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^
+20 |     rows = await UserAdminService(db).list_users()
+21 |     return [UserOut.model_validate(u) for u in rows]
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/admin/users/routes.py:36:66
+   |
+35 | @router.get("/{user_id}/export")
+36 | async def export_user(user_id: str, db: DbSession, _user: User = Depends(require_admin)) -> dict:
+   |                                                                  ^^^^^^^^^^^^^^^^^^^^^^
+37 |     return await UserAdminService(db).export_user_data(user_id)
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/agent/tasks.py:84:57
+   |
+82 | @staff_router.post("/{task_id}/accept-handoff", response_model=TaskSummary)
+83 | async def accept(
+84 |     task_id: UUID, payload: AcceptRequest, user: User = Depends(require_agent_or_admin)
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+85 | ):
+86 |     try:
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/api/v1/channels/dingtalk/routes.py:22:12
+   |
+20 |     try:
+21 |         body: dict[str, Any] = await request.json()
+22 |     except Exception:
+   |            ^^^^^^^^^
+23 |         return JSONResponse({"code": HTTP_BAD, "msg": "invalid_json"}, status_code=HTTP_BAD)
+24 |     headers = {k: v for k, v in request.headers.items()}
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/api/v1/channels/feishu/routes.py:26:12
+   |
+24 |     try:
+25 |         body: dict[str, Any] = await request.json()
+26 |     except Exception:
+   |            ^^^^^^^^^
+27 |         return JSONResponse({"code": 400, "msg": "invalid_json"}, status_code=400)
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/api/v1/channels/wecom/routes.py:31:12
+   |
+29 |     try:
+30 |         body: dict[str, Any] = await request.json()
+31 |     except Exception:
+   |            ^^^^^^^^^
+32 |         return JSONResponse({"errcode": HTTP_BAD, "errmsg": "invalid_json"}, status_code=HTTP_BAD)
+33 |     q = dict(request.query_params)
+   |
+
+B008 Do not perform function call `File` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/embedding/routes.py:28:24
+   |
+26 |     db: DbSession,
+27 |     user: CurrentUser,
+28 |     file: UploadFile = File(...),
+   |                        ^^^^^^^^^
+29 |     title: str | None = Form(default=None),
+30 |     _admin: User = Depends(require_admin),
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/embedding/routes.py:30:20
+   |
+28 |     file: UploadFile = File(...),
+29 |     title: str | None = Form(default=None),
+30 |     _admin: User = Depends(require_admin),
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+31 | ) -> DocumentOut:
+32 |     max_bytes = get_settings().max_upload_bytes
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/embedding/routes.py:61:20
+   |
+59 |     db: DbSession,
+60 |     user: CurrentUser,
+61 |     _admin: User = Depends(require_admin),
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+62 | ) -> DocumentOut:
+63 |     settings = get_settings()
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/api/v1/health/routes.py:50:12
+   |
+48 |         DEPENDENCY_UP.labels(name="postgres").set(1)
+49 |         return HealthDependency(name="database", status="up", detail=None)
+50 |     except Exception:
+   |            ^^^^^^^^^
+51 |         DEPENDENCY_UP.labels(name="postgres").set(0)
+52 |         detail = "unavailable" if settings.is_production_like else "error"
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/api/v1/health/routes.py:68:12
+   |
+66 |         DEPENDENCY_UP.labels(name="redis").set(1)
+67 |         return HealthDependency(name="redis", status="up", detail=None)
+68 |     except Exception:
+   |            ^^^^^^^^^
+69 |         DEPENDENCY_UP.labels(name="redis").set(0)
+70 |         detail = "unavailable" if settings.is_production_like else "error"
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/api/v1/health/routes.py:83:12
+   |
+81 |         DEPENDENCY_UP.labels(name="vector").set(1 if status == "up" else 0)
+82 |         return HealthDependency(name="vector", status=status, detail=detail)
+83 |     except Exception:
+   |            ^^^^^^^^^
+84 |         DEPENDENCY_UP.labels(name="vector").set(0)
+85 |         detail = "unavailable" if settings.is_production_like else "error"
+   |
+
+B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+  --> app/api/v1/plugins_routes.py:17:19
+   |
+15 | @router.get("")
+16 | async def list_features(
+17 |     _user: User = Depends(require_agent_or_admin),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 | ) -> dict:
+19 |     ctx = get_app_context()
+   |
+
+PIE810 Call `endswith` once with a `tuple`
+  --> app/middleware/rate_limit.py:60:12
+   |
+58 |         path = request.url.path
+59 |         # strip api prefix variants
+60 |         if self._should_skip(path) or path.endswith("/health") or path.endswith("/metrics"):
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+61 |             return await call_next(request)
+   |
+help: Merge into a single `endswith` call
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/agent.py:17:15
+   |
+15 | class AgentPlugin:
+16 |     id = "agent"
+17 |     depends = ["core"]
+   |               ^^^^^^^^
+18 |
+19 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/analytics.py:15:15
+   |
+13 | class AnalyticsPlugin:
+14 |     id = "analytics"
+15 |     depends = ["core"]
+   |               ^^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/connectors.py:15:15
+   |
+13 | class ConnectorsPlugin:
+14 |     id = "connectors"
+15 |     depends = ["core"]
+   |               ^^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/core.py:15:26
+   |
+13 | class CorePlugin:
+14 |     id = "core"
+15 |     depends: list[str] = []
+   |                          ^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/cost.py:15:15
+   |
+13 | class CostPlugin:
+14 |     id = "cost"
+15 |     depends = ["core"]
+   |               ^^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/dingtalk.py:13:15
+   |
+11 | class DingTalkPlugin:
+12 |     id = "dingtalk"
+13 |     depends = ["core"]
+   |               ^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/feishu.py:13:15
+   |
+11 | class FeishuPlugin:
+12 |     id = "feishu"
+13 |     depends = ["core"]
+   |               ^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/handoff.py:15:15
+   |
+13 | class HandoffPlugin:
+14 |     id = "handoff"
+15 |     depends = ["core"]
+   |               ^^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/knowledge.py:15:15
+   |
+13 | class KnowledgePlugin:
+14 |     id = "knowledge"
+15 |     depends = ["rag"]
+   |               ^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/launch.py:15:15
+   |
+13 | class LaunchPlugin:
+14 |     id = "launch"
+15 |     depends = ["core"]
+   |               ^^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/mcp.py:13:15
+   |
+11 | class McpPlugin:
+12 |     id = "mcp"
+13 |     depends = ["tools"]
+   |               ^^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/notify.py:13:15
+   |
+11 | class NotifyPlugin:
+12 |     id = "notify"
+13 |     depends = ["core"]
+   |               ^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/ops.py:15:15
+   |
+13 | class OpsPlugin:
+14 |     id = "ops"
+15 |     depends = ["core"]
+   |               ^^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/qc.py:15:15
+   |
+13 | class QcPlugin:
+14 |     id = "qc"
+15 |     depends = ["analytics"]
+   |               ^^^^^^^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/rag.py:15:15
+   |
+13 | class RagPlugin:
+14 |     id = "rag"
+15 |     depends = ["core"]
+   |               ^^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/sla.py:13:15
+   |
+11 | class SlaPlugin:
+12 |     id = "sla"
+13 |     depends = ["ticket"]
+   |               ^^^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/sso.py:13:15
+   |
+11 | class SsoPlugin:
+12 |     id = "sso"
+13 |     depends = ["core"]
+   |               ^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/teams.py:13:15
+   |
+11 | class TeamsPlugin:
+12 |     id = "teams"
+13 |     depends = ["handoff"]
+   |               ^^^^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/ticket.py:15:15
+   |
+13 | class TicketPlugin:
+14 |     id = "ticket"
+15 |     depends = ["core"]
+   |               ^^^^^^^^
+16 |
+17 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/tools.py:13:15
+   |
+11 | class ToolsPlugin:
+12 |     id = "tools"
+13 |     depends = ["agent"]
+   |               ^^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/wecom.py:13:15
+   |
+11 | class WeComPlugin:
+12 |     id = "wecom"
+13 |     depends = ["core"]
+   |               ^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+RUF012 Mutable default value for class attribute
+  --> app/plugins/builtin/widget.py:13:15
+   |
+11 | class WidgetPlugin:
+12 |     id = "widget"
+13 |     depends = ["core"]
+   |               ^^^^^^^^
+14 |
+15 |     def register(self, ctx: AppContext) -> None:
+   |
+help: Consider initializing in `__init__` or annotating with `typing.ClassVar`
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/agent/cost/ledger.py:57:16
+   |
+55 |                 )
+56 |             )
+57 |         except Exception:
+   |                ^^^^^^^^^
+58 |             # never raise
+59 |             return
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/agent/cost/store.py:34:16
+   |
+32 |                 n += 1
+33 |             await self.db.flush()
+34 |         except Exception:
+   |                ^^^^^^^^^
+35 |             return 0
+36 |         return n
+   |
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+  --> app/services/agent/intent/classifier.py:80:17
+   |
+78 |               try:
+79 |                   llm = await self._llm_classify(text)  # type: ignore[misc]
+80 | /                 if llm is not None:
+81 | |                     if llm.confidence >= rule.confidence:
+   | |_________________________________________________________^
+82 |                           return llm
+83 |               except Exception:
+   |
+help: Combine `if` statements using `and`
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> app/services/agent/intent/classifier.py:83:13
+   |
+81 |                       if llm.confidence >= rule.confidence:
+82 |                           return llm
+83 | /             except Exception:
+84 | |                 # best-effort: fall through to rules
+85 | |                 pass
+   | |____________________^
+86 |
+87 |           # Very low-confidence FAQ → force clarify instead of weak RAG
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/agent/intent/classifier.py:83:20
+   |
+81 |                     if llm.confidence >= rule.confidence:
+82 |                         return llm
+83 |             except Exception:
+   |                    ^^^^^^^^^
+84 |                 # best-effort: fall through to rules
+85 |                 pass
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/services/agent/loop/engine.py:98:20
+    |
+ 96 |             try:
+ 97 |                 result = await self.tools[tool_name](arguments)
+ 98 |             except Exception as exc:  # recover
+    |                    ^^^^^^^^^
+ 99 |                 retries += 1
+100 |                 if retries > self.settings.max_retries_per_tool:
+    |
+
+PLC0414 Import alias does not rename original package
+ --> app/services/agent/memory/contracts.py:7:41
+  |
+5 | from pydantic import AwareDatetime, Field, StrictBool, model_validator
+6 |
+7 | from app.services.agent.identity import DEPLOYMENT_SCOPE as DEPLOYMENT_SCOPE
+  |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+8 | from app.services.agent.service.contracts import Record
+  |
+help: Remove import alias
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/services/agent/model_router/router.py:111:20
+    |
+109 |                     ).inc()
+110 |                 return result, meta
+111 |             except Exception as exc:
+    |                    ^^^^^^^^^
+112 |                 last_err = exc
+113 |                 LLM_ERROR_TOTAL.labels(
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/services/agent/service/executor.py:117:16
+    |
+115 |             status = "failed" if op.effect == "read" else "unknown"
+116 |             return Receipt(status=status, error_kind="transient", error="transport_failure")
+117 |         except Exception:
+    |                ^^^^^^^^^
+118 |             # Invalid output is also uncertain: the external side effect may have happened.
+119 |             status = "failed" if op.effect == "read" else "unknown"
+    |
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+  --> app/services/agent/service/lifecycle.py:23:5
+   |
+21 |       if task.wake_condition != event.condition:
+22 |           return False
+23 | /     if event.condition.startswith("retry:") and task.review_at:
+24 | |         if datetime.now(UTC) < task.review_at:
+   | |______________________________________________^
+25 |               return False
+26 |       task.status, task.wake_condition, task.review_at = "active", None, None
+   |
+help: Combine `if` statements using `and`
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/agent/service/runtime.py:66:16
+   |
+64 |                 timeout=POLICY_TIMEOUT_SECONDS,
+65 |             )
+66 |         except Exception:
+   |                ^^^^^^^^^
+67 |             return await self._policy_failed(task, "observe")
+68 |         if env.scope != scope:
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/agent/service/runtime.py:79:16
+   |
+77 |         try:
+78 |             verified = bool(view.evidence and self.policy.verify(view, env))
+79 |         except Exception:
+   |                ^^^^^^^^^
+80 |             return await self._policy_failed(task, "verify")
+81 |         if verified:
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/agent/service/runtime.py:94:16
+   |
+92 |             )
+93 |             selected = self._choose(task, candidates, env=env)
+94 |         except Exception:
+   |                ^^^^^^^^^
+95 |             return await self._policy_failed(task, "propose")
+96 |         if selected is None:
+   |
+
+SIM103 Return the condition `not DATE_YYYYMMDD_RE.fullmatch(candidate)` directly
+  --> app/services/agent/slots/state.py:85:9
+   |
+83 |           if CN_MOBILE_RE.fullmatch(candidate):
+84 |               return False
+85 | /         if DATE_YYYYMMDD_RE.fullmatch(candidate):
+86 | |             return False
+87 | |         return True
+   | |___________________^
+88 |
+89 |       def decide(
+   |
+help: Replace with `return not DATE_YYYYMMDD_RE.fullmatch(candidate)`
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/audit/siem.py:80:16
+   |
+78 |                 }
+79 |             return {"status": "sent", "http_status": resp.status_code, "count": len(events)}
+80 |         except Exception as exc:
+   |                ^^^^^^^^^
+81 |             return {"status": "error", "error": str(exc)[:300], "count": len(events)}
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/services/channels/feishu/service.py:189:16
+    |
+187 |                 return f"api_{data.get('code')}"
+188 |             return "sent"
+189 |         except Exception as exc:
+    |                ^^^^^^^^^
+190 |             return f"error:{str(exc)[:80]}"
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/services/channels/feishu/service.py:208:16
+    |
+206 |             data = resp.json()
+207 |             return data.get("tenant_access_token")
+208 |         except Exception:
+    |                ^^^^^^^^^
+209 |             return None
+    |
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+  --> app/services/channels/wecom/service.py:93:9
+   |
+92 |           token = self.settings.wecom_token
+93 | /         if token and self.settings.is_production_like:
+94 | |             # optional body token field
+95 | |             if body.get("Token") and body.get("Token") != token:
+   | |________________________________________________________________^
+96 |                   return WeComHandleResult(kind="ignored", reply_status="bad_token")
+   |
+help: Combine `if` statements using `and`
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/chat/side_effects/agent_run.py:41:16
+   |
+39 |             )
+40 |             se = {**se, "agent_run_saved": True, "run_id": turn.run_id}
+41 |         except Exception:
+   |                ^^^^^^^^^
+42 |             se = {**se, "agent_run_saved": False}
+43 |         return se
+   |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> app/services/chat/side_effects/cost.py:27:9
+   |
+25 |                   )
+26 |               await CostStore(turn.db).persist_ledger(ledger)
+27 | /         except Exception:
+28 | |             pass
+   | |________________^
+29 |           return se
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/chat/side_effects/cost.py:27:16
+   |
+25 |                 )
+26 |             await CostStore(turn.db).persist_ledger(ledger)
+27 |         except Exception:
+   |                ^^^^^^^^^
+28 |             pass
+29 |         return se
+   |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> app/services/chat/side_effects/gap.py:33:9
+   |
+31 |               if gap is not None:
+32 |                   se["gap_id"] = gap.id
+33 | /         except Exception:
+34 | |             pass
+   | |________________^
+35 |           return se
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/chat/side_effects/gap.py:33:16
+   |
+31 |             if gap is not None:
+32 |                 se["gap_id"] = gap.id
+33 |         except Exception:
+   |                ^^^^^^^^^
+34 |             pass
+35 |         return se
+   |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> app/services/chat/side_effects/ticket.py:55:9
+   |
+53 |                   },
+54 |               )
+55 | /         except Exception:
+56 | |             pass
+   | |________________^
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/chat/side_effects/ticket.py:55:16
+   |
+53 |                 },
+54 |             )
+55 |         except Exception:
+   |                ^^^^^^^^^
+56 |             pass
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/services/connectors/service.py:134:20
+    |
+132 |             try:
+133 |                 data = resp.json()
+134 |             except Exception:
+    |                    ^^^^^^^^^
+135 |                 data = {"text": resp.text[:2000]}
+136 |             CONNECTOR_TOTAL.labels(name=name, status="ok").inc()
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/services/connectors/service.py:147:16
+    |
+145 |                 "data": {"mock": True, "reason": "timeout", "params": params or {}},
+146 |             }
+147 |         except Exception as exc:
+    |                ^^^^^^^^^
+148 |             # Offline / network failure: deterministic mock so main ops paths stay usable
+149 |             CONNECTOR_TOTAL.labels(name=name, status="error_mock").inc()
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> app/services/knowledge/documents.py:75:13
+   |
+73 |               try:
+74 |                   self.storage.delete(doc.storage_key)
+75 | /             except Exception:
+76 | |                 pass
+   | |____________________^
+77 |           bm25 = get_default_bm25()
+78 |           remaining = [d for d in bm25._docs if str(d.get("doc_id")) != document_id]
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/knowledge/documents.py:75:20
+   |
+73 |             try:
+74 |                 self.storage.delete(doc.storage_key)
+75 |             except Exception:
+   |                    ^^^^^^^^^
+76 |                 pass
+77 |         bm25 = get_default_bm25()
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/knowledge/gap/service.py:60:16
+   |
+58 |             await self.db.refresh(gap)
+59 |             return gap
+60 |         except Exception:
+   |                ^^^^^^^^^
+61 |             return None
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/notify/service.py:46:16
+   |
+44 |         try:
+45 |             return await self.emit(event, payload)
+46 |         except Exception as exc:  # never block main path
+   |                ^^^^^^^^^
+47 |             NOTIFY_TOTAL.labels(event=event, status="error").inc()
+48 |             if self.db is not None:
+   |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+  --> app/services/notify/service.py:60:17
+   |
+58 |                       self.db.add(log)
+59 |                       await self.db.flush()
+60 | /                 except Exception:
+61 | |                     pass
+   | |________________________^
+62 |               return None
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/notify/service.py:60:24
+   |
+58 |                     self.db.add(log)
+59 |                     await self.db.flush()
+60 |                 except Exception:
+   |                        ^^^^^^^^^
+61 |                     pass
+62 |             return None
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/services/notify/service.py:101:20
+    |
+ 99 |                 else:
+100 |                     status = "sent_webhook"
+101 |             except Exception as exc:
+    |                    ^^^^^^^^^
+102 |                 status = "error"
+103 |                 err = str(exc)
+    |
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> app/services/rag/bm25/index.py:143:5
+    |
+142 |           reset_default_vector_store()
+143 | /     except Exception:
+144 | |         pass
+    | |____________^
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/services/rag/bm25/index.py:143:12
+    |
+142 |         reset_default_vector_store()
+143 |     except Exception:
+    |            ^^^^^^^^^
+144 |         pass
+    |
+
+FURB192 Prefer `min` over `sorted()` to compute the minimum value in a sequence
+  --> app/services/team/service.py:87:16
+   |
+85 |                 counts[uid] = int(n)
+86 |         # stable: lowest count, then user_id
+87 |         return sorted(counts.items(), key=lambda x: (x[1], x[0]))[0][0]
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: Replace with `min`
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/tools/search_knowledge/handler.py:29:12
+   |
+27 |             ],
+28 |         }
+29 |     except Exception:
+   |            ^^^^^^^^^
+30 |         return {"status": "ok", "items": []}
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/services/tools/search_order/handler.py:52:12
+   |
+50 |     except httpx.TimeoutException:
+51 |         return _mock(order_id, reason="timeout")
+52 |     except Exception as exc:
+   |            ^^^^^^^^^
+53 |         return _mock(order_id, reason=str(exc))
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/workers/service_tasks.py:79:16
+   |
+77 |         try:
+78 |             outcome = await _run_claim(store, queue, task_id)
+79 |         except Exception as exc:
+   |                ^^^^^^^^^
+80 |             outcome = "failed"
+81 |             logger.warning("Service dispatch storage failed (%s)", type(exc).__name__)
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+  --> app/workers/service_tasks.py:97:12
+   |
+95 |         await queue.reschedule(claim)
+96 |         return "conflicts"
+97 |     except Exception as exc:
+   |            ^^^^^^^^^
+98 |         logger.warning("Service dispatch failed (%s); lease permits recovery", type(exc).__name__)
+99 |         await _recover_failure(store, queue, claim)
+   |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/workers/service_tasks.py:126:16
+    |
+124 |         except TaskConflict:
+125 |             return await queue.reschedule(claim)
+126 |         except Exception as exc:
+    |                ^^^^^^^^^
+127 |             logger.warning("Dispatch requires operator repair (%s)", type(exc).__name__)
+128 |     await queue.record_failure(claim)
+    |
+
+BLE001 Do not catch blind exception: `Exception`
+   --> app/workers/service_tasks.py:136:16
+    |
+134 |         try:
+135 |             await run_once()
+136 |         except Exception as exc:
+    |                ^^^^^^^^^
+137 |             logger.warning("Service task scan failed (%s)", type(exc).__name__)
+138 |         await asyncio.sleep(settings.poll_seconds)
+    |
+
+RUF059 Unpacked variable `conv_id` is never used
+  --> tests/integration/test_chat_service_tasks.py:52:14
+   |
+50 | @pytest.mark.asyncio
+51 | async def test_duplicate_chat_messages_share_task(client):
+52 |     headers, conv_id, path, task_id = await create_chat_task(client)
+   |              ^^^^^^^
+53 |     repeated = await client.post(path, headers=headers, json={"content": f"查询订单 {ORDER_ID}"})
+54 |     info = repeated.json()["assistant_message"]["meta"]["side_effects"]["service_task"]
+   |
+help: Prefix it with an underscore or any other dummy variable pattern
+
+F841 Local variable `uid` is assigned to but never used
+   --> tests/integration/test_enterprise_apis.py:139:5
+    |
+137 |     # create ticket then backdate via ORM
+138 |     me = await client.get("/api/v1/admin/auth/me", headers=headers)
+139 |     uid = me.json()["id"]
+    |     ^^^
+140 |     t = await client.post(
+141 |         "/api/v1/tickets",
+    |
+help: Remove assignment to unused variable `uid`
+
+RUF059 Unpacked variable `admin_id` is never used
+  --> tests/integration/test_team_handoff_scope.py:36:14
+   |
+34 | @pytest.mark.asyncio
+35 | async def test_agent_sees_only_team_scoped_handoffs(client: AsyncClient):
+36 |     admin_h, admin_id = await _register_login(client, "scope_admin")
+   |              ^^^^^^^^
+37 |     # promote nothing — first user is admin
+   |
+help: Prefix it with an underscore or any other dummy variable pattern
+
+F841 Local variable `h_agent1` is assigned to but never used
+  --> tests/integration/test_ticket_handoff.py:70:5
+   |
+68 | async def test_handoff_claim_409_and_timeout(client: AsyncClient):
+69 |     h_user = await _headers(client, "handuser")
+70 |     h_agent1 = await _headers(
+   |     ^^^^^^^^
+71 |         client, "agentone"
+72 |     )  # second user is not admin unless first — first was handuser as admin
+   |
+help: Remove assignment to unused variable `h_agent1`
+
+C408 Unnecessary `dict()` call (rewrite as a literal)
+  --> tests/unit/test_feishu_channel.py:17:12
+   |
+16 |   def _settings(**kwargs) -> Settings:
+17 |       base = dict(
+   |  ____________^
+18 | |         ASKFLOW_ENV="test",
+19 | |         SECRET_KEY="test-secret-key-not-for-prod-xx",
+20 | |         FEISHU_VERIFICATION_TOKEN="vt-test",
+21 | |     )
+   | |_____^
+22 |       base.update(kwargs)
+23 |       return Settings(**base)
+   |
+help: Rewrite as a literal
+
+S110 `try`-`except`-`pass` detected, consider logging the exception
+   --> tests/unit/test_index_worker_and_stream.py:101:5
+    |
+ 99 |       try:
+100 |           storage.delete(key)
+101 | /     except Exception:
+102 | |         pass
+    | |____________^
+
+BLE001 Do not catch blind exception: `Exception`
+   --> tests/unit/test_index_worker_and_stream.py:101:12
+    |
+ 99 |     try:
+100 |         storage.delete(key)
+101 |     except Exception:
+    |            ^^^^^^^^^
+102 |         pass
+    |
+
+RUF059 Unpacked variable `pem` is never used
+  --> tests/unit/test_oidc_jwks.py:94:17
+   |
+93 | def test_jwks_rejects_bad_signature(rsa_material):
+94 |     _priv, jwk, pem = rsa_material
+   |                 ^^^
+95 |     other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+96 |     other_pem = other.private_bytes(
+   |
+help: Prefix it with an underscore or any other dummy variable pattern
+
+SIM222 Use `True` instead of `... or True`
+  --> tests/unit/test_wave_f_cache_summary_dispatch.py:48:12
+   |
+46 |     r2 = await pipe.run("退货政策是什么")
+47 |     assert r1.refused is False
+48 |     assert "retrieval_cache_miss" in r1.flags or True
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+49 |     assert "retrieval_cache_hit" in r2.flags
+   |
+help: Replace with `True`
+
+Found 131 errors.
+No fixes available (12 hidden fixes can be enabled with the `--unsafe-fixes` option).

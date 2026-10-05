@@ -52,4 +52,6 @@ class ContextAssembler:
             "evidence_count": len(sources),
             "evidence_chars": len(evidence_block),
         }
-        return ContextBundle(messages=messages, evidence_block=evidence_block, flags=flags, trace=trace)
+        return ContextBundle(
+            messages=messages, evidence_block=evidence_block, flags=flags, trace=trace
+        )

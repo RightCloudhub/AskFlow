@@ -1,3 +1,3 @@
 from app.services.channels.wecom.service import WeComHandleResult, WeComService
 
-__all__ = ["WeComService", "WeComHandleResult"]
+__all__ = ["WeComHandleResult", "WeComService"]

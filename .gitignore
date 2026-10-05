@@ -41,3 +41,6 @@ docs/engineering/code-metrics-report.json
 
 # Index revision snapshots (runtime)
 apps/api/data/revisions/
+
+# Other
+tmp/

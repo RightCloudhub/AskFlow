@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -129,9 +130,7 @@ class FeishuService:
         return await self._handle_message(parsed)
 
     async def _handle_message(self, inbound: FeishuInbound) -> FeishuHandleResult:
-        user = await ensure_channel_user(
-            self.db, channel=CHANNEL, external_id=inbound.open_id
-        )
+        user = await ensure_channel_user(self.db, channel=CHANNEL, external_id=inbound.open_id)
         chat_key = inbound.chat_id or inbound.open_id
         conv = await open_channel_conversation(
             self.db,

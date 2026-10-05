@@ -23,9 +23,7 @@ class AgentRunSideEffect:
                 refused=bool(turn.refused),
             )
             summary = {
-                "estimated_usd": cost.get("estimated_usd")
-                or cost.get("total_estimated_usd")
-                or 0,
+                "estimated_usd": cost.get("estimated_usd") or cost.get("total_estimated_usd") or 0,
                 "entry_count": len(cost.get("entries") or []),
             }
             await AgentRunStore(turn.db).save(

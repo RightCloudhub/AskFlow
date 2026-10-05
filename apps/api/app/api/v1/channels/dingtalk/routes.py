@@ -39,5 +39,7 @@ async def dingtalk_events(request: Request, db: DbSession) -> JSONResponse:
             out = {"msgtype": "text", "text": {"content": result.reply_text or ""}}
         return JSONResponse(out)
     if result.reply_status == "bad_token":
-        return JSONResponse({"code": HTTP_FORBIDDEN, "msg": "bad_token"}, status_code=HTTP_FORBIDDEN)
+        return JSONResponse(
+            {"code": HTTP_FORBIDDEN, "msg": "bad_token"}, status_code=HTTP_FORBIDDEN
+        )
     return JSONResponse({"code": 0, "msg": "ignored"})

@@ -2,8 +2,8 @@
 
 import pytest
 
-from app.services.rag.bm25.index import BM25Index, combine_relevance, get_default_bm25
-from app.services.rag.grounding.evaluator import GroundingEvaluator, REFUSAL_WEAK, REFUSAL_ZERO
+from app.services.rag.bm25.index import combine_relevance, get_default_bm25
+from app.services.rag.grounding.evaluator import REFUSAL_WEAK, REFUSAL_ZERO, GroundingEvaluator
 from app.services.rag.pipeline import RAGPipeline
 from app.services.rag.query_rewrite.rewriter import QueryRewriter
 
@@ -51,7 +51,9 @@ def test_combine_relevance_requires_coverage():
 @pytest.mark.asyncio
 async def test_rag_faq_hit():
     result = await RAGPipeline().run("退货政策是什么")
-    assert result.refused is False, f"unexpected refuse: {result.refusal_reason} conf={result.confidence}"
+    assert result.refused is False, (
+        f"unexpected refuse: {result.refusal_reason} conf={result.confidence}"
+    )
     assert result.answer
     assert "无法确信" not in result.answer and "无法编造" not in result.answer
     assert len(result.sources) >= 1

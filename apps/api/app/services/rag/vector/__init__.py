@@ -7,10 +7,10 @@ from app.services.rag.vector.store import (
 from app.services.rag.vector.types import VectorHit, VectorRecord
 
 __all__ = [
-    "VectorStore",
     "VectorHit",
     "VectorRecord",
+    "VectorStore",
+    "ensure_seeded",
     "get_default_vector_store",
     "reset_default_vector_store",
-    "ensure_seeded",
 ]

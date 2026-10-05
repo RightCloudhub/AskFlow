@@ -15,7 +15,9 @@ router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 @router.get("", response_model=list[IntentConfigOut])
-async def list_intents(db: DbSession, _user: User = Depends(require_admin)) -> list[IntentConfigOut]:
+async def list_intents(
+    db: DbSession, _user: User = Depends(require_admin)
+) -> list[IntentConfigOut]:
     result = await db.execute(select(IntentConfig).order_by(IntentConfig.intent))
     return [IntentConfigOut.model_validate(r) for r in result.scalars().all()]
 

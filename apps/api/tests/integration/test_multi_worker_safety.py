@@ -4,18 +4,18 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core import database as dbmod
+from app.core.security import hash_password
 from app.models.conversation import Conversation
 from app.models.enums import ConversationStatus, HandoffStatus, UserRole
 from app.models.handoff import HandoffSession
 from app.models.user import User
-from app.core.security import hash_password
 from app.services.handoff.service import HandoffService
 from app.services.handoff.timeout import HandoffTimeoutSweeper
-from fastapi import HTTPException
 
 
 @pytest.mark.asyncio

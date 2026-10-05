@@ -12,13 +12,11 @@ from app.utils.merge import merge_patch
 # Explicit label: 订单号 / 单号 / order id
 ORDER_ID_LABELED_RE = re.compile(
     r"(?:订单号?|单号|order\s*(?:id|no\.?|#)?)\s*[:：#]?\s*([A-Za-z]{0,4}\d{6,24})",
-    re.I,
+    re.IGNORECASE,
 )
 # Letter-prefixed codes e.g. ORD202401010001 (require ≥2 letters).
 # Use alnum lookarounds — ``\b`` fails between digits and CJK (both are \w).
-ORDER_ID_CODE_RE = re.compile(
-    r"(?<![A-Za-z0-9])([A-Za-z]{2,4}\d{8,24})(?![A-Za-z0-9])"
-)
+ORDER_ID_CODE_RE = re.compile(r"(?<![A-Za-z0-9])([A-Za-z]{2,4}\d{8,24})(?![A-Za-z0-9])")
 # CN mobile 11 digits starting with 1[3-9]
 CN_MOBILE_RE = re.compile(r"^1[3-9]\d{9}$")
 # Calendar-like 20yymmdd

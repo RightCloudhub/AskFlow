@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from app.plugins.manifest import (
@@ -83,10 +81,10 @@ def test_loader_full_registers_routes(monkeypatch: pytest.MonkeyPatch) -> None:
     joined = " ".join(paths)
     # chat is mounted with prefix on include_router; path may be /conversations etc.
     assert ctx.api_router.routes, "api_router should have routes"
-    assert any(
-        "conversation" in p or "health" in p or "tickets" in p or "rag" in p
-        for p in paths
-    ) or len(ctx.api_router.routes) > 5, joined
+    assert (
+        any("conversation" in p or "health" in p or "tickets" in p or "rag" in p for p in paths)
+        or len(ctx.api_router.routes) > 5
+    ), joined
 
 
 def test_loader_core_only_no_tickets(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -54,7 +54,7 @@ class DraftService:
 
         # publish as document + index
         filename = f"{draft.id}.md"
-        raw = f"# {draft.title}\n\n{draft.content}".encode("utf-8")
+        raw = f"# {draft.title}\n\n{draft.content}".encode()
         storage_key = f"drafts/{draft.id}/{filename}"
         self.storage.put(storage_key, raw)
 

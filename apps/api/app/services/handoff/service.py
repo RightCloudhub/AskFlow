@@ -150,9 +150,7 @@ class HandoffService:
 
     async def _assert_in_scope(self, session: HandoffSession, agent_id: str) -> None:
         result = await self.db.execute(
-            select(HandoffSession).where(
-                HandoffSession.status == HandoffStatus.QUEUED.value
-            )
+            select(HandoffSession).where(HandoffSession.status == HandoffStatus.QUEUED.value)
         )
         queued = list(result.scalars().all())
         visible = await filter_queue_by_team(self.db, queued, agent_id=agent_id)

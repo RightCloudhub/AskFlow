@@ -10,13 +10,11 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import Settings
 from app.core.database import Base
-from app.core.security import create_access_token, decode_access_token, hash_password
+from app.core.security import create_access_token, decode_access_token
 from app.models.enums import UserRole
-from app.models.user import User
 from app.schemas.auth import RegisterRequest
 from app.services.auth.service import AuthService
 from app.services.knowledge.storage.local import LocalObjectStorage, safe_filename
-from app.services.widget.service import WidgetService
 
 
 def test_safe_filename_blocks_traversal():

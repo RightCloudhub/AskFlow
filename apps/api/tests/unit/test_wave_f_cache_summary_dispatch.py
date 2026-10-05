@@ -15,7 +15,7 @@ from app.models.handoff import HandoffSession
 from app.models.team import Team, TeamMember
 from app.services.agent.history_summary import SUMMARY_PREFIX, compress_history
 from app.services.rag.pipeline import RAGPipeline
-from app.services.rag.retrieval_cache import get_retrieval_cache, reset_retrieval_cache
+from app.services.rag.retrieval_cache import reset_retrieval_cache
 from app.services.team.service import TeamService
 
 
@@ -28,7 +28,7 @@ def test_compress_history_folds_old_turns():
     hist = [{"role": "user", "content": f"q{i}"} for i in range(6)]
     out, did = compress_history(hist, settings=s)
     assert did is True
-    assert out[0]["role"] == "system"
+    assert out[0]["role"] == "user"
     assert out[0]["content"].startswith(SUMMARY_PREFIX)
     assert len(out) == 3  # summary + 2 recent
     assert out[-1]["content"] == "q5"

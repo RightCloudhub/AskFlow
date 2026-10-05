@@ -61,7 +61,25 @@ class Plugin(Protocol):
 - `tool_registry`
 - `admin_nav`
 
-查询已加载：`GET /api/v1/admin/features`（agent/admin）。
+查询已加载：`GET /api/v1/admin/features`（agent/admin）。  
+Admin 管理页：`/admin/plugins`（core 插件，只读展示 profile / 插件目录 / 扩展点）。
+
+### 发现接口与管理页（2026-10-03）
+
+发现数据由 `app/plugins/discovery.py` 统一生成，页面通过 `features-service.ts`、`useFeaturesDiscovery` 与 query key 获取。
+
+| 响应字段 | 含义 |
+|---|---|
+| `profile` / `profiles` | 当前档位 / manifest 中可用档位 |
+| `features` / `loaded` | 已启用集合 / 实际注册的插件顺序 |
+| `feature_deltas` | 当前 `ASKFLOW_FEATURES` 配置文本 |
+| `plugins` | 全部插件的 `id`、`depends`、`enabled`、`loaded` |
+| `admin_nav` | 后端注册的导航，包含插件、路径、标签与排序 |
+| `route_handlers` / `side_effects` | 已装配的 Pipeline 路由与副作用名称 |
+
+管理页展示统计、插件依赖和扩展点，不提供启停、安装或热加载接口。调整 `ASKFLOW_PROFILE` / `ASKFLOW_FEATURES` 后重启 API。`VITE_ASKFLOW_FEATURES` 仅覆盖前端 feature 列表，不改变后端注册结果；页面展示的发现数据仍来自后端。
+
+服务任务另有 `SERVICE_TASKS_ENABLED` 和 `SERVICE_TASKS_GOALS`，前者结合 Agent 插件决定受理与 worker 启动，后者控制新聊天目标接管；它们不等同于插件开关。默认值与已有任务处理见 [API README](../../apps/api/README.md#service-tasks-and-order-connector)。
 
 ## 5. 数据层策略
 

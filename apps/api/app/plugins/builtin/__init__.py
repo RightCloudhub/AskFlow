@@ -9,21 +9,21 @@ from app.plugins.builtin.analytics import AnalyticsPlugin
 from app.plugins.builtin.connectors import ConnectorsPlugin
 from app.plugins.builtin.core import CorePlugin
 from app.plugins.builtin.cost import CostPlugin
+from app.plugins.builtin.dingtalk import DingTalkPlugin
+from app.plugins.builtin.feishu import FeishuPlugin
 from app.plugins.builtin.handoff import HandoffPlugin
 from app.plugins.builtin.knowledge import KnowledgePlugin
 from app.plugins.builtin.launch import LaunchPlugin
 from app.plugins.builtin.mcp import McpPlugin
 from app.plugins.builtin.notify import NotifyPlugin
 from app.plugins.builtin.ops import OpsPlugin
+from app.plugins.builtin.qc import QcPlugin
 from app.plugins.builtin.rag import RagPlugin
 from app.plugins.builtin.sla import SlaPlugin
 from app.plugins.builtin.sso import SsoPlugin
 from app.plugins.builtin.teams import TeamsPlugin
 from app.plugins.builtin.ticket import TicketPlugin
 from app.plugins.builtin.tools import ToolsPlugin
-from app.plugins.builtin.dingtalk import DingTalkPlugin
-from app.plugins.builtin.feishu import FeishuPlugin
-from app.plugins.builtin.qc import QcPlugin
 from app.plugins.builtin.wecom import WeComPlugin
 from app.plugins.builtin.widget import WidgetPlugin
 

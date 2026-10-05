@@ -6,8 +6,9 @@ can merge onto real conversation metadata — never pre-apply deletes on {}.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from app.services.agent.intent.classifier import IntentResult
 from app.services.agent.slots.state import SlotDecision, SlotTracker
@@ -45,9 +46,7 @@ async def evaluate_slot_gate(
     has_pending = isinstance(meta.get("pending_slot"), dict)
 
     if has_pending and not order_id:
-        return await _pending_without_order(
-            tracker, text, meta, history=history, classify=classify
-        )
+        return await _pending_without_order(tracker, text, meta, history=history, classify=classify)
 
     if order_id:
         decision = tracker.decide(text, meta)

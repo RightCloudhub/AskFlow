@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.core.deps import DbSession
-from app.schemas.auth import TokenResponse, UserOut
+from app.schemas.auth import UserOut
 from app.services.auth.oidc import OIDCService
 
 router = APIRouter()

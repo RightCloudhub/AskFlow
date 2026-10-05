@@ -22,11 +22,11 @@ class AuthService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def register(self, payload: RegisterRequest, *, role: str = UserRole.USER.value) -> UserOut:
+    async def register(
+        self, payload: RegisterRequest, *, role: str = UserRole.USER.value
+    ) -> UserOut:
         existing = await self.db.execute(
-            select(User).where(
-                or_(User.username == payload.username, User.email == payload.email)
-            )
+            select(User).where(or_(User.username == payload.username, User.email == payload.email))
         )
         if existing.scalar_one_or_none() is not None:
             raise AuthError("user_exists", "Username or email already registered")

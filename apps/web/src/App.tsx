@@ -75,6 +75,9 @@ const AgentRunsPage = lazy(() =>
 const QcPage = lazy(() =>
   import("./pages/admin/QcPage").then((m) => ({ default: m.QcPage })),
 );
+const PluginsPage = lazy(() =>
+  import("./pages/admin/PluginsPage").then((m) => ({ default: m.PluginsPage })),
+);
 
 const PAGE_MAP: Record<string, React.ReactNode> = {
   dashboard: <DashboardPage />,
@@ -94,6 +97,7 @@ const PAGE_MAP: Record<string, React.ReactNode> = {
   costs: <CostsPage />,
   "launch-cards": <LaunchCardsPage />,
   "agent-runs": <AgentRunsPage />,
+  plugins: <PluginsPage />,
 };
 
 function RequireAuth({ children }: { children: React.ReactNode }) {

@@ -50,9 +50,7 @@ class HandoffStaffOps:
         *,
         agent_role: str | None = None,
     ) -> list[Message]:
-        session = await self.require_claim_access(
-            handoff_id, agent_id, agent_role=agent_role
-        )
+        session = await self.require_claim_access(handoff_id, agent_id, agent_role=agent_role)
         conv = await self.db.get(Conversation, session.conversation_id)
         if conv is None:
             raise HTTPException(status_code=HTTP_NOT_FOUND, detail="Conversation not found")
@@ -73,12 +71,8 @@ class HandoffStaffOps:
     ) -> Message:
         text = (content or "").strip()
         if not text:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="empty_content"
-            )
-        session = await self.require_claim_access(
-            handoff_id, agent_id, agent_role=agent_role
-        )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="empty_content")
+        session = await self.require_claim_access(handoff_id, agent_id, agent_role=agent_role)
         return await self.chat.add_message(
             session.conversation_id,
             role=MessageRole.STAFF.value,

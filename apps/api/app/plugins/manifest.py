@@ -25,9 +25,7 @@ def _find_manifest() -> Path:
     for path in MANIFEST_CANDIDATES:
         if path.is_file():
             return path
-    raise ManifestError(
-        "features.yaml not found; expected under packages/contracts/features.yaml"
-    )
+    raise ManifestError("features.yaml not found; expected under packages/contracts/features.yaml")
 
 
 @lru_cache

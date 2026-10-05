@@ -8,14 +8,14 @@ import hmac
 
 import pytest
 
+from app.plugins.manifest import resolve_features
+from app.services.agent.reasoning import reasoning_allowed_for_intent, reasoning_extra_steps
 from app.services.bots.profiles import get_bot, list_bots
 from app.services.channels.dingtalk.service import DingTalkService
 from app.services.channels.wecom.service import WeComService
 from app.services.chat.attachments import normalize_attachments
 from app.services.i18n.messages import t
 from app.services.sandbox.guard import require_sandbox, sandbox_allowed
-from app.services.agent.reasoning import reasoning_allowed_for_intent, reasoning_extra_steps
-from app.plugins.manifest import resolve_features
 
 
 def test_wecom_parse_text_and_image():
@@ -48,8 +48,9 @@ def test_wecom_url_verify_token():
 
 
 def test_dingtalk_sign_and_parse():
-    from app.core.config import get_settings
     import os
+
+    from app.core.config import get_settings
 
     os.environ["DINGTALK_APP_SECRET"] = "sec"
     get_settings.cache_clear()

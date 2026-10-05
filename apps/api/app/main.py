@@ -64,6 +64,13 @@ def _start_background_tasks(settings) -> list[asyncio.Task]:
     if settings.env == "test":
         return []
     tasks: list[asyncio.Task] = []
+    from app.services.agent.service.settings import ServiceSettings
+
+    ctx = get_app_context()
+    if ServiceSettings().enabled and ctx is not None and ctx.enabled("agent"):
+        from app.workers.service_tasks import periodic_loop as service_task_loop
+
+        tasks.append(asyncio.create_task(service_task_loop(), name="service_tasks"))
     if settings.sweeper_enabled:
         from app.workers.enterprise_jobs import periodic_loop
 

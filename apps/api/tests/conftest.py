@@ -16,11 +16,11 @@ os.environ["SECRET_KEY"] = "test-secret-key-not-for-prod"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ.setdefault("ASKFLOW_PROFILE", "full")
 
-from app.core.config import get_settings  # noqa: E402
-from app.core.database import Base, get_db  # noqa: E402
-from app.core import database as dbmod  # noqa: E402
-from app.main import create_app  # noqa: E402
-from app.plugins.runtime import set_app_context  # noqa: E402
+from app.core import database as dbmod
+from app.core.config import get_settings
+from app.core.database import Base, get_db
+from app.main import create_app
+from app.plugins.runtime import set_app_context
 
 
 @pytest_asyncio.fixture

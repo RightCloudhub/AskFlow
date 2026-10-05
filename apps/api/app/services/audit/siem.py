@@ -57,7 +57,11 @@ class SiemExportService:
     ) -> dict[str, Any]:
         target = url or self.settings.siem_webhook_url
         if not target:
-            return {"status": "skipped", "reason": "siem_webhook_not_configured", "count": len(events)}
+            return {
+                "status": "skipped",
+                "reason": "siem_webhook_not_configured",
+                "count": len(events),
+            }
         body = json.dumps({"events": events}, ensure_ascii=False).encode("utf-8")
         try:
             async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_SEC) as client:

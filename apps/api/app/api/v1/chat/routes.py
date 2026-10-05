@@ -75,9 +75,7 @@ async def update_conversation(
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=list[MessageOut])
-async def list_messages(
-    conversation_id: str, user: CurrentUser, db: DbSession
-) -> list[MessageOut]:
+async def list_messages(conversation_id: str, user: CurrentUser, db: DbSession) -> list[MessageOut]:
     rows = await ChatService(db).list_messages(conversation_id, user.id)
     return [MessageOut.model_validate(r) for r in rows]
 

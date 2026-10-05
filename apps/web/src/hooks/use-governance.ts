@@ -6,12 +6,14 @@ import { costService } from "../services/cost-service";
 import { launchService } from "../services/launch-service";
 import { agentRunService } from "../services/agent-run-service";
 import { qcService } from "../services/qc-service";
+import { featuresService } from "../services/features-service";
 import type { User } from "../api/types";
 import {
   AgentRunKeys,
   AuditKeys,
   ConnectorKeys,
   CostKeys,
+  FeaturesKeys,
   LaunchKeys,
   QcKeys,
   UserKeys,
@@ -105,5 +107,12 @@ export function useQcLowQuality() {
   return useQuery({
     queryKey: QcKeys.lowQuality(),
     queryFn: async () => (await qcService.lowQuality()).runs || [],
+  });
+}
+
+export function useFeaturesDiscovery() {
+  return useQuery({
+    queryKey: FeaturesKeys.discovery(),
+    queryFn: () => featuresService.get(),
   });
 }

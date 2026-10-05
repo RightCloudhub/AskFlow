@@ -26,7 +26,7 @@ async def test_upload_index_query_with_sources(client: AsyncClient):
     files = {
         "file": (
             "vip_shipping.md",
-            "# VIP 包邮\n\n实付满 199 元享受会员包邮，偏远地区除外。".encode("utf-8"),
+            "# VIP 包邮\n\n实付满 199 元享受会员包邮，偏远地区除外。".encode(),
             "text/markdown",
         )
     }

@@ -1,6 +1,6 @@
 """Harness hard guards (PRD §4.3.3)."""
 
-from app.services.agent.harness.policy import Harness, MSG_EMPTY, MSG_INJECTION
+from app.services.agent.harness.policy import MSG_EMPTY, MSG_INJECTION, Harness
 
 
 def test_empty_blocked():
@@ -37,7 +37,10 @@ def test_normal_allowed():
 def test_staff_mirrored_in_history():
     r = Harness().prepare(
         "继续",
-        history=[{"role": "staff", "content": "您好，我是人工客服"}, {"role": "user", "content": "谢谢"}],
+        history=[
+            {"role": "staff", "content": "您好，我是人工客服"},
+            {"role": "user", "content": "谢谢"},
+        ],
     )
     assert r.allowed is True
     assert any(m["role"] == "assistant" for m in r.history)

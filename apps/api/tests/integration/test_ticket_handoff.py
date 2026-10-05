@@ -26,7 +26,12 @@ async def _headers(client: AsyncClient, name: str) -> dict[str, str]:
 @pytest.mark.asyncio
 async def test_ticket_open_dedupe_via_api(client: AsyncClient):
     headers = await _headers(client, "ticketuser")
-    payload = {"title": "无法登录系统", "description": "desc", "type": "fault_report", "priority": "high"}
+    payload = {
+        "title": "无法登录系统",
+        "description": "desc",
+        "type": "fault_report",
+        "priority": "high",
+    }
     r1 = await client.post("/api/v1/tickets", headers=headers, json=payload)
     r2 = await client.post("/api/v1/tickets", headers=headers, json=payload)
     assert r1.status_code == 201
@@ -62,7 +67,9 @@ async def test_ticket_concurrent_create_or_get(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_handoff_claim_409_and_timeout(client: AsyncClient):
     h_user = await _headers(client, "handuser")
-    h_agent1 = await _headers(client, "agentone")  # second user is not admin unless first — first was handuser as admin
+    h_agent1 = await _headers(
+        client, "agentone"
+    )  # second user is not admin unless first — first was handuser as admin
     # create agent-like second claimer: promote via another register after admin exists → user role
     # use admin (handuser) for claim APIs; second claimer needs agent/admin — register agenttwo then reuse admin for first claim
 

@@ -46,7 +46,9 @@ class Ticket(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     content: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict, nullable=False)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # SLA fields (PRD §12.2 / Wave A)
-    first_responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    first_responded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     sla_state: Mapped[str] = mapped_column(String(32), default="ok", index=True, nullable=False)
     sla_warning_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sla_breached_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -39,9 +39,7 @@ class RouteResolver:
         if self.db is None:
             self._ops_cache = {}
             return self._ops_cache
-        result = await self.db.execute(
-            select(IntentConfig).where(IntentConfig.enabled.is_(True))
-        )
+        result = await self.db.execute(select(IntentConfig).where(IntentConfig.enabled.is_(True)))
         rows = result.scalars().all()
         self._ops_cache = {row.intent: row.route for row in rows}
         return self._ops_cache

@@ -50,19 +50,25 @@ async def authenticate(websocket: WebSocket, db: Any) -> User | None:
         await websocket.close(code=WS_CLOSE_BAD_JSON)
         return None
     if frame.get("type") != "auth" or not frame.get("token"):
-        await websocket.send_json({"type": "error", "code": "auth_required", "message": "Send auth first"})
+        await websocket.send_json(
+            {"type": "error", "code": "auth_required", "message": "Send auth first"}
+        )
         await websocket.close(code=WS_CLOSE_AUTH)
         return None
     try:
         payload = decode_access_token(str(frame["token"]))
         user_id = payload.get("sub")
     except ValueError:
-        await websocket.send_json({"type": "error", "code": "invalid_token", "message": "Invalid token"})
+        await websocket.send_json(
+            {"type": "error", "code": "invalid_token", "message": "Invalid token"}
+        )
         await websocket.close(code=WS_CLOSE_AUTH)
         return None
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
-        await websocket.send_json({"type": "error", "code": "invalid_user", "message": "User not found"})
+        await websocket.send_json(
+            {"type": "error", "code": "invalid_user", "message": "User not found"}
+        )
         await websocket.close(code=WS_CLOSE_AUTH)
         return None
     return user
@@ -74,7 +80,9 @@ async def session_loop(websocket: WebSocket, db: Any, user: User) -> None:
         try:
             msg = json.loads(raw)
         except json.JSONDecodeError:
-            await websocket.send_json({"type": "error", "code": "bad_json", "message": "Invalid JSON"})
+            await websocket.send_json(
+                {"type": "error", "code": "bad_json", "message": "Invalid JSON"}
+            )
             continue
         mtype = msg.get("type")
         if mtype == "ping":
@@ -137,7 +145,11 @@ async def _validate_message(websocket: WebSocket, msg: dict) -> tuple[str, str] 
     content = (msg.get("content") or "").strip()
     if not conversation_id or not content:
         await websocket.send_json(
-            {"type": "error", "code": "bad_message", "message": "conversation_id and content required"}
+            {
+                "type": "error",
+                "code": "bad_message",
+                "message": "conversation_id and content required",
+            }
         )
         return None
     from app.core.config import get_settings as _gs

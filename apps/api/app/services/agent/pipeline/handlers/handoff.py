@@ -19,9 +19,7 @@ async def handle_handoff(ctx: TurnContext) -> PipelineResult:
             "intent": intent,
         },
     }
-    final = ctx.harness.finalize(
-        "正在为您转接人工客服，请稍候。排队中您仍可补充信息。"
-    )
+    final = ctx.harness.finalize("正在为您转接人工客服，请稍候。排队中您仍可补充信息。")
     return PipelineResult(
         run_id=ctx.run_id,
         trace_id=ctx.trace_id,

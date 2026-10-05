@@ -22,6 +22,12 @@ def test_features_public_view_full_profile(monkeypatch: pytest.MonkeyPatch) -> N
     assert len(view["loaded"]) >= 5
     assert "rag" in view["route_handlers"]
     assert any(n["to"] == "/admin/documents" for n in view["admin_nav"])
+    assert any(n["to"] == "/admin/plugins" for n in view["admin_nav"])
+    assert "full" in view["profiles"]
+    plugins = {p["id"]: p for p in view["plugins"]}
+    assert plugins["core"]["enabled"] is True
+    assert plugins["core"]["loaded"] is True
+    assert plugins["rag"]["depends"] == ["core"]
     set_app_context(None)
 
 

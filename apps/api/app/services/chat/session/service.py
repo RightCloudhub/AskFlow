@@ -4,20 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation, Message
-from app.models.enums import MessageRole
-from app.plugins.types import ChatTurnContext
 from app.schemas.chat import ConversationCreate, ConversationUpdate
-from app.services.agent.pipeline.runner import MessagePipeline, PipelineResult
-from app.services.chat.side_effects.apply import apply_side_effects
-from app.utils.merge import merge_patch
-
-TITLE_DEFAULTS = frozenset({"新会话", "New chat"})
-TITLE_MAX = 40
+from app.services.agent.pipeline.context import PipelineResult
 
 
 class ChatService:
@@ -39,12 +32,18 @@ class ChatService:
         )
         return list(result.scalars().all())
 
-    async def get_conversation(self, conversation_id: str, user_id: str | None = None) -> Conversation:
+    async def get_conversation(
+        self, conversation_id: str, user_id: str | None = None
+    ) -> Conversation:
         conv = await self.db.get(Conversation, conversation_id)
         if conv is None:
-            raise HTTPException(status_code=404, detail="Conversation not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
+            )
         if user_id is not None and conv.user_id != user_id:
-            raise HTTPException(status_code=403, detail="Not your conversation")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Not your conversation"
+            )
         return conv
 
     async def update_conversation(
@@ -57,7 +56,9 @@ class ChatService:
             # Block user self-escalation to transferred / arbitrary statuses
             allowed = {"active", "closed"}
             if payload.status not in allowed:
-                raise HTTPException(status_code=400, detail="invalid_status")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_status"
+                )
             conv.status = payload.status
         await self.db.flush()
         await self.db.refresh(conv)
@@ -101,99 +102,16 @@ class ChatService:
         bot_id: str | None = None,
         locale: str | None = None,
     ) -> tuple[Message, Message, PipelineResult]:
-        from app.services.bots.profiles import get_bot
-        from app.services.chat.attachments import attachment_prompt_suffix, normalize_attachments
+        from app.services.chat.session.turn import ChatInput, ChatTurn
 
-        conv = await self.get_conversation(conversation_id, user_id)
-        atts = normalize_attachments(attachments)
-        user_meta: dict = {}
-        if atts:
-            user_meta["attachments"] = atts
-        if bot_id:
-            user_meta["bot_id"] = bot_id
-        if locale:
-            user_meta["locale"] = locale
-        text = content + attachment_prompt_suffix(atts)
-        user_msg = await self.add_message(
-            conversation_id,
-            role=MessageRole.USER.value,
-            content=text,
-            meta=user_meta or None,
-        )
-
-        history_rows = await self.list_messages(conversation_id, user_id)
-        history = [
-            {"role": m.role, "content": m.content}
-            for m in history_rows
-            if m.id != user_msg.id
-        ]
-
-        meta = dict(conv.metadata_json or {})
-        bot = get_bot(bot_id or meta.get("bot_id"))
-        meta.setdefault("bot_id", bot.id)
-        if locale:
-            meta["locale"] = locale
-        elif bot.locale:
-            meta.setdefault("locale", bot.locale)
-        meta["system_prompt_key"] = bot.system_prompt_key
-        if bot.knowledge_tags:
-            meta["knowledge_tags"] = bot.knowledge_tags
-
-        pipeline = MessagePipeline(self.db)
-        result = await pipeline.handle(
-            text,
-            history=history,
-            metadata=meta,
-            conversation_status=conv.status,
-            cancel_key=conversation_id,
-        )
-
-        if result.metadata_patch:
-            conv.metadata_json = merge_patch(conv.metadata_json or {}, result.metadata_patch)
-
-        se = await apply_side_effects(
-            dict(result.side_effects or {}),
-            ChatTurnContext(
-                db=self.db,
+        return await ChatTurn(
+            self,
+            ChatInput(
                 conversation_id=conversation_id,
                 user_id=user_id,
                 content=content,
-                intent=result.intent,
-                route=result.route,
-                refused=result.refused,
-                verification=result.verification if isinstance(result.verification, dict) else None,
-                run_id=result.run_id,
-                cost=result.cost if isinstance(result.cost, dict) else None,
-                flags=list(result.flags or []),
+                attachments=attachments,
+                bot_id=bot_id,
+                locale=locale,
             ),
-        )
-        result.side_effects = se
-
-        assistant_meta = {
-            "run_id": result.run_id,
-            "trace_id": result.trace_id,
-            "route": result.route,
-            "intent": result.intent,
-            "confidence": result.confidence,
-            "answer_confidence": result.answer_confidence,
-            "sources": result.sources,
-            "flags": result.flags,
-            "verification": result.verification,
-            "rewrite": result.rewrite,
-            "refused": result.refused,
-            "side_effects": se,
-            "cost": result.cost,
-            "models": result.cost.get("entries") if isinstance(result.cost, dict) else [],
-        }
-        assistant_msg = await self.add_message(
-            conversation_id,
-            role=MessageRole.ASSISTANT.value,
-            content=result.answer,
-            meta=assistant_meta,
-        )
-
-        if conv.title in TITLE_DEFAULTS and content:
-            conv.title = content[:TITLE_MAX]
-
-        await self.db.flush()
-        return user_msg, assistant_msg, result
+        ).run()

@@ -19,9 +19,7 @@ async def _headers(client: AsyncClient, name: str) -> dict[str, str]:
 
 
 async def _enqueue_handoff(client: AsyncClient, headers: dict[str, str]) -> str:
-    conv = await client.post(
-        "/api/v1/chat/conversations", headers=headers, json={"title": "h"}
-    )
+    conv = await client.post("/api/v1/chat/conversations", headers=headers, json={"title": "h"})
     conv_id = conv.json()["id"]
     msg = await client.post(
         f"/api/v1/chat/conversations/{conv_id}/messages",

@@ -55,7 +55,9 @@ async def run_once() -> dict[str, Any]:
 
 async def periodic_loop(settings: Settings | None = None) -> None:
     settings = settings or get_settings()
-    interval = max(MIN_INTERVAL_SEC, int(getattr(settings, "sweeper_interval_seconds", DEFAULT_INTERVAL_SEC)))
+    interval = max(
+        MIN_INTERVAL_SEC, int(getattr(settings, "sweeper_interval_seconds", DEFAULT_INTERVAL_SEC))
+    )
     logger.info("enterprise jobs loop started interval_sec=%s", interval)
     while True:
         try:
