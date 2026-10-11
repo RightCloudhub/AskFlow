@@ -6,11 +6,12 @@ AskFlow 将 Honest RAG、受约束的 Agent、工单与人工协作放在同一�
 
 [![CI](https://github.com/RightCloudhub/AskFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/RightCloudhub/AskFlow/actions/workflows/ci.yml)
 
-[用户指南 / User guide](./docs/user-guide/README.md) · [快速开始](#快速开始) · [核心能力](#核心能力) · [架构](#架构) · [文档中心](./docs/README.md) · [项目状态](./docs/STATUS.md) · [反馈问题](https://github.com/RightCloudhub/AskFlow/issues)
+[用户指南 / User guide](./docs/user-guide/README.md) · [快速开始](#快速开始) · [核心能力](#核心能力) · [界面预览](#界面预览) · [架构](#架构) · [文档中心](./docs/README.md) · [项目状态](./docs/STATUS.md) · [反馈问题](https://github.com/RightCloudhub/AskFlow/issues)
 
 ## 目录
 
 - [核心能力](#核心能力)
+- [界面预览](#界面预览)
 - [快速开始](#快速开始)
 - [架构](#架构)
 - [配置与功能组合](#配置与功能组合)
@@ -35,6 +36,41 @@ AskFlow 将 Honest RAG、受约束的 Agent、工单与人工协作放在同一�
 | **可插拔交付** | 使用 profile 与 feature 增量组合能力，在管理页查看插件依赖和加载状态 |
 
 当前为 **`PILOT-READY + MULTI-CHANNEL`（代码层）**。完整客服 Agent 业务范围仍在分阶段接入；真实 IdP、业务连接器、负载及故障切换需在部署环境验收。能力证据与限制见 [STATUS](./docs/STATUS.md)。
+
+## 界面预览
+
+> 截图来自本地开发环境（`ASKFLOW_PROFILE=full`，SQLite + 示例知识库），基于 Ant Design v6 的浅色企业主题。
+
+**用户对话台**：基于知识库作答，回答附路由、置信度与引用；可随时转人工。
+
+![用户对话台](./docs/images/screenshots/chat.webp)
+
+<table>
+  <tr>
+    <td width="50%"><img src="./docs/images/screenshots/chat-empty.webp" alt="新会话与常见问题"><br><sub>新会话：常见问题一键提问</sub></td>
+    <td width="50%"><img src="./docs/images/screenshots/login.webp" alt="登录"><br><sub>登录 / 注册</sub></td>
+  </tr>
+</table>
+
+**管理控制台**：可收起侧栏、面包屑导航，按功能组合动态展示菜单。
+
+![运营看板](./docs/images/screenshots/admin-dashboard.webp)
+
+<table>
+  <tr>
+    <td width="50%"><img src="./docs/images/screenshots/admin-documents.webp" alt="知识文档"><br><sub>知识文档：上传索引、版本对比与回滚</sub></td>
+    <td width="50%"><img src="./docs/images/screenshots/admin-handoffs.webp" alt="人工接管"><br><sub>人工接管：认领会话或交还智能助手</sub></td>
+  </tr>
+</table>
+
+**访客 Widget 与移动端**
+
+<table>
+  <tr>
+    <td width="36%" align="center"><img src="./docs/images/screenshots/widget.webp" alt="访客 Widget" width="300"><br><sub>嵌入式访客 Widget</sub></td>
+    <td width="64%" align="center"><img src="./docs/images/screenshots/mobile.webp" alt="移动端" width="480"><br><sub>移动端：对话台 / 管理后台</sub></td>
+  </tr>
+</table>
 
 ## 快速开始
 
