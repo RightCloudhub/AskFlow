@@ -1,6 +1,6 @@
-import { Button, Card, Space, Table, Tag } from "antd";
+import { Button, Card, Space, Table, Tag, Tooltip } from "antd";
 import { CheckOutlined, StopOutlined } from "@ant-design/icons";
-import { PageHeader, StatusBadge } from "../../components/admin";
+import { PageHeader, StatusBadge, gapReason } from "../../components/admin";
 import {
   useDismissGap,
   useGaps,
@@ -37,7 +37,17 @@ export function GapsPage() {
             {
               title: "原因",
               dataIndex: "reason",
-              render: (r: string | null) => r || "—",
+              width: 140,
+              render: (r: string | null) => {
+                const { label, hint } = gapReason(r);
+                return (
+                  <Tooltip title={hint}>
+                    <Tag color={r === "zero_hit" ? "red" : r === "weak_evidence" ? "orange" : undefined}>
+                      {label}
+                    </Tag>
+                  </Tooltip>
+                );
+              },
             },
             {
               title: "状态",

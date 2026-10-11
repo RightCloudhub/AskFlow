@@ -82,3 +82,9 @@
 10. 检索缓存是进程内 TTL 60 秒，多 worker 命中率低，换 Redis。
 11. 默认聊天任务没有费用上限与截止时间，`max_answer_chars` 同时充当 `max_tokens`。
 12. 存量代码硬指标违规 389 处（主要是测试中的魔数与长函数），按“改到哪个文件就收敛哪个文件”的规则清理。
+
+## 追加（2026-10 一线反馈）
+
+- 时间输出统一带时区：SQLite 返回不带时区的 UTC 时间，前端目前逐处按 UTC 解析（见 `formatWaiting`）。应在 schema 层统一序列化为带 `Z` 的 ISO 8601。
+- 坐席实时推送：接管列表仍是 15 秒轮询，需要坐席 WebSocket 通道。
+- 需求与验收见 `docs/product/ops-feedback-2026-10.md`、`docs/testing/ops-feedback-test-plan.md`。

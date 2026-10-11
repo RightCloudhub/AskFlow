@@ -14,6 +14,9 @@ export {
   formatRate,
   purposeLabel,
   ticketTypeLabel,
+  intentLabel,
+  gapReason,
+  formatWaiting,
   METRIC_LABELS,
 } from "./labels";
 export { BarChart, DonutChart, HBarChart } from "./charts";

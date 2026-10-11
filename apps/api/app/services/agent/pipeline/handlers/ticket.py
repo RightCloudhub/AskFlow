@@ -9,10 +9,23 @@ TITLE_MAX = 80
 TITLE_BODY_MAX = 64
 
 
+INTENT_TITLE_LABELS = {
+    "fault_report": "故障",
+    "complaint": "投诉",
+    "order_query": "订单",
+    "handoff": "转人工",
+    "faq": "咨询",
+    "product": "咨询",
+}
+
+
 def _ticket_title(intent: str, text: str) -> str:
-    """Stable, type-prefixed title — reduces false open-ticket merges on raw text."""
+    """Stable, type-prefixed title — reduces false open-ticket merges on raw text.
+
+    The prefix is customer-visible ("已为您登记工单「…」"), so it is Chinese, not the enum.
+    """
     body = (text or "").strip()[:TITLE_BODY_MAX] or "用户请求"
-    title = f"[{intent}] {body}"
+    title = f"【{INTENT_TITLE_LABELS.get(intent, '工单')}】{body}"
     return title[:TITLE_MAX]
 
 

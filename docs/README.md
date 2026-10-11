@@ -46,6 +46,8 @@
 
 服务任务开发：先读 [客服 Agent 方案](./prd/customer-service-agent.md)，再读 [运行时](./architecture/customer-service-runtime.md)、[生命周期](./architecture/customer-service-lifecycle.md) 和 [记忆](./architecture/customer-preference-memory.md)；以 [差距清单](./architecture/agent-conformance.md) 区分已实现模块与已接入业务。部署配置与迁移见 [API README](../apps/api/README.md)。
 
+后端路线与迭代记录：[后端规划](./engineering/backend-plan.md)；一线反馈驱动的优化见 [需求拆解](./product/ops-feedback-2026-10.md) 与 [测试验收](./testing/ops-feedback-test-plan.md)。
+
 ## 实现时优先遵守
 
 - **代码硬性指标**（函数 ≤50 行、文件 ≤300 行、嵌套 ≤3、位置参数 ≤3、圈复杂度 ≤10、禁魔数）：见 [engineering/code-metrics.md](./engineering/code-metrics.md)  

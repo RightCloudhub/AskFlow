@@ -146,6 +146,14 @@ export function purposeLabel(purpose: string): string {
 }
 
 export const TICKET_TYPE_LABELS: Record<string, string> = {
+  after_sales: "售后",
+  invoice: "发票",
+  account: "账户",
+  logistics: "物流",
+  refund: "退款",
+  complaint: "投诉",
+  fault_report: "故障报修",
+  order_query: "订单查询",
   user_created: "用户提交",
   auto_created: "系统创建",
   agent_created: "智能助手创建",
@@ -157,4 +165,46 @@ export const TICKET_TYPE_LABELS: Record<string, string> = {
 export function ticketTypeLabel(type?: string | null): string {
   if (!type) return "—";
   return TICKET_TYPE_LABELS[type] ?? type;
+}
+
+export const INTENT_LABELS: Record<string, string> = {
+  faq: "常见问题",
+  product: "产品咨询",
+  order_query: "订单查询",
+  fault_report: "故障报修",
+  complaint: "投诉",
+  handoff: "转人工",
+  out_of_scope: "超出范围",
+};
+
+export function intentLabel(intent?: string | null): string {
+  if (!intent) return "—";
+  return INTENT_LABELS[intent] ?? intent;
+}
+
+/** Why a question became a knowledge gap, and what to do about it. */
+export const GAP_REASON_LABELS: Record<string, { label: string; hint: string }> = {
+  zero_hit: { label: "无命中", hint: "知识库没有相关内容，建议新增文档" },
+  weak_evidence: {
+    label: "证据不足",
+    hint: "有相关内容但匹配度低，建议补充说法或同义词",
+  },
+};
+
+export function gapReason(reason?: string | null): { label: string; hint: string } {
+  if (reason && GAP_REASON_LABELS[reason]) return GAP_REASON_LABELS[reason];
+  return { label: "未记录原因", hint: "历史数据，未保存拒答原因" };
+}
+
+/** "3 分钟" / "2 小时 5 分" / "1 天 3 小时" since an ISO timestamp. */
+export function formatWaiting(since?: string | null, now: number = Date.now()): string {
+  if (!since) return "—";
+  // SQLite returns naive UTC timestamps ("2026-10-11T13:07:47"); without a zone the
+  // browser would read them as local time and be off by the UTC offset.
+  const iso = /[zZ]|[+-]\d{2}:?\d{2}$/.test(since) ? since : `${since}Z`;
+  const minutes = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60_000));
+  if (minutes < 60) return `${minutes} 分钟`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时 ${minutes % 60} 分`;
+  return `${Math.floor(hours / 24)} 天 ${hours % 24} 小时`;
 }

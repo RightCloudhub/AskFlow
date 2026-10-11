@@ -16,6 +16,8 @@ class HandoffOut(BaseModel):
     intent: str = "handoff"
     claimed_by: str | None
     claimed_at: datetime | None
+    user_name: str | None = None
+    claimed_by_name: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

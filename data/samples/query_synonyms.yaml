@@ -29,3 +29,7 @@ groups:
   - id: invoice
     canonical: 发票
     aliases: [开票, 报销, invoice, 增值税票]
+
+  - id: account
+    canonical: 账户
+    aliases: [账号, 帐号, 帐户, 我的账号, account]

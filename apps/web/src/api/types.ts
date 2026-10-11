@@ -149,6 +149,8 @@ export type Handoff = {
   claimed_by: string | null;
   claimed_at?: string | null;
   created_at?: string;
+  user_name?: string | null;
+  claimed_by_name?: string | null;
 };
 
 export type AuditLog = {

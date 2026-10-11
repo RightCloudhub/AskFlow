@@ -1,4 +1,4 @@
-"""Knowledge gap radar (PRD §4.9) — best-effort, never blocks chat."""
+"""Knowledge gap radar (PRD §4.9)."""
 
 from __future__ import annotations
 
@@ -30,35 +30,32 @@ class GapService:
         conversation_id: str | None = None,
         reason: str | None = None,
     ) -> KnowledgeGap | None:
-        try:
-            norm = normalize_question(question)
-            if not norm:
-                return None
-            result = await self.db.execute(
-                select(KnowledgeGap).where(
-                    KnowledgeGap.normalized_question == norm,
-                    KnowledgeGap.status == GapStatus.OPEN.value,
-                )
-            )
-            existing = result.scalar_one_or_none()
-            if existing is not None:
-                existing.hit_count = int(existing.hit_count or 0) + 1
-                await self.db.flush()
-                return existing
-
-            gap = KnowledgeGap(
-                question=question[:2000],
-                normalized_question=norm,
-                intent=intent,
-                conversation_id=conversation_id,
-                reason=reason,
-            )
-            self.db.add(gap)
-            await self.db.flush()
-            await self.db.refresh(gap)
-            return gap
-        except Exception:
+        norm = normalize_question(question)
+        if not norm:
             return None
+        result = await self.db.execute(
+            select(KnowledgeGap).where(
+                KnowledgeGap.normalized_question == norm,
+                KnowledgeGap.status == GapStatus.OPEN.value,
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing is not None:
+            existing.hit_count = int(existing.hit_count or 0) + 1
+            await self.db.flush()
+            return existing
+
+        gap = KnowledgeGap(
+            question=question[:2000],
+            normalized_question=norm,
+            intent=intent,
+            conversation_id=conversation_id,
+            reason=reason,
+        )
+        self.db.add(gap)
+        await self.db.flush()
+        await self.db.refresh(gap)
+        return gap
 
     async def list_open(self) -> list[KnowledgeGap]:
         result = await self.db.execute(

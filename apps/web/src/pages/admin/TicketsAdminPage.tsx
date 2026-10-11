@@ -1,4 +1,4 @@
-import { Button, Card, Space, Table } from "antd";
+import { Button, Card, Space, Table, Typography } from "antd";
 import { CheckCircleOutlined, SyncOutlined } from "@ant-design/icons";
 import {
   PageHeader,
@@ -52,6 +52,7 @@ export function TicketsAdminPage() {
               width: 220,
               render: (_: unknown, t: AdminTicket) => (
                 <Space>
+                  {t.status === "pending" ? (
                   <Button
                     size="small"
                     icon={<SyncOutlined />}
@@ -69,6 +70,8 @@ export function TicketsAdminPage() {
                   >
                     处理中
                   </Button>
+                  ) : null}
+                  {t.status === "pending" || t.status === "processing" ? (
                   <Button
                     type="primary"
                     size="small"
@@ -82,8 +85,11 @@ export function TicketsAdminPage() {
                       void update.mutateAsync({ id: t.id, status: "resolved" })
                     }
                   >
-                    已解决
+                    标记解决
                   </Button>
+                  ) : (
+                    <Typography.Text type="secondary">无需操作</Typography.Text>
+                  )}
                 </Space>
               ),
             },

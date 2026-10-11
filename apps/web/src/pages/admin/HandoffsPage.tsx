@@ -9,12 +9,14 @@ import {
   useHandoffs,
   useReturnHandoff,
 } from "../../hooks/use-ops";
+import { useMe } from "../../hooks/use-auth";
 import type { Handoff } from "../../api/types";
 
 export function HandoffsPage() {
   const [selected, setSelected] = useState<Handoff | null>(null);
   const [error, setError] = useState<string | null>(null);
   const handoffsQ = useHandoffs();
+  const me = useMe();
   const claim = useClaimHandoff();
   const ret = useReturnHandoff();
 
@@ -70,6 +72,7 @@ export function HandoffsPage() {
         <HandoffInbox
           rows={handoffsQ.data ?? []}
           loading={handoffsQ.isLoading}
+          currentUserId={me.data?.id ?? null}
           claimingId={claim.isPending ? (claim.variables ?? null) : null}
           returningId={ret.isPending ? (ret.variables ?? null) : null}
           onClaim={(id) => void onClaim(id)}
