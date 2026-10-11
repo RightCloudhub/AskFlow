@@ -5,7 +5,13 @@ import { useSourcePanel } from "../../../stores/ui-store";
 
 const { Text, Paragraph } = Typography;
 
-function SourceCard({ source, index }: { source: CitationSource; index: number }) {
+function SourceCard({
+  source,
+  index,
+}: {
+  source: CitationSource;
+  index: number;
+}) {
   const label = source.source || `来源 ${index + 1}`;
   const idx = source.index ?? index + 1;
   const snippet = (source.text || "").trim();
@@ -22,7 +28,11 @@ function SourceCard({ source, index }: { source: CitationSource; index: number }
           </Text>
         ) : null}
       </header>
-      <Paragraph type="secondary" className="af-source-snippet" ellipsis={{ rows: 5 }}>
+      <Paragraph
+        type="secondary"
+        className="af-source-snippet"
+        ellipsis={{ rows: 5 }}
+      >
         {snippet || "（无摘要）"}
       </Paragraph>
     </article>
@@ -37,12 +47,18 @@ export function SourcePanel() {
     <Drawer
       title={title}
       placement="right"
-      width={400}
+      size="min(420px, 100vw)"
       open={open}
       onClose={close}
-      destroyOnClose
+      destroyOnHidden
+      closable={false}
       extra={
-        <Button type="text" icon={<CloseOutlined />} onClick={close} aria-label="关闭" />
+        <Button
+          type="text"
+          icon={<CloseOutlined />}
+          onClick={close}
+          aria-label="关闭"
+        />
       }
     >
       {sources.length === 0 ? (

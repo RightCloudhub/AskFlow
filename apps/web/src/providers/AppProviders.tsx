@@ -17,7 +17,11 @@ const queryClient = new QueryClient({
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ConfigProvider locale={zhCN} theme={adminTheme}>
+      <ConfigProvider
+        locale={zhCN}
+        theme={adminTheme}
+        button={{ autoInsertSpace: false }}
+      >
         <AntApp>
           <FeaturesProvider>{children}</FeaturesProvider>
         </AntApp>

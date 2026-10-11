@@ -34,8 +34,18 @@ export function QcPage() {
   const feedbackDonut: ChartDatum[] = useMemo(() => {
     if (!summary) return [];
     return [
-      { key: "up", label: "好评", value: summary.thumbs_up ?? 0, color: "#52c41a" },
-      { key: "down", label: "差评", value: summary.thumbs_down ?? 0, color: "#ff4d4f" },
+      {
+        key: "up",
+        label: "好评",
+        value: summary.thumbs_up ?? 0,
+        color: "#22c55e",
+      },
+      {
+        key: "down",
+        label: "差评",
+        value: summary.thumbs_down ?? 0,
+        color: "#ef4444",
+      },
     ];
   }, [summary]);
 
@@ -48,9 +58,9 @@ export function QcPage() {
         key: "ok",
         label: "正常作答",
         value: Math.max(0, total - refused),
-        color: "#1677ff",
+        color: "#2f6bff",
       },
-      { key: "refused", label: "拒答", value: refused, color: "#faad14" },
+      { key: "refused", label: "拒答", value: refused, color: "#f59f0a" },
     ];
   }, [summary]);
 
@@ -78,7 +88,8 @@ export function QcPage() {
     {
       title: "拒答",
       dataIndex: "refused",
-      render: (v: boolean) => (v ? <Tag color="warning">是</Tag> : <Tag>否</Tag>),
+      render: (v: boolean) =>
+        v ? <Tag color="warning">是</Tag> : <Tag>否</Tag>,
     },
     {
       title: "Flags",
@@ -98,7 +109,7 @@ export function QcPage() {
       <PageHeader
         eyebrow="运营总览"
         title="质检中心"
-        subtitle="基于拒答、弱证据 flags 与用户反馈的确定性评分（无二次 LLM）"
+        subtitle="基于拒答、弱证据与用户反馈的规则评分，不额外调用模型"
       />
       <Spin spinning={loading}>
         {summary ? (
@@ -112,7 +123,11 @@ export function QcPage() {
                 />
               </Col>
               <Col xs={24} sm={12} lg={6}>
-                <StatCard label="Agent 运行" value={summary.agent_runs} tone="info" />
+                <StatCard
+                  label="Agent 运行"
+                  value={summary.agent_runs}
+                  tone="info"
+                />
               </Col>
               <Col xs={24} sm={12} lg={6}>
                 <StatCard

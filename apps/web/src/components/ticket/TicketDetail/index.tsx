@@ -1,6 +1,7 @@
-import { Descriptions, Drawer, Tag } from "antd";
-import { StatusBadge } from "../../admin";
+import { Descriptions, Drawer } from "antd";
+import { PriorityTag, StatusBadge, ticketTypeLabel } from "../../admin";
 import type { Ticket } from "../../../api/types";
+import { formatDateTime } from "../../../utils";
 
 type TicketDetailProps = {
   open: boolean;
@@ -10,7 +11,13 @@ type TicketDetailProps = {
 
 export function TicketDetail({ open, ticket, onClose }: TicketDetailProps) {
   return (
-    <Drawer title="工单详情" open={open} onClose={onClose} width={400} destroyOnClose>
+    <Drawer
+      title="工单详情"
+      open={open}
+      onClose={onClose}
+      size="min(420px, 100vw)"
+      destroyOnHidden
+    >
       {!ticket ? null : (
         <Descriptions column={1} size="small" bordered>
           <Descriptions.Item label="标题">{ticket.title}</Descriptions.Item>
@@ -18,14 +25,16 @@ export function TicketDetail({ open, ticket, onClose }: TicketDetailProps) {
             <StatusBadge value={ticket.status} />
           </Descriptions.Item>
           <Descriptions.Item label="优先级">
-            <Tag>{ticket.priority}</Tag>
+            <PriorityTag value={ticket.priority} />
           </Descriptions.Item>
-          <Descriptions.Item label="类型">{ticket.type}</Descriptions.Item>
+          <Descriptions.Item label="类型">
+            {ticketTypeLabel(ticket.type)}
+          </Descriptions.Item>
           <Descriptions.Item label="描述">
             {ticket.description || "—"}
           </Descriptions.Item>
           <Descriptions.Item label="创建时间">
-            {ticket.created_at?.slice(0, 19).replace("T", " ") ?? "—"}
+            {formatDateTime(ticket.created_at, true)}
           </Descriptions.Item>
         </Descriptions>
       )}

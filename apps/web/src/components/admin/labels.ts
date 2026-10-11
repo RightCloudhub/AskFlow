@@ -57,7 +57,10 @@ export const STATUS_LABELS: Record<string, string> = {
   staff: "员工",
 };
 
-export const TONE_BY_STATUS: Record<string, "ok" | "warn" | "danger" | "info" | "neutral"> = {
+export const TONE_BY_STATUS: Record<
+  string,
+  "ok" | "warn" | "danger" | "info" | "neutral"
+> = {
   pending: "warn",
   processing: "info",
   resolved: "ok",
@@ -91,7 +94,7 @@ export function labelStatus(value: string | null | undefined): string {
 }
 
 export function statusTone(
-  value: string | null | undefined
+  value: string | null | undefined,
 ): "ok" | "warn" | "danger" | "info" | "neutral" {
   if (!value) return "neutral";
   return TONE_BY_STATUS[value] ?? "neutral";
@@ -101,7 +104,8 @@ export function formatNumber(value: number, digits = 0): string {
   if (!Number.isFinite(value)) return "—";
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
   if (Math.abs(value) >= 10_000) return `${(value / 1_000).toFixed(1)}k`;
-  if (Number.isInteger(value) && digits === 0) return value.toLocaleString("zh-CN");
+  if (Number.isInteger(value) && digits === 0)
+    return value.toLocaleString("zh-CN");
   return value.toLocaleString("zh-CN", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
@@ -131,6 +135,26 @@ export function purposeLabel(purpose: string): string {
     embedding: "向量嵌入",
     summary: "会话摘要",
     reasoning: "扩展推理",
+    intent_classify: "意图识别",
+    query_rewrite: "查询改写",
+    rag_generate: "答案生成",
+    handoff_summary: "转人工摘要",
+    history_summary: "会话摘要",
+    qc_score: "质检评分",
   };
   return map[purpose] ?? purpose;
+}
+
+export const TICKET_TYPE_LABELS: Record<string, string> = {
+  user_created: "用户提交",
+  auto_created: "系统创建",
+  agent_created: "智能助手创建",
+  handoff: "转人工",
+  sla: "SLA 升级",
+  handoff_timeout: "接管超时",
+};
+
+export function ticketTypeLabel(type?: string | null): string {
+  if (!type) return "—";
+  return TICKET_TYPE_LABELS[type] ?? type;
 }

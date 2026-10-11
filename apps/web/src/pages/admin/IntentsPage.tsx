@@ -4,7 +4,14 @@ import { SaveOutlined } from "@ant-design/icons";
 import { PageHeader } from "../../components/admin";
 import { useIntents, useUpsertIntent } from "../../hooks/use-ops";
 
-const INTENTS = ["faq", "product", "order_query", "fault_report", "complaint", "handoff"];
+const INTENTS = [
+  "faq",
+  "product",
+  "order_query",
+  "fault_report",
+  "complaint",
+  "handoff",
+];
 const ROUTES = ["rag", "tool", "ticket", "handoff", "clarify"];
 
 const INTENT_LABELS: Record<string, string> = {
@@ -43,10 +50,15 @@ export function IntentsPage() {
       <PageHeader
         eyebrow="智能配置"
         title="意图路由"
-        subtitle="热更新意图 → 路由映射，无需重启服务"
+        subtitle="调整意图与处理路由的映射，保存后即时生效"
       />
       {msg ? (
-        <Alert type="success" showIcon message={msg} style={{ marginBottom: 16 }} />
+        <Alert
+          type="success"
+          showIcon
+          title={msg}
+          style={{ marginBottom: 16 }}
+        />
       ) : null}
 
       <Card title="更新映射" style={{ marginBottom: 16 }}>

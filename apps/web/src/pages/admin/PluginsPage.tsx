@@ -1,5 +1,10 @@
 import { Alert, Card, Col, Row, Space, Table, Tag, Typography } from "antd";
-import { AppstoreOutlined } from "@ant-design/icons";
+import {
+  AppstoreOutlined,
+  BranchesOutlined,
+  CheckCircleOutlined,
+  CloudServerOutlined,
+} from "@ant-design/icons";
 import { PageHeader, StatCard } from "../../components/admin";
 import { useFeaturesDiscovery } from "../../hooks/use-governance";
 import type { PluginCatalogItem } from "../../plugins/types";
@@ -48,53 +53,67 @@ export function PluginsPage() {
       <PageHeader
         eyebrow="系统治理"
         title="插件与能力"
-        subtitle="查看当前 Profile、已加载插件与扩展点（启动期装配，运行时只读）"
+        subtitle="当前 Profile、已加载插件与扩展点（启动时装配，此处只读）"
       />
 
       <Alert
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="配置方式"
+        title="配置方式"
         description={
           <Paragraph style={{ marginBottom: 0 }}>
             通过环境变量 <Text code>ASKFLOW_PROFILE</Text>（如{" "}
             <Text code>full</Text> / <Text code>mvp</Text> /{" "}
             <Text code>core-only</Text>）与可选增量{" "}
-            <Text code>ASKFLOW_FEATURES=+sla,-mcp</Text> 控制能力组合；修改后需重启
-            API。前端导航与路由会随已启用 features 自动收敛。
+            <Text code>ASKFLOW_FEATURES=+sla,-mcp</Text>{" "}
+            控制能力组合；修改后需重启 API。前端导航与路由会随已启用 features
+            自动收敛。
           </Paragraph>
         }
       />
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={12} lg={6}>
           <StatCard
             label="当前 Profile"
             value={data?.profile ?? "—"}
             format="raw"
-            prefix={<AppstoreOutlined />}
+            tone="brand"
+            icon={<AppstoreOutlined />}
           />
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={12} lg={6}>
           <StatCard
             label="已启用"
             value={enabledCount}
             hint={`/ ${plugins.length}`}
+            tone="ok"
+            icon={<CheckCircleOutlined />}
           />
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <StatCard label="已加载" value={loadedCount} />
+        <Col xs={12} lg={6}>
+          <StatCard
+            label="已加载"
+            value={loadedCount}
+            tone="info"
+            icon={<CloudServerOutlined />}
+          />
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={12} lg={6}>
           <StatCard
             label="路由处理器"
             value={data?.route_handlers?.length ?? 0}
+            icon={<BranchesOutlined />}
           />
         </Col>
       </Row>
 
-      <Card title="Profile 与增量" style={{ marginBottom: 16 }} loading={q.isLoading}>
+      <Card
+        title="Profile 与增量"
+        style={{ marginBottom: 16 }}
+        loading={q.isLoading}
+      >
         <Space wrap size={[8, 8]}>
           <Text type="secondary">可用 Profile：</Text>
           {(data?.profiles ?? []).map((p) => (

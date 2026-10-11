@@ -1,39 +1,34 @@
-import { Flex, Space, Typography } from "antd";
+import type { ReactNode } from "react";
+import { Space, Typography } from "antd";
 
 const { Title, Text } = Typography;
 
 type PageHeaderProps = {
   title: string;
   subtitle?: string;
+  /** Section label; the breadcrumb now carries it (kept for API compatibility). */
   eyebrow?: string;
-  actions?: React.ReactNode;
+  actions?: ReactNode;
 };
 
-export function PageHeader({ title, subtitle, eyebrow, actions }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   return (
-    <Flex
-      justify="space-between"
-      align="flex-start"
-      gap={16}
-      wrap="wrap"
-      className="af-page-header"
-    >
-      <div>
-        {eyebrow ? (
-          <Text type="secondary" style={{ fontSize: 12, letterSpacing: "0.06em" }}>
-            {eyebrow.toUpperCase()}
-          </Text>
-        ) : null}
-        <Title level={3} style={{ margin: "4px 0 0" }}>
+    <div className="af-page-header">
+      <div className="af-page-header-text">
+        <Title level={4} className="af-page-title">
           {title}
         </Title>
         {subtitle ? (
-          <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+          <Text type="secondary" className="af-page-subtitle">
             {subtitle}
           </Text>
         ) : null}
       </div>
-      {actions ? <Space wrap>{actions}</Space> : null}
-    </Flex>
+      {actions ? (
+        <Space wrap className="af-page-actions">
+          {actions}
+        </Space>
+      ) : null}
+    </div>
   );
 }

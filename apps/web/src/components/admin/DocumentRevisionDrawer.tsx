@@ -34,7 +34,8 @@ export function DocumentRevisionDrawer({ doc, open, onClose }: Props) {
   const current = gensQ.data?.current_generation;
 
   const pair = useMemo(() => {
-    if (gens.length < 2) return { from: null as number | null, to: null as number | null };
+    if (gens.length < 2)
+      return { from: null as number | null, to: null as number | null };
     const sorted = [...gens].sort((a, b) => a - b);
     return {
       from: sorted[sorted.length - 2],
@@ -60,16 +61,23 @@ export function DocumentRevisionDrawer({ doc, open, onClose }: Props) {
       title={doc ? `版本 · ${doc.title || doc.filename}` : "版本"}
       open={open}
       onClose={onClose}
-      width={480}
-      destroyOnClose
+      size="min(480px, 100vw)"
+      destroyOnHidden
     >
       {!doc ? null : (
         <>
-          <Descriptions size="small" column={1} bordered style={{ marginBottom: 16 }}>
+          <Descriptions
+            size="small"
+            column={1}
+            bordered
+            style={{ marginBottom: 16 }}
+          >
             <Descriptions.Item label="当前 generation">
               <Tag color="blue">{current ?? doc.generation ?? "—"}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="分块数">{doc.chunk_count}</Descriptions.Item>
+            <Descriptions.Item label="分块数">
+              {doc.chunk_count}
+            </Descriptions.Item>
             <Descriptions.Item label="状态">{doc.status}</Descriptions.Item>
           </Descriptions>
 
@@ -138,7 +146,7 @@ export function DocumentRevisionDrawer({ doc, open, onClose }: Props) {
             <Alert
               type="error"
               showIcon
-              message={
+              title={
                 diffQ.error instanceof Error
                   ? diffQ.error.message
                   : "差异加载失败"
@@ -189,11 +197,7 @@ export function DocumentRevisionDrawer({ doc, open, onClose }: Props) {
               />
             </div>
           ) : gens.length < 2 ? (
-            <Alert
-              type="info"
-              showIcon
-              message="至少两个版本后可对比分块差异"
-            />
+            <Alert type="info" showIcon title="至少两个版本后可对比分块差异" />
           ) : null}
         </>
       )}

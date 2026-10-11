@@ -1,6 +1,7 @@
-import { Button, Table, Tag } from "antd";
-import { StatusBadge } from "../../admin";
+import { Button, Table } from "antd";
+import { PriorityTag, StatusBadge } from "../../admin";
 import type { Ticket } from "../../../api/types";
+import { formatDateTime } from "../../../utils";
 
 type TicketListProps = {
   rows: Ticket[];
@@ -24,7 +25,7 @@ export function TicketList({
       dataSource={rows}
       pagination={{ pageSize: 8 }}
       columns={[
-        { title: "标题", dataIndex: "title" },
+        { title: "标题", dataIndex: "title", ellipsis: true },
         {
           title: "状态",
           dataIndex: "status",
@@ -33,12 +34,12 @@ export function TicketList({
         {
           title: "优先级",
           dataIndex: "priority",
-          render: (p: string) => <Tag>{p}</Tag>,
+          render: (p: string) => <PriorityTag value={p} />,
         },
         {
           title: "创建时间",
           dataIndex: "created_at",
-          render: (t: string) => t?.slice(0, 19).replace("T", " ") ?? "—",
+          render: (t: string) => formatDateTime(t),
         },
         ...(showClose && onClose
           ? [
@@ -62,6 +63,7 @@ export function TicketList({
           : []),
       ]}
       locale={{ emptyText: "暂无工单" }}
+      scroll={{ x: 600 }}
     />
   );
 }

@@ -1,8 +1,11 @@
+import type { ReactNode } from "react";
 import { Card, Statistic } from "antd";
 import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
+  AlertOutlined,
+  CheckCircleOutlined,
   DashboardOutlined,
+  InfoCircleOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import { formatNumber, formatRate, formatUsd } from "./labels";
 
@@ -14,21 +17,14 @@ type StatCardProps = {
   hint?: string;
   tone?: StatTone;
   format?: "number" | "usd" | "rate" | "raw";
-  prefix?: React.ReactNode;
-};
-
-const TONE_COLOR: Record<StatTone, string | undefined> = {
-  default: undefined,
-  brand: "#1677ff",
-  ok: "#52c41a",
-  warn: "#faad14",
-  danger: "#ff4d4f",
-  info: "#1677ff",
+  prefix?: ReactNode;
+  /** Icon shown in the tinted tile; defaults to a tone icon. */
+  icon?: ReactNode;
 };
 
 function renderValue(
   value: string | number | boolean | null | undefined,
-  format: StatCardProps["format"]
+  format: StatCardProps["format"],
 ): string | number {
   if (value === null || value === undefined) return "—";
   if (typeof value === "boolean") return value ? "是" : "否";
@@ -39,11 +35,14 @@ function renderValue(
   return formatNumber(value, Number.isInteger(value) ? 0 : 2);
 }
 
-function toneIcon(tone: StatTone) {
-  if (tone === "ok") return <ArrowUpOutlined />;
-  if (tone === "danger" || tone === "warn") return <ArrowDownOutlined />;
-  return <DashboardOutlined />;
-}
+const TONE_ICON: Record<StatTone, ReactNode> = {
+  default: <DashboardOutlined />,
+  brand: <DashboardOutlined />,
+  ok: <CheckCircleOutlined />,
+  warn: <WarningOutlined />,
+  danger: <AlertOutlined />,
+  info: <InfoCircleOutlined />,
+};
 
 export function StatCard({
   label,
@@ -52,16 +51,23 @@ export function StatCard({
   tone = "default",
   format = "number",
   prefix,
+  icon,
 }: StatCardProps) {
   return (
-    <Card size="small" className="af-stat-card" bordered hoverable>
-      <Statistic
-        title={label}
-        value={renderValue(value, format) as string | number}
-        valueStyle={{ color: TONE_COLOR[tone], fontWeight: 600 }}
-        prefix={prefix ?? toneIcon(tone)}
-        suffix={hint ? <span className="af-stat-suffix">{hint}</span> : undefined}
-      />
+    <Card className={`af-stat-card af-tone-${tone}`} variant="borderless">
+      <div className="af-stat-body">
+        <Statistic
+          title={label}
+          value={renderValue(value, format) as string | number}
+          prefix={prefix}
+          suffix={
+            hint ? <span className="af-stat-suffix">{hint}</span> : undefined
+          }
+        />
+        <span className="af-stat-icon" aria-hidden>
+          {icon ?? TONE_ICON[tone]}
+        </span>
+      </div>
     </Card>
   );
 }

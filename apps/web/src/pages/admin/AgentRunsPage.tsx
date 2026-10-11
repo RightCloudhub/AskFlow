@@ -12,10 +12,7 @@ import {
 import { PlayCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import { PageHeader } from "../../components/admin";
 import { JsonView } from "../../components/common/json";
-import {
-  useAgentRunDetail,
-  useAgentRuns,
-} from "../../hooks/use-governance";
+import { useAgentRunDetail, useAgentRuns } from "../../hooks/use-governance";
 import type { AgentRun } from "../../api/types";
 
 const ROUTE_LABELS: Record<string, string> = {
@@ -49,7 +46,7 @@ export function AgentRunsPage() {
       <PageHeader
         eyebrow="运营总览"
         title="运行回放"
-        subtitle="按 run_id 回放 Agent 步骤、flags 与费用"
+        subtitle="按运行 ID 回放 Agent 的每一步、标记与费用"
       />
       <Card style={{ marginBottom: 16 }}>
         <Space.Compact style={{ width: "100%", maxWidth: 480 }}>
@@ -95,7 +92,11 @@ export function AgentRunsPage() {
                   <strong>
                     [{s.kind}] {s.name}
                   </strong>
-                  <JsonView data={s.detail || {}} compact initialExpandDepth={0} />
+                  <JsonView
+                    data={s.detail || {}}
+                    compact
+                    initialExpandDepth={0}
+                  />
                 </div>
               ),
             }))}

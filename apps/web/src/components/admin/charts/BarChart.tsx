@@ -26,16 +26,23 @@ export function BarChart({ data, height = 260, unit = "" }: BarChartProps) {
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
-        <RBarChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+        <RBarChart
+          data={rows}
+          margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            vertical={false}
+            stroke="#eceff5"
+          />
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 12, fill: "#8c8c8c" }}
+            tick={{ fontSize: 12, fill: "#8a93a6" }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 12, fill: "#8c8c8c" }}
+            tick={{ fontSize: 12, fill: "#8a93a6" }}
             axisLine={false}
             tickLine={false}
             width={40}
@@ -45,11 +52,14 @@ export function BarChart({ data, height = 260, unit = "" }: BarChartProps) {
               `${Number(v ?? 0).toLocaleString("zh-CN")}${unit}`,
               "数值",
             ]}
-            contentStyle={{ borderRadius: 8, border: "1px solid #f0f0f0" }}
+            contentStyle={{ borderRadius: 8, border: "1px solid #eceff5" }}
           />
           <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={48}>
             {rows.map((r, i) => (
-              <Cell key={r.key} fill={r.fill || CHART_COLORS[i % CHART_COLORS.length]} />
+              <Cell
+                key={r.key}
+                fill={r.fill || CHART_COLORS[i % CHART_COLORS.length]}
+              />
             ))}
           </Bar>
         </RBarChart>

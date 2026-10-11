@@ -1,6 +1,12 @@
 import { useMemo } from "react";
 import { Card, Col, Empty, Row, Spin, Table } from "antd";
 import {
+  ApiOutlined,
+  DollarOutlined,
+  ExportOutlined,
+  ImportOutlined,
+} from "@ant-design/icons";
+import {
   DonutChart,
   HBarChart,
   PageHeader,
@@ -93,17 +99,36 @@ export function CostsPage() {
         ) : (
           <>
             <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12} lg={6}>
-                <StatCard label="预估总费用" value={agg.usd} format="usd" tone="brand" />
+              <Col xs={12} lg={6}>
+                <StatCard
+                  label="预估总费用"
+                  value={agg.usd}
+                  format="usd"
+                  tone="brand"
+                  icon={<DollarOutlined />}
+                />
               </Col>
-              <Col xs={24} sm={12} lg={6}>
-                <StatCard label="调用次数" value={agg.calls} tone="info" />
+              <Col xs={12} lg={6}>
+                <StatCard
+                  label="调用次数"
+                  value={agg.calls}
+                  tone="info"
+                  icon={<ApiOutlined />}
+                />
               </Col>
-              <Col xs={24} sm={12} lg={6}>
-                <StatCard label="输入 Token" value={agg.prompt} />
+              <Col xs={12} lg={6}>
+                <StatCard
+                  label="输入 Token"
+                  value={agg.prompt}
+                  icon={<ImportOutlined />}
+                />
               </Col>
-              <Col xs={24} sm={12} lg={6}>
-                <StatCard label="输出 Token" value={agg.completion} />
+              <Col xs={12} lg={6}>
+                <StatCard
+                  label="输出 Token"
+                  value={agg.completion}
+                  icon={<ExportOutlined />}
+                />
               </Col>
             </Row>
 
@@ -134,7 +159,9 @@ export function CostsPage() {
                 <Card title="明细表">
                   <Table
                     size="middle"
-                    rowKey={(r) => r.purpose ?? r.model ?? String(Math.random())}
+                    rowKey={(r) =>
+                      r.purpose ?? r.model ?? String(Math.random())
+                    }
                     dataSource={purposeRows}
                     columns={columns}
                     pagination={false}

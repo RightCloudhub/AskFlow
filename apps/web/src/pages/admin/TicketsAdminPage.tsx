@@ -1,19 +1,13 @@
 import { Button, Card, Space, Table } from "antd";
 import { CheckCircleOutlined, SyncOutlined } from "@ant-design/icons";
-import { PageHeader, StatusBadge } from "../../components/admin";
 import {
-  useAdminTickets,
-  useUpdateAdminTicket,
-} from "../../hooks/use-ops";
+  PageHeader,
+  PriorityTag,
+  StatusBadge,
+  ticketTypeLabel,
+} from "../../components/admin";
+import { useAdminTickets, useUpdateAdminTicket } from "../../hooks/use-ops";
 import type { AdminTicket } from "../../api/types";
-
-const PRIORITY: Record<string, string> = {
-  low: "低",
-  normal: "普通",
-  medium: "中",
-  high: "高",
-  urgent: "紧急",
-};
 
 export function TicketsAdminPage() {
   const ticketsQ = useAdminTickets();
@@ -44,9 +38,14 @@ export function TicketsAdminPage() {
               title: "优先级",
               dataIndex: "priority",
               width: 100,
-              render: (p: string) => PRIORITY[p] ?? p,
+              render: (p: string) => <PriorityTag value={p} />,
             },
-            { title: "类型", dataIndex: "type", width: 120 },
+            {
+              title: "类型",
+              dataIndex: "type",
+              width: 120,
+              render: (t: string) => ticketTypeLabel(t),
+            },
             {
               title: "操作",
               key: "actions",
@@ -62,7 +61,10 @@ export function TicketsAdminPage() {
                       update.variables?.status === "processing"
                     }
                     onClick={() =>
-                      void update.mutateAsync({ id: t.id, status: "processing" })
+                      void update.mutateAsync({
+                        id: t.id,
+                        status: "processing",
+                      })
                     }
                   >
                     处理中

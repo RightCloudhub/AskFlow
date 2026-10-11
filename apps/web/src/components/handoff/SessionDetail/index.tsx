@@ -13,10 +13,7 @@ import { SendOutlined } from "@ant-design/icons";
 import { StatusBadge } from "../../admin";
 import { MarkdownBody } from "../../chat/MarkdownBody";
 import type { Handoff, Message } from "../../../api/types";
-import {
-  useHandoffMessages,
-  useStaffReply,
-} from "../../../hooks/use-ops";
+import { useHandoffMessages, useStaffReply } from "../../../hooks/use-ops";
 
 const { Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -29,7 +26,9 @@ type SessionDetailProps = {
 
 export function SessionDetail({ open, session, onClose }: SessionDetailProps) {
   const canChat = session?.status === "claimed";
-  const msgsQ = useHandoffMessages(open && canChat ? session?.id ?? null : null);
+  const msgsQ = useHandoffMessages(
+    open && canChat ? (session?.id ?? null) : null,
+  );
   const reply = useStaffReply();
   const [text, setText] = useState("");
 
@@ -44,12 +43,17 @@ export function SessionDetail({ open, session, onClose }: SessionDetailProps) {
       title="接管工作台"
       open={open}
       onClose={onClose}
-      width={480}
-      destroyOnClose
+      size="min(480px, 100vw)"
+      destroyOnHidden
     >
       {!session ? null : (
         <>
-          <Descriptions column={1} size="small" bordered style={{ marginBottom: 12 }}>
+          <Descriptions
+            column={1}
+            size="small"
+            bordered
+            style={{ marginBottom: 12 }}
+          >
             <Descriptions.Item label="状态">
               <StatusBadge value={session.status} />
             </Descriptions.Item>
@@ -79,9 +83,14 @@ export function SessionDetail({ open, session, onClose }: SessionDetailProps) {
                 {msgsQ.isLoading ? (
                   <Spin size="small" />
                 ) : (msgsQ.data ?? []).length === 0 ? (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无消息" />
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="暂无消息"
+                  />
                 ) : (
-                  (msgsQ.data ?? []).map((m) => <StaffMsg key={m.id} message={m} />)
+                  (msgsQ.data ?? []).map((m) => (
+                    <StaffMsg key={m.id} message={m} />
+                  ))
                 )}
               </div>
               <TextArea

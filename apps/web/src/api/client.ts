@@ -1,4 +1,6 @@
 const TOKEN_KEY = "askflow_token";
+/** Fired whenever the session token changes (login / logout). */
+export const AUTH_EVENT = "askflow:auth";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -7,6 +9,9 @@ export function getToken(): string | null {
 export function setToken(token: string | null) {
   if (token) localStorage.setItem(TOKEN_KEY, token);
   else localStorage.removeItem(TOKEN_KEY);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_EVENT));
+  }
 }
 
 export class ApiError extends Error {

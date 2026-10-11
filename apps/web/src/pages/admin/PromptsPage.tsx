@@ -37,15 +37,19 @@ export function PromptsPage() {
       <PageHeader
         eyebrow="智能配置"
         title="提示词模板"
-        subtitle="Prompt 版本管理与热激活"
+        subtitle="管理提示词版本，发布后立即生效"
       />
       <Card title="编辑并发布" style={{ marginBottom: 16 }}>
-        <Space direction="vertical" style={{ width: "100%" }} size="middle">
-          <Input
-            addonBefore="模板 Key"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-          />
+        <Space orientation="vertical" style={{ width: "100%" }} size="middle">
+          <label className="af-field">
+            <span>模板 Key</span>
+            <Input
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="例如：rag_answer"
+              style={{ maxWidth: 420 }}
+            />
+          </label>
           <Input.TextArea
             rows={8}
             value={content}
@@ -72,7 +76,9 @@ export function PromptsPage() {
           </Space>
           {active ? (
             <div>
-              <Typography.Text type="secondary">当前生效内容预览</Typography.Text>
+              <Typography.Text type="secondary">
+                当前生效内容预览
+              </Typography.Text>
               <pre className="code-block" style={{ marginTop: 8 }}>
                 {active}
               </pre>

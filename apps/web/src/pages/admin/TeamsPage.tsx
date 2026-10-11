@@ -2,11 +2,7 @@ import { useState } from "react";
 import { Alert, Button, Card, Input, Select, Space, Table, Tag } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { PageHeader } from "../../components/admin";
-import {
-  useAddTeamMember,
-  useCreateTeam,
-  useTeams,
-} from "../../hooks/use-ops";
+import { useAddTeamMember, useCreateTeam, useTeams } from "../../hooks/use-ops";
 import { useUsers } from "../../hooks/use-governance";
 import type { Team } from "../../api/types";
 
@@ -41,7 +37,12 @@ export function TeamsPage() {
         subtitle="座席分组与意图范围配置"
       />
       {msg ? (
-        <Alert type="success" showIcon message={msg} style={{ marginBottom: 16 }} />
+        <Alert
+          type="success"
+          showIcon
+          title={msg}
+          style={{ marginBottom: 16 }}
+        />
       ) : null}
 
       <Card title="新建技能组" style={{ marginBottom: 16 }}>

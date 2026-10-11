@@ -1,4 +1,4 @@
-import { Button, Card, Table, Tag } from "antd";
+import { Button, Card, Popconfirm, Table, Tag } from "antd";
 import { CheckOutlined, StopOutlined } from "@ant-design/icons";
 import { PageHeader, labelStatus } from "../../components/admin";
 import { useToggleUser, useUsers } from "../../hooks/use-governance";
@@ -13,7 +13,7 @@ export function UsersPage() {
       <PageHeader
         eyebrow="系统治理"
         title="用户管理"
-        subtitle="账号启用 / 禁用与角色一览"
+        subtitle="查看账号角色，启用或禁用账号"
       />
       <Card>
         <Table
@@ -43,16 +43,28 @@ export function UsersPage() {
               title: "操作",
               key: "actions",
               render: (_: unknown, u: User) => (
-                <Button
-                  size="small"
-                  danger={Boolean(u.is_active)}
-                  type={u.is_active ? "default" : "primary"}
-                  icon={u.is_active ? <StopOutlined /> : <CheckOutlined />}
-                  loading={toggle.isPending && toggle.variables?.id === u.id}
-                  onClick={() => void toggle.mutateAsync(u)}
+                <Popconfirm
+                  title={u.is_active ? "禁用该用户？" : "启用该用户？"}
+                  description={
+                    u.is_active
+                      ? "禁用后该用户将无法登录。"
+                      : "启用后该用户可重新登录。"
+                  }
+                  okText={u.is_active ? "禁用" : "启用"}
+                  okButtonProps={{ danger: Boolean(u.is_active) }}
+                  cancelText="取消"
+                  onConfirm={() => toggle.mutateAsync(u)}
                 >
-                  {u.is_active ? "禁用" : "启用"}
-                </Button>
+                  <Button
+                    size="small"
+                    danger={Boolean(u.is_active)}
+                    type={u.is_active ? "default" : "primary"}
+                    icon={u.is_active ? <StopOutlined /> : <CheckOutlined />}
+                    loading={toggle.isPending && toggle.variables?.id === u.id}
+                  >
+                    {u.is_active ? "禁用" : "启用"}
+                  </Button>
+                </Popconfirm>
               ),
             },
           ]}

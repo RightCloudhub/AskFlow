@@ -27,7 +27,7 @@ export function QueryState({
   if (isLoading) {
     return (
       <div className="af-query-state">
-        <Spin tip="加载中…" />
+        <Spin description="加载中…" />
       </div>
     );
   }
@@ -36,7 +36,7 @@ export function QueryState({
       <Alert
         type="error"
         showIcon
-        message="加载失败"
+        title="加载失败"
         description={errorMessage(error)}
         style={{ marginBottom: 16 }}
       />

@@ -56,8 +56,20 @@ export function ChatPage() {
     setHandoffHint(null);
   }
 
-  async function handleSend(content: string) {
-    if (!activeId || streaming) return;
+  async function handleSuggest(content: string) {
+    if (streaming) return;
+    let convId = activeId;
+    if (!convId) {
+      const conv = await createConv.mutateAsync(content.slice(0, 20));
+      convId = conv.id;
+      setActiveId(conv.id);
+    }
+    await handleSend(content, convId);
+  }
+
+  async function handleSend(content: string, convId: string | null = activeId) {
+    if (!convId || streaming) return;
+    const activeId = convId;
     setSendError(null);
     setStreaming(true);
     setStreamText("");
@@ -104,12 +116,18 @@ export function ChatPage() {
     }
   }
 
+  const activeConv = convQ.data?.find((c) => c.id === activeId);
+  const isHandoff =
+    activeConv?.status === "transferred" || Boolean(handoffHint);
+
   const loadingShell = meQ.isLoading || (meQ.isSuccess && convQ.isLoading);
 
   if (loadingShell) {
     return (
       <div className="af-query-state" style={{ minHeight: "100vh" }}>
-        <Spin size="large" tip="加载会话…" />
+        <Spin size="large" description="加载会话…">
+          <div style={{ width: 120, height: 60 }} />
+        </Spin>
       </div>
     );
   }
@@ -125,48 +143,62 @@ export function ChatPage() {
       }}
       onNewChat={() => void handleNewChat()}
       creating={createConv.isPending}
+      title={activeConv?.title || "智能客服"}
+      subtitle={
+        isHandoff
+          ? "已转接人工客服，座席认领后将继续为您服务"
+          : "基于企业知识库作答，可随时转人工"
+      }
     >
-      {handoffHint ? (
-        <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 28px 8px" }}>
-          <HandoffBanner
-            summary={handoffHint}
-            onGoAdmin={() => nav("/admin/handoffs")}
-          />
-        </div>
-      ) : null}
-
       <div className="af-chat-stage">
+        {handoffHint ? (
+          <div className="af-chat-banner">
+            <HandoffBanner
+              summary={handoffHint}
+              onGoAdmin={
+                meQ.data?.role && meQ.data.role !== "user"
+                  ? () => nav("/admin/handoffs")
+                  : undefined
+              }
+            />
+          </div>
+        ) : null}
         {msgQ.isLoading && activeId && !streaming ? (
           <div className="af-query-state">
-            <Spin tip="加载消息…" />
+            <Spin description="加载消息…">
+              <div style={{ width: 120, height: 60 }} />
+            </Spin>
           </div>
         ) : (
           <MessageList
             messages={msgQ.data ?? []}
             streaming={streaming}
             streamingText={streamText}
+            onSuggest={(t) => void handleSuggest(t)}
           />
         )}
         <div ref={bottomRef} />
       </div>
 
       {sendError ? (
-        <Alert
-          type="error"
-          showIcon
-          style={{
-            maxWidth: 860,
-            margin: "0 auto 8px",
-            width: "calc(100% - 56px)",
-          }}
-          message={sendError}
-        />
+        <div className="af-chat-error">
+          <Alert
+            type="error"
+            showIcon
+            closable
+            onClose={() => setSendError(null)}
+            title="消息发送失败"
+            description={sendError}
+          />
+        </div>
       ) : null}
 
       <Composer
         disabled={!activeId}
         sending={streaming}
-        placeholder={activeId ? undefined : "请先新建会话"}
+        placeholder={
+          activeId ? undefined : "请先新建会话，或点击上方的常见问题"
+        }
         onSend={handleSend}
       />
       <SourcePanel />

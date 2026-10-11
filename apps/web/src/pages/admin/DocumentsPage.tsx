@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Input,
+  Popconfirm,
   Space,
   Table,
   Tag,
@@ -89,7 +90,7 @@ export function DocumentsPage() {
       <PageHeader
         eyebrow="知识中心"
         title="知识文档"
-        subtitle="上传、索引、版本回滚与分块差异（对齐 RAGFlow 知识库体验）"
+        subtitle="上传与索引知识文档，支持版本对比与回滚"
         actions={
           <Button
             icon={<ReloadOutlined />}
@@ -105,7 +106,7 @@ export function DocumentsPage() {
         <Alert
           type="error"
           showIcon
-          message={errorMsg}
+          title={errorMsg}
           style={{ marginBottom: 16 }}
           closable
           onClose={() => setLocalError(null)}
@@ -114,7 +115,7 @@ export function DocumentsPage() {
 
       <Card title="上传并索引" style={{ marginBottom: 16 }}>
         <form onSubmit={onFormSubmit}>
-          <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Space orientation="vertical" style={{ width: "100%" }} size="middle">
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -133,7 +134,8 @@ export function DocumentsPage() {
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
+                if (e.key === "Enter" || e.key === " ")
+                  fileRef.current?.click();
               }}
             >
               <InboxOutlined style={{ fontSize: 32, color: "var(--brand)" }} />
@@ -209,15 +211,25 @@ export function DocumentsPage() {
                     >
                       版本
                     </Button>
-                    <Button
-                      danger
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      loading={deleteM.isPending && deleteM.variables === d.id}
-                      onClick={() => void onDelete(d.id)}
+                    <Popconfirm
+                      title="删除文档"
+                      description="删除后该文档的索引将一并移除，确定继续？"
+                      okText="删除"
+                      okButtonProps={{ danger: true }}
+                      cancelText="取消"
+                      onConfirm={() => onDelete(d.id)}
                     >
-                      删除
-                    </Button>
+                      <Button
+                        danger
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        loading={
+                          deleteM.isPending && deleteM.variables === d.id
+                        }
+                      >
+                        删除
+                      </Button>
+                    </Popconfirm>
                   </Space>
                 ),
               },

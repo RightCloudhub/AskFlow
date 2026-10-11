@@ -36,7 +36,22 @@ export function HBarChart({
   }
 
   const h = Math.max(height, rows.length * 36 + 40);
-  const fmt = (v: number) => (format === "usd" ? formatUsd(v) : formatNumber(v));
+  const fmt = (v: number) =>
+    format === "usd" ? formatUsd(v) : formatNumber(v);
+
+  // Fit the category axis to the longest label (CJK glyphs ≈ 12px, latin ≈ 7px).
+  const labelWidth = Math.min(
+    160,
+    Math.max(
+      56,
+      ...rows.map((r) =>
+        [...String(r.name)].reduce(
+          (w, ch) => w + (ch.charCodeAt(0) > 255 ? 12 : 7),
+          12,
+        ),
+      ),
+    ),
+  );
 
   return (
     <div style={{ width: "100%", height: h }}>
@@ -46,23 +61,34 @@ export function HBarChart({
           layout="vertical"
           margin={{ top: 4, right: 24, left: 8, bottom: 4 }}
         >
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
-          <XAxis type="number" tick={{ fontSize: 12, fill: "#8c8c8c" }} axisLine={false} />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            horizontal={false}
+            stroke="#eceff5"
+          />
+          <XAxis
+            type="number"
+            tick={{ fontSize: 12, fill: "#8a93a6" }}
+            axisLine={false}
+          />
           <YAxis
             type="category"
             dataKey="name"
-            width={88}
-            tick={{ fontSize: 12, fill: "#595959" }}
+            width={labelWidth}
+            tick={{ fontSize: 12, fill: "#4b5567" }}
             axisLine={false}
             tickLine={false}
           />
           <Tooltip
             formatter={(v) => [fmt(Number(v ?? 0)), "数值"]}
-            contentStyle={{ borderRadius: 8, border: "1px solid #f0f0f0" }}
+            contentStyle={{ borderRadius: 8, border: "1px solid #eceff5" }}
           />
           <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={16}>
             {rows.map((r, i) => (
-              <Cell key={r.key} fill={r.fill || CHART_COLORS[i % CHART_COLORS.length]} />
+              <Cell
+                key={r.key}
+                fill={r.fill || CHART_COLORS[i % CHART_COLORS.length]}
+              />
             ))}
           </Bar>
         </BarChart>

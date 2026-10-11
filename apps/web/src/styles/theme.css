@@ -3,7 +3,7 @@
    Additive polish only (focus, motion, wayfinding, data legibility) so
    existing page markup keeps working unchanged. */
 
-:focus-visible {
+:focus-visible:not(.ant-input) {
   outline: none;
   box-shadow: var(--ring);
   border-radius: var(--radius-sm);
@@ -44,8 +44,9 @@ button {
   transform: translateY(1px);
 }
 
-input:focus,
-textarea:focus,
+/* Legacy (non-antd) fields only; Ant Design inputs style their own focus. */
+input:not(.ant-input):focus,
+textarea:not(.ant-input):focus,
 .auth-card input:focus,
 .composer textarea:focus {
   outline: none;
@@ -78,13 +79,7 @@ textarea:focus,
   overflow: hidden;
 }
 
-/* E29 brand polish: soft brand wash + smoother shell motion */
-body {
-  background-image:
-    radial-gradient(1200px 400px at 10% -10%, color-mix(in srgb, var(--brand) 12%, transparent), transparent),
-    radial-gradient(900px 360px at 100% 0%, color-mix(in srgb, var(--info) 10%, transparent), transparent);
-  background-attachment: fixed;
-}
+/* E29 brand polish: plain layout background (gradients removed in UI refresh). */
 
 .sidebar a,
 .nav a {

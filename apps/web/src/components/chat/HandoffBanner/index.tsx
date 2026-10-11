@@ -13,7 +13,7 @@ export function HandoffBanner({ summary, onGoAdmin }: HandoffBannerProps) {
       type="info"
       showIcon
       icon={<CustomerServiceOutlined />}
-      message="已申请人工客服"
+      title="已申请人工客服"
       description={summary || "座席认领后将继续为您服务"}
       action={
         onGoAdmin ? (

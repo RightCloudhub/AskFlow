@@ -44,11 +44,11 @@ export function SlaPage() {
         value: v,
         color:
           k === "breached"
-            ? "#ff4d4f"
+            ? "#ef4444"
             : k === "warning"
-              ? "#faad14"
+              ? "#f59f0a"
               : k === "ok"
-                ? "#52c41a"
+                ? "#22c55e"
                 : undefined,
       })),
     [counts],
@@ -107,7 +107,9 @@ export function SlaPage() {
                     ? "danger"
                     : k === "warning"
                       ? "warn"
-                      : "default"
+                      : k === "ok" || k === "normal"
+                        ? "ok"
+                        : "info"
                 }
               />
             </Col>
@@ -134,9 +136,7 @@ export function SlaPage() {
           <Col xs={24} lg={12}>
             <Card
               title="最近扫描"
-              extra={
-                scan ? `${scan.scanned_changes} 项变更` : "点击扫描触发"
-              }
+              extra={scan ? `${scan.scanned_changes} 项变更` : "点击扫描触发"}
             >
               <List
                 size="small"

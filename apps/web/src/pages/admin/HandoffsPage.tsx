@@ -43,7 +43,7 @@ export function HandoffsPage() {
       <PageHeader
         eyebrow="客服运营"
         title="人工接管"
-        subtitle="转人工收件箱 — 认领会话或交还 AI（15s 自动刷新）"
+        subtitle="转人工收件箱：认领会话或交还智能助手，每 15 秒自动刷新"
         actions={
           <Space>
             <Button
@@ -60,7 +60,7 @@ export function HandoffsPage() {
         <Alert
           type="error"
           showIcon
-          message={error}
+          title={error}
           style={{ marginBottom: 16 }}
           closable
           onClose={() => setError(null)}
@@ -70,8 +70,8 @@ export function HandoffsPage() {
         <HandoffInbox
           rows={handoffsQ.data ?? []}
           loading={handoffsQ.isLoading}
-          claimingId={claim.isPending ? claim.variables ?? null : null}
-          returningId={ret.isPending ? ret.variables ?? null : null}
+          claimingId={claim.isPending ? (claim.variables ?? null) : null}
+          returningId={ret.isPending ? (ret.variables ?? null) : null}
           onClaim={(id) => void onClaim(id)}
           onReturn={(id) => void onReturn(id)}
           onSelect={setSelected}

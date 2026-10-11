@@ -21,10 +21,14 @@ const AdminLayout = lazy(() =>
   import("./pages/admin/AdminLayout").then((m) => ({ default: m.AdminLayout })),
 );
 const DashboardPage = lazy(() =>
-  import("./pages/admin/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+  import("./pages/admin/DashboardPage").then((m) => ({
+    default: m.DashboardPage,
+  })),
 );
 const DocumentsPage = lazy(() =>
-  import("./pages/admin/DocumentsPage").then((m) => ({ default: m.DocumentsPage })),
+  import("./pages/admin/DocumentsPage").then((m) => ({
+    default: m.DocumentsPage,
+  })),
 );
 const IntentsPage = lazy(() =>
   import("./pages/admin/IntentsPage").then((m) => ({ default: m.IntentsPage })),
@@ -39,7 +43,9 @@ const DraftsPage = lazy(() =>
   import("./pages/admin/DraftsPage").then((m) => ({ default: m.DraftsPage })),
 );
 const HandoffsPage = lazy(() =>
-  import("./pages/admin/HandoffsPage").then((m) => ({ default: m.HandoffsPage })),
+  import("./pages/admin/HandoffsPage").then((m) => ({
+    default: m.HandoffsPage,
+  })),
 );
 const TicketsAdminPage = lazy(() =>
   import("./pages/admin/TicketsAdminPage").then((m) => ({
@@ -53,7 +59,9 @@ const UsersPage = lazy(() =>
   import("./pages/admin/UsersPage").then((m) => ({ default: m.UsersPage })),
 );
 const ConnectorsPage = lazy(() =>
-  import("./pages/admin/ConnectorsPage").then((m) => ({ default: m.ConnectorsPage })),
+  import("./pages/admin/ConnectorsPage").then((m) => ({
+    default: m.ConnectorsPage,
+  })),
 );
 const CostsPage = lazy(() =>
   import("./pages/admin/CostsPage").then((m) => ({ default: m.CostsPage })),
@@ -70,7 +78,9 @@ const SlaPage = lazy(() =>
   import("./pages/admin/SlaPage").then((m) => ({ default: m.SlaPage })),
 );
 const AgentRunsPage = lazy(() =>
-  import("./pages/admin/AgentRunsPage").then((m) => ({ default: m.AgentRunsPage })),
+  import("./pages/admin/AgentRunsPage").then((m) => ({
+    default: m.AgentRunsPage,
+  })),
 );
 const QcPage = lazy(() =>
   import("./pages/admin/QcPage").then((m) => ({ default: m.QcPage })),
@@ -108,15 +118,18 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function PageFallback() {
   return (
     <div className="af-query-state" style={{ minHeight: "40vh" }}>
-      <Spin tip="加载页面…" />
+      <Spin description="加载页面…" />
     </div>
   );
 }
 
 function AppRoutes() {
-  const { features, enabled } = useFeatures();
+  const { features, enabled, ready } = useFeatures();
   const adminRoutes = filterRoutes(features);
   const showTickets = enabled("ticket");
+  // Until discovery finishes, gated routes are unknown: hold instead of
+  // redirecting deep links (e.g. a refresh on /admin/sla) back to "/".
+  const unknownRoute = ready ? <Navigate to="/" replace /> : <PageFallback />;
 
   return (
     <Suspense fallback={<PageFallback />}>
@@ -157,8 +170,9 @@ function AppRoutes() {
               element={PAGE_MAP[r.page] ?? <Navigate to="/admin" replace />}
             />
           ))}
+          {!ready ? <Route path="*" element={<PageFallback />} /> : null}
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={unknownRoute} />
       </Routes>
     </Suspense>
   );

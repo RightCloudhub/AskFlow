@@ -3,6 +3,7 @@ import { PageHeader } from "../../components/admin";
 import { JsonView } from "../../components/common/json";
 import { useAuditLogs } from "../../hooks/use-governance";
 import type { AuditLog } from "../../api/types";
+import { formatDateTime } from "../../utils";
 
 export function AuditPage() {
   const auditQ = useAuditLogs();
@@ -35,7 +36,10 @@ export function AuditPage() {
             {
               title: "时间",
               dataIndex: "created_at",
-              width: 200,
+              width: 180,
+              render: (t: string) => (
+                <span className="af-nowrap">{formatDateTime(t, true)}</span>
+              ),
             },
             {
               title: "详情",

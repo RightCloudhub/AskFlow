@@ -1,6 +1,16 @@
 import { useMemo } from "react";
 import { Alert, Card, Col, Empty, Row, Spin } from "antd";
 import {
+  AlertOutlined,
+  ClockCircleOutlined,
+  CustomerServiceOutlined,
+  DislikeOutlined,
+  DollarOutlined,
+  FileSearchOutlined,
+  MessageOutlined,
+  ProfileOutlined,
+} from "@ant-design/icons";
+import {
   BarChart,
   DonutChart,
   HBarChart,
@@ -15,14 +25,54 @@ import { useAnalyticsSummary } from "../../hooks/use-analytics";
 import type { AnalyticsSummary } from "../../api/types";
 
 const KPI = [
-  { key: "messages", tone: "brand" as const, format: "number" as const },
-  { key: "tickets_open", tone: "warn" as const, format: "number" as const },
-  { key: "handoffs_queued", tone: "info" as const, format: "number" as const },
-  { key: "gaps_open", tone: "warn" as const, format: "number" as const },
-  { key: "sla_breached", tone: "danger" as const, format: "number" as const },
-  { key: "thumbs_down", tone: "danger" as const, format: "number" as const },
-  { key: "handoff_timeouts", tone: "danger" as const, format: "number" as const },
-  { key: "cost_estimated_usd", tone: "ok" as const, format: "usd" as const },
+  {
+    key: "messages",
+    tone: "brand" as const,
+    format: "number" as const,
+    icon: <MessageOutlined />,
+  },
+  {
+    key: "tickets_open",
+    tone: "warn" as const,
+    format: "number" as const,
+    icon: <ProfileOutlined />,
+  },
+  {
+    key: "handoffs_queued",
+    tone: "info" as const,
+    format: "number" as const,
+    icon: <CustomerServiceOutlined />,
+  },
+  {
+    key: "gaps_open",
+    tone: "warn" as const,
+    format: "number" as const,
+    icon: <FileSearchOutlined />,
+  },
+  {
+    key: "sla_breached",
+    tone: "danger" as const,
+    format: "number" as const,
+    icon: <AlertOutlined />,
+  },
+  {
+    key: "thumbs_down",
+    tone: "danger" as const,
+    format: "number" as const,
+    icon: <DislikeOutlined />,
+  },
+  {
+    key: "handoff_timeouts",
+    tone: "danger" as const,
+    format: "number" as const,
+    icon: <ClockCircleOutlined />,
+  },
+  {
+    key: "cost_estimated_usd",
+    tone: "ok" as const,
+    format: "usd" as const,
+    icon: <DollarOutlined />,
+  },
 ];
 
 function num(v: unknown): number {
@@ -86,14 +136,14 @@ export function DashboardPage() {
       <PageHeader
         eyebrow="运营总览"
         title="运营看板"
-        subtitle="消息 · 工单 · 接管 · 知识缺口 · 模型成本 — 一屏决策"
+        subtitle="消息、工单、人工接管、知识缺口与模型成本，一屏掌握"
       />
 
       {isError ? (
         <Alert
           type="error"
           showIcon
-          message={error instanceof Error ? error.message : String(error)}
+          title={error instanceof Error ? error.message : String(error)}
           style={{ marginBottom: 16 }}
         />
       ) : null}
@@ -105,7 +155,7 @@ export function DashboardPage() {
           <>
             <Row gutter={[16, 16]}>
               {KPI.map((k) => (
-                <Col xs={24} sm={12} md={8} lg={6} key={k.key}>
+                <Col xs={12} md={8} xl={6} key={k.key}>
                   <StatCard
                     label={labelMetric(k.key)}
                     value={
@@ -113,6 +163,7 @@ export function DashboardPage() {
                     }
                     tone={k.tone}
                     format={k.format}
+                    icon={k.icon}
                   />
                 </Col>
               ))}

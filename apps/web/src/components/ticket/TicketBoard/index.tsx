@@ -1,6 +1,6 @@
-import { Card, Col, Empty, Row, Tag } from "antd";
+import { Card, Col, Empty, Row } from "antd";
 import type { Ticket } from "../../../api/types";
-import { StatusBadge } from "../../admin";
+import { PriorityTag, StatusBadge } from "../../admin";
 
 const COLUMNS: { key: string; title: string }[] = [
   { key: "pending", title: "待处理" },
@@ -16,22 +16,26 @@ type TicketBoardProps = {
 
 export function TicketBoard({ rows, onSelect }: TicketBoardProps) {
   return (
-    <Row gutter={12}>
+    <Row gutter={[12, 12]}>
       {COLUMNS.map((col) => {
         const items = rows.filter((r) => r.status === col.key);
         return (
-          <Col key={col.key} xs={24} sm={12} lg={6}>
+          <Col key={col.key} xs={24} sm={12} xxl={6}>
             <Card
               size="small"
               title={
                 <span>
-                  {col.title} <Tag>{items.length}</Tag>
+                  {col.title}{" "}
+                  <span className="af-count-pill">{items.length}</span>
                 </span>
               }
               className="af-ticket-col"
             >
               {items.length === 0 ? (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="空" />
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="暂无"
+                />
               ) : (
                 items.map((t) => (
                   <button
@@ -41,8 +45,10 @@ export function TicketBoard({ rows, onSelect }: TicketBoardProps) {
                     onClick={() => onSelect?.(t)}
                   >
                     <strong>{t.title}</strong>
-                    <StatusBadge value={t.status} />
-                    <span className="meta">{t.priority}</span>
+                    <span className="af-ticket-card-tags">
+                      <StatusBadge value={t.status} />
+                      <PriorityTag value={t.priority} />
+                    </span>
                   </button>
                 ))
               )}

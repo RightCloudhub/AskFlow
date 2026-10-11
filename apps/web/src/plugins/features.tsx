@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api } from "../api/client";
+import { AUTH_EVENT, api, getToken } from "../api/client";
 import { CORE_FEATURES, parseEnvFeatures } from "./registry";
 import type { FeaturesResponse } from "./types";
 
@@ -31,13 +31,22 @@ export function FeaturesProvider({ children }: { children: ReactNode }) {
   const envSet = parseEnvFeatures();
   const [profile, setProfile] = useState(envSet ? "env" : "unknown");
   const [features, setFeatures] = useState<Set<string>>(
-    () => envSet ?? new Set(FAIL_CLOSED)
+    () => envSet ?? new Set(FAIL_CLOSED),
   );
   const [ready, setReady] = useState(Boolean(envSet));
+  const [authKey, setAuthKey] = useState(() => getToken() ?? "");
+
+  // Re-discover features after login/logout so nav and routes match the session.
+  useEffect(() => {
+    const onAuth = () => setAuthKey(getToken() ?? "");
+    window.addEventListener(AUTH_EVENT, onAuth);
+    return () => window.removeEventListener(AUTH_EVENT, onAuth);
+  }, []);
 
   useEffect(() => {
     if (envSet) return;
     let cancelled = false;
+    setReady(false);
     (async () => {
       try {
         const data = await api<FeaturesResponse>("/api/v1/admin/features");
@@ -59,7 +68,7 @@ export function FeaturesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [envSet]);
+  }, [envSet, authKey]);
 
   const value = useMemo<FeaturesState>(
     () => ({
@@ -68,11 +77,13 @@ export function FeaturesProvider({ children }: { children: ReactNode }) {
       features,
       enabled: (id: string) => features.has(id),
     }),
-    [ready, profile, features]
+    [ready, profile, features],
   );
 
   return (
-    <FeaturesContext.Provider value={value}>{children}</FeaturesContext.Provider>
+    <FeaturesContext.Provider value={value}>
+      {children}
+    </FeaturesContext.Provider>
   );
 }
 
