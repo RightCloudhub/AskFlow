@@ -28,7 +28,10 @@ async def run_handoff_sweep(
     db: DbSession,
     _user: User = Depends(require_admin),
 ) -> dict:
-    outcomes = await HandoffTimeoutSweeper(db).sweep()
+    sweeper = HandoffTimeoutSweeper(db)
+    outcomes = await sweeper.sweep()
+    await db.commit()
+    await sweeper.publish(outcomes)
     return {"swept": len(outcomes), "outcomes": outcomes}
 
 
@@ -62,5 +65,8 @@ async def force_expire_for_test(
     for s in sessions:
         s.created_at = past
     await db.flush()
-    outcomes = await HandoffTimeoutSweeper(db).sweep()
+    sweeper = HandoffTimeoutSweeper(db)
+    outcomes = await sweeper.sweep()
+    await db.commit()
+    await sweeper.publish(outcomes)
     return {"backdated": len(sessions), "swept": len(outcomes), "outcomes": outcomes}

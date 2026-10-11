@@ -25,10 +25,11 @@
 | `JWT_ALGORITHM` | `HS256` | 令牌签名算法；除非更改认证集成，否则请保留 |
 | `RATE_LIMIT_PER_MINUTE` | `60` | 每进程每分钟每 IP 的 HTTP 请求数；有效最小值 1；不是分布式或 WebSocket 消息限制 |
 | `TRUST_PROXY_HEADERS` | `false` | 为限流信任转发的客户端 IP；仅在受控代理后面启用 |
+| `TRUSTED_PROXY_HOPS` | `1` | API 前追加 `X-Forwarded-For` 的受信代理层数；限流从右往左取第 N 个地址，最左侧可伪造的值不再采用 |
 | `DISABLE_LOCAL_REGISTER` | `false` | 为 true 时在所有模式下阻止本地自助注册 |
 | `ALLOW_LOCAL_REGISTER` | `false` | 除非明确禁用，否则允许 staging/production 中的本地注册 |
 | `ALLOW_BOOTSTRAP_ADMIN` | `false` | 允许 staging/production 中的第一个用户管理员引导；development/test 单独允许 |
-| `METRICS_TOKEN` | 未设置 | 在 staging/production 中设置时，仅对 `/metrics` 要求 `X-Metrics-Token` 值 |
+| `METRICS_TOKEN` | 未设置 | staging/production **必填**（未设置则拒绝启动）；`/metrics` 要求 `X-Metrics-Token` 头 |
 | `ASKFLOW_PROFILE` | `full` | 功能包：`core-only`、`faq-only`、`mvp`、`enterprise`、`full` |
 | `ASKFLOW_FEATURES` | 空文本 | 逗号分隔的添加/移除，例如 `+teams,-mcp`；依赖项可能把移除的前置功能加回来 |
 
@@ -128,7 +129,8 @@
 | `MCP_ENABLED` | `false` | 已实现的已批准工具注册的门控，不是远程 MCP 连接 |
 | `MCP_TOOL_WHITELIST` | `search_knowledge` | 逗号分隔的允许名称；未知工具可能是 echo 桩 |
 | `SIEM_WEBHOOK_URL` | 未设置 | 明确的审计推送目的地；不会启动自动转发 |
-| `FEISHU_VERIFICATION_TOKEN` | 未设置 | 飞书事件验证值；预期的经过认证的生产设置需要 |
+| `FEISHU_VERIFICATION_TOKEN` | 未设置 | 飞书事件验证值，常量时间比较 |
+| `FEISHU_ENCRYPT_KEY` | 未设置 | 飞书 Encrypt Key：启用 `X-Lark-Signature` 签名、5 分钟时间窗、nonce 防重放与加密事件解密；staging/production 未设置时拒绝所有事件 |
 | `FEISHU_APP_ID` | 未设置 | 飞书出站回复应用 ID |
 | `FEISHU_APP_SECRET` | 未设置 | 飞书出站回复应用凭据 |
 | `WECOM_TOKEN` | 未设置 | 受支持的普通/测试验证令牌；不是完整的生产 POST 认证 |

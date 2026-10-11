@@ -32,6 +32,8 @@ def test_rate_limit_middleware_returns_429_when_exceeded(monkeypatch: pytest.Mon
             env="development",
             rate_limit_per_minute=3,
             trust_proxy_headers=False,
+            trusted_proxy_hops=1,
+            api_prefix="/api/v1",
         ),
     )
 

@@ -1,4 +1,7 @@
-"""Core plugin: auth, chat, health, audit, users, system/features."""
+"""Core plugin: auth, chat, health, audit, users, system/features, clarify/refuse routes.
+
+Clarify and refuse are safety routes, so every profile has them — even ``core-only`` (D-06).
+"""
 
 from __future__ import annotations
 
@@ -22,6 +25,8 @@ class CorePlugin:
         from app.api.v1.chat.routes import router as chat_router
         from app.api.v1.health.routes import router as health_router
         from app.api.v1.plugins_routes import router as features_router
+        from app.services.agent.pipeline.handlers.clarify import handle_clarify
+        from app.services.agent.pipeline.handlers.refuse import handle_refuse
 
         ctx.api_router.include_router(health_router, tags=["health"])
         ctx.api_router.include_router(chat_router, prefix="/chat", tags=["chat"])
@@ -30,6 +35,8 @@ class CorePlugin:
         ctx.admin_router.include_router(system_router, prefix="/system", tags=["system"])
         ctx.admin_router.include_router(users_router, prefix="/users", tags=["users"])
         ctx.admin_router.include_router(features_router, prefix="/features", tags=["features"])
+        ctx.register_route_handler("clarify", handle_clarify)
+        ctx.register_route_handler("refuse", handle_refuse)
         ctx.add_nav(AdminNavItem("core", "/admin/audit", "审计", order=90))
         ctx.add_nav(AdminNavItem("core", "/admin/users", "用户", order=91))
         ctx.add_nav(AdminNavItem("core", "/admin/plugins", "插件", order=95))

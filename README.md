@@ -39,9 +39,9 @@ AskFlow 将 Honest RAG、受约束的 Agent、工单与人工协作放在同一�
 
 ## 界面预览
 
-> 截图来自本地开发环境（`ASKFLOW_PROFILE=full`，SQLite + 示例知识库），基于 Ant Design v6 的浅色企业主题。
+> 截图来自本地开发环境（`ASKFLOW_PROFILE=full`、SQLite、离线抽取式回答，未接入大模型），数据由 `apps/api/scripts/seed_demo.py` 通过 API 写入：6 篇业务知识文档、4 位客户的 13 段对话、7 张工单、2 条人工接管与 3 个知识缺口。界面基于 Ant Design v6 浅色企业主题。
 
-**用户对话台**：基于知识库作答，回答附路由、置信度与引用；可随时转人工。
+**用户对话台**：基于知识库逐句摘取作答，每句附引用编号，并显示路由与置信度；可随时转人工。
 
 ![用户对话台](./docs/images/screenshots/chat.webp)
 
@@ -60,6 +60,10 @@ AskFlow 将 Honest RAG、受约束的 Agent、工单与人工协作放在同一�
   <tr>
     <td width="50%"><img src="./docs/images/screenshots/admin-documents.webp" alt="知识文档"><br><sub>知识文档：上传索引、版本对比与回滚</sub></td>
     <td width="50%"><img src="./docs/images/screenshots/admin-handoffs.webp" alt="人工接管"><br><sub>人工接管：认领会话或交还智能助手</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./docs/images/screenshots/admin-tickets.webp" alt="工单中心"><br><sub>工单中心：优先级、状态流转与首响 SLA</sub></td>
+    <td width="50%"><img src="./docs/images/screenshots/admin-gaps.webp" alt="知识缺口"><br><sub>知识缺口：未覆盖问题沉淀为草稿</sub></td>
   </tr>
 </table>
 

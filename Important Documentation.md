@@ -5,6 +5,10 @@
 **Method:** Static code-logic review only. Per project policy the project was **not run**, no dependencies were installed, and no tests were executed. Each finding was traced through the actual code path; the highest-severity items were additionally re-verified by hand (file/line and grep confirmations noted below).
 
 > This document records **defects found** and the **items that still need to be tested/verified** at runtime. No source code was modified as part of this audit.
+>
+> **Status 2026-10-11:** all 20 findings are fixed on `feat/backend-hardening` and covered by
+> `apps/api/tests/unit/test_audit_fixes_security.py` + `test_audit_fixes_logic.py` (399 tests pass).
+> Fix summary and the remaining backend roadmap: [docs/engineering/backend-plan.md](./docs/engineering/backend-plan.md).
 
 ---
 

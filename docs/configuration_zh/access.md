@@ -89,9 +89,9 @@ CORS_ORIGINS='["https://support.example.com"]'
 
 `RATE_LIMIT_PER_MINUTE=60` 是默认的每 IP HTTP 请求限制。共享网络可能让许多用户位于同一个 IP 后面。请设置一个经过测量的限制并进行测试；这不是按客户的计费或模型支出上限。
 
-`TRUST_PROXY_HEADERS=false` 是默认值。仅当 API 可通过受信任的、控制转发客户端地址头的代理访问时，才将其设为 true。否则调用方可能提供误导性的地址。重启并让运维人员验证用于限流的地址。
+`TRUST_PROXY_HEADERS=false` 是默认值。仅当 API 可通过受信任的、控制转发客户端地址头的代理访问时，才将其设为 true。否则调用方可能提供误导性的地址。有多层代理（如 CDN + Nginx）时同时设置 `TRUSTED_PROXY_HOPS` 为代理层数。重启并让运维人员验证用于限流的地址。
 
-`METRICS_TOKEN` 在 staging/production 中可选地使用 `X-Metrics-Token` 头保护 `/metrics`。它在 development/test 中不被强制执行。请相应配置监控采集器，并将监控端点保留在预期的网络上。它不保护 `/health` 或普通 API 路由。
+`METRICS_TOKEN` 在 staging/production 中为必填项：未设置时 API 拒绝启动，`/metrics` 必须携带 `X-Metrics-Token` 头。它在 development/test 中不被强制执行。请相应配置监控采集器，并将监控端点保留在预期的网络上。它不保护 `/health` 或普通 API 路由。
 
 ## 生产模式决策示例
 

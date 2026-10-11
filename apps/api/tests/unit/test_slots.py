@@ -33,11 +33,10 @@ def test_ask_then_fill():
 
 
 def test_abandon_on_max_turns():
+    # max_turns=1 → the opening ask is the only one; the first unhelpful reply abandons (D-15)
     t = SlotTracker(max_turns=1)
     meta = t.start_order_slot({})
-    d1 = t.decide("不知道", meta)
-    meta = t.apply_patch(meta, d1.patch)
-    d2 = t.decide("还是不知道", meta)
+    d2 = t.decide("不知道", meta)
     assert d2.action == "abandon"
     assert d2.message
     assert d2.patch == {"pending_slot": None}
@@ -64,11 +63,12 @@ async def test_pipeline_abandon_clears_pending_and_shows_message():
     meta = merge_patch(meta, r1.metadata_patch)
     assert meta.get("pending_slot") is not None
 
-    for _ in range(3):
+    for _ in range(2):
         r = await p.handle("不知道", history=[], metadata=meta)
         meta = merge_patch(meta, r.metadata_patch)
+        assert meta.get("pending_slot") is not None
 
-    # max_slot_turns=3 → next wait abandons
+    # max_slot_turns=3 → opening ask + 2 re-asks, the next unhelpful reply abandons (D-15)
     r_ab = await p.handle("还是没有", history=[], metadata=meta)
     assert "slot_abandon" in r_ab.flags or "未能获取订单号" in r_ab.answer
     assert r_ab.metadata_patch.get("pending_slot") is None

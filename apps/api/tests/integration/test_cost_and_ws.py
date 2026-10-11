@@ -30,7 +30,9 @@ async def test_message_meta_includes_cost_models(client: AsyncClient):
     assert msg.status_code == 200
     meta = msg.json()["assistant_message"]["meta"]
     assert "cost" in meta
-    assert meta["cost"]["calls"] >= 2  # multiple purposes recorded
+    # Offline turn: no real model call, budget seeds are listed but never counted (D-04)
+    assert meta["cost"]["calls"] == 0
+    assert {e["phase"] for e in meta["cost"]["entries"]} == {"budget"}
     purposes = {e["purpose"] for e in meta["cost"]["entries"]}
     assert "intent_classify" in purposes
     assert "rag_generate" in purposes

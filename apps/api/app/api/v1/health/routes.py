@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hmac
+
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -97,21 +99,18 @@ def _vector_status(settings: Settings, store: object) -> tuple[str, str]:
     return "down", "chroma_unavailable"
 
 
-def _metrics_authorized(request: Request | None) -> bool:
+def _metrics_authorized(request: Request) -> bool:
+    """Production-like envs always require ``X-Metrics-Token`` (startup refuses an unset token)."""
     settings = get_settings()
-    token = settings.metrics_token
-    if not token:
-        return True
     if not settings.is_production_like:
         return True
-    if request is None:
-        return False
-    return request.headers.get("x-metrics-token") == token
+    supplied = request.headers.get("x-metrics-token", "")
+    return hmac.compare_digest(supplied, settings.metrics_token or "")
 
 
 @router.get("/metrics")
 async def metrics(request: Request) -> Response:
-    """Prometheus scrape. Optional METRICS_TOKEN in staging/production."""
+    """Prometheus scrape. METRICS_TOKEN is mandatory in staging/production (D-18)."""
     if not _metrics_authorized(request):
         raise HTTPException(status_code=HTTP_UNAUTHORIZED, detail="metrics_token_required")
     payload, content_type = metrics_payload()

@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import Settings
 from app.core.database import Base
+from app.services.channels.feishu.security import FeishuAuthError, FeishuRequest
 from app.services.channels.feishu.service import FeishuService
 
 
@@ -84,7 +85,7 @@ async def test_handle_message_runs_pipeline():
         assert result.reply_text
         assert result.reply_status == "local_only"
 
-        bad = await svc.handle_payload({**body, "token": "wrong"})
-        assert bad.kind == "ignored"
-        assert bad.reply_status == "bad_token"
+        forged = FeishuRequest(json.dumps({**body, "token": "wrong"}).encode(), {})
+        with pytest.raises(FeishuAuthError, match="bad_token"):
+            await svc.handle_request(forged)
     await engine.dispose()

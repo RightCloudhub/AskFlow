@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 
@@ -53,6 +54,18 @@ OUT_OF_SCOPE_RE = re.compile(
 )
 
 
+# Messages with no question content at all ("在吗", "你好", "hi?") — answering them from the
+# knowledge base is noise, so they get a clarifying question instead (D-14).
+VAGUE_RE = re.compile(
+    r"^[\s,.!?，。！？~～]*(在吗|在不在|有人吗|你好|您好|喂|嗯+|哈喽|hi|hello|hey)?[\s,.!?，。！？~～]*$",
+    re.IGNORECASE,
+)
+FALLBACK_FAQ_CONFIDENCE = 0.55
+VAGUE_FAQ_CONFIDENCE = 0.4
+FAQ_CLARIFY_BELOW = 0.5
+logger = logging.getLogger("askflow.intent")
+
+
 @dataclass
 class IntentResult:
     intent: Intent
@@ -80,12 +93,11 @@ class IntentClassifier:
                 if llm is not None:
                     if llm.confidence >= rule.confidence:
                         return llm
-            except Exception:
-                # best-effort: fall through to rules
-                pass
+            except Exception as exc:  # LLM is optional; rules always answer
+                logger.warning("llm intent classify failed, using rules: %s", exc)
 
         # Very low-confidence FAQ → force clarify instead of weak RAG
-        if rule.intent == Intent.FAQ and rule.confidence < 0.5:
+        if rule.intent == Intent.FAQ and rule.confidence < FAQ_CLARIFY_BELOW:
             return IntentResult(
                 intent=Intent.FAQ,
                 confidence=rule.confidence,
@@ -134,11 +146,12 @@ class IntentClassifier:
             best.reasons = (best.reasons or []) + reasons
             return best
 
+        vague = bool(VAGUE_RE.match(text))
         return IntentResult(
             intent=Intent.FAQ,
-            confidence=0.55,
+            confidence=VAGUE_FAQ_CONFIDENCE if vague else FALLBACK_FAQ_CONFIDENCE,
             source="fallback",
-            reasons=reasons + ["default_faq"],
+            reasons=reasons + ["vague_faq" if vague else "default_faq"],
         )
 
     async def _llm_classify(self, text: str) -> IntentResult | None:

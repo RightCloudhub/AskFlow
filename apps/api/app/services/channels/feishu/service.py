@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings, get_settings
 from app.middleware.metrics import CHAT_TURNS
 from app.services.audit.logger.service import AuditService
+from app.services.channels.feishu.security import FeishuRequest, authenticate
 from app.services.channels.identity import ensure_channel_user, open_channel_conversation
 from app.services.chat.session.service import ChatService
 
@@ -54,13 +55,6 @@ class FeishuService:
         self.db = db
         self.settings = settings or get_settings()
         self._http_post = http_post
-
-    def verify_token(self, token: str | None) -> bool:
-        expected = self.settings.feishu_verification_token
-        if not expected:
-            # Fail-closed in staging/production; open only for local/test
-            return not self.settings.is_production_like
-        return bool(token) and token == expected
 
     def parse_event(self, body: dict[str, Any]) -> FeishuInbound | str | None:
         """Return challenge str, FeishuInbound, or None if ignore."""
@@ -116,11 +110,12 @@ class FeishuService:
         except json.JSONDecodeError:
             return content.strip()
 
-    async def handle_payload(self, body: dict[str, Any]) -> FeishuHandleResult:
-        token = body.get("token") or (body.get("header") or {}).get("token")
-        if not self.verify_token(token if isinstance(token, str) else None):
-            return FeishuHandleResult(kind="ignored", reply_status="bad_token")
+    async def handle_request(self, request: FeishuRequest) -> FeishuHandleResult:
+        """Authenticate the raw webhook (raises ``FeishuAuthError``) and process it."""
+        return await self.handle_payload(authenticate(request, self.settings))
 
+    async def handle_payload(self, body: dict[str, Any]) -> FeishuHandleResult:
+        """Process an already-authenticated event body."""
         parsed = self.parse_event(body)
         if isinstance(parsed, str):
             return FeishuHandleResult(kind="challenge", challenge=parsed)

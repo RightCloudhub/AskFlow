@@ -60,24 +60,24 @@ def test_sanitize_visitor_key_collision_free_and_stable():
     assert sanitize_visitor_key("ok-key_1") == sanitize_visitor_key("ok-key_1")
 
 
-def test_feishu_fail_closed_without_token_in_production():
+def test_feishu_fail_closed_without_encrypt_key_in_production():
+    from app.services.channels.feishu.security import FeishuAuthError, FeishuRequest, authenticate
+
+    request = FeishuRequest(b'{"type": "url_verification", "challenge": "c"}', {})
     settings = Settings(
         ASKFLOW_ENV="production",
         SECRET_KEY="test-secret-key-not-for-prod-xx",
-        FEISHU_VERIFICATION_TOKEN=None,
+        FEISHU_VERIFICATION_TOKEN="vt",
     )
-    svc = FeishuService.__new__(FeishuService)
-    svc.settings = settings
-    assert svc.verify_token(None) is False
-    assert svc.verify_token("anything") is False
+    with pytest.raises(FeishuAuthError, match="encrypt_key_required"):
+        authenticate(request, settings)
 
     dev = Settings(
         ASKFLOW_ENV="development",
         SECRET_KEY="test-secret-key-not-for-prod-xx",
         FEISHU_VERIFICATION_TOKEN=None,
     )
-    svc.settings = dev
-    assert svc.verify_token(None) is True
+    assert authenticate(request, dev)["challenge"] == "c"
 
 
 def test_oidc_jwks_rejects_bad_signature_and_wrong_aud():

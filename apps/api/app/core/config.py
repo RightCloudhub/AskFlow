@@ -106,6 +106,8 @@ class Settings(BaseSettings):
     grounding_min_hits: int = 1
     grounding_weak_sources: int = 2
     max_question_chars: int = 2000
+    # Per-message cap on conversation history fed to the model (D-20)
+    max_history_msg_chars: int = 2000
     max_answer_chars: int = 4000
     max_history_messages: int = 20
     max_history_chars: int = 6000
@@ -159,6 +161,8 @@ class Settings(BaseSettings):
     allow_bootstrap_admin: bool = Field(default=False, validation_alias="ALLOW_BOOTSTRAP_ADMIN")
     # Trust X-Forwarded-For for rate limiting only behind a known reverse proxy
     trust_proxy_headers: bool = Field(default=False, validation_alias="TRUST_PROXY_HEADERS")
+    # Number of reverse proxies in front of the API that append to X-Forwarded-For
+    trusted_proxy_hops: int = Field(default=1, ge=1, validation_alias="TRUSTED_PROXY_HOPS")
     max_upload_bytes: int = Field(default=15 * 1024 * 1024, validation_alias="MAX_UPLOAD_BYTES")
     mcp_enabled: bool = Field(default=False, validation_alias="MCP_ENABLED")
     mcp_tool_whitelist: str = Field(
@@ -171,6 +175,8 @@ class Settings(BaseSettings):
     feishu_verification_token: str | None = Field(
         default=None, validation_alias="FEISHU_VERIFICATION_TOKEN"
     )
+    # Lark "Encrypt Key": enables signature + replay checks and body decryption (D-10)
+    feishu_encrypt_key: str | None = Field(default=None, validation_alias="FEISHU_ENCRYPT_KEY")
     feishu_app_id: str | None = Field(default=None, validation_alias="FEISHU_APP_ID")
     feishu_app_secret: str | None = Field(default=None, validation_alias="FEISHU_APP_SECRET")
     # --- WeCom / DingTalk ---
@@ -238,6 +244,10 @@ class Settings(BaseSettings):
         if self.oidc_mock:
             raise RuntimeError(
                 f"Refusing to start: OIDC_MOCK=1 is not allowed when ASKFLOW_ENV={self.env}."
+            )
+        if not self.metrics_token:
+            raise RuntimeError(
+                f"Refusing to start: METRICS_TOKEN is required when ASKFLOW_ENV={self.env} (D-18)."
             )
 
 

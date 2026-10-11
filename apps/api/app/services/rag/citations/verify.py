@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-CITE_RE = re.compile(r"\[(\d+)\]")
+# ASCII [n], full-width ［n］ and CJK lenticular 【n】 (D-12)
+CITE_RE = re.compile(r"[\[［【](\d+)[\]］】]")
 
 
 def verify_citations(answer: str, sources: list[dict[str, Any]]) -> dict[str, Any]:

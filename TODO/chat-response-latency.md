@@ -1,6 +1,6 @@
 # TODO: 聊天回答慢的优化
 
-状态：待办
+状态：P0、P1 已完成（2026-10-11，见 docs/engineering/backend-plan.md）；P2 待办
 创建：2026-10-04
 关联日志：`POST /v1/embeddings` ×2 → `POST /v1/chat/completions`（WS 会话）
 

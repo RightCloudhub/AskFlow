@@ -14,7 +14,7 @@ from app.models.enums import LEGAL_ROUTES, Route
 
 # --- Hard-coded user-facing copy (must not live in prompt tables) ---
 MSG_EMPTY = "请输入您的问题，我会尽力帮助您。"
-MSG_TOO_LONG = "问题过长，请精简到 2000 字以内后再试。"
+MSG_TOO_LONG = "问题过长，请精简到 {limit} 字以内后再试。"
 MSG_INJECTION = "抱歉，我无法执行该请求。请直接描述您的业务问题。"
 MSG_EMPTY_OUTPUT = "抱歉，暂时无法生成有效回答，请稍后再试或转人工。"
 MSG_TRUNCATED_SUFFIX = "\n\n…（回答过长已截断，如需更多细节请继续追问）"
@@ -95,7 +95,7 @@ class Harness:
             return PrepareResult(
                 allowed=False,
                 text=raw[: self.settings.max_question_chars],
-                stop_message=MSG_TOO_LONG,
+                stop_message=MSG_TOO_LONG.format(limit=self.settings.max_question_chars),
                 reason="too_long",
                 flags=["block_too_long"],
             )
@@ -192,8 +192,8 @@ class Harness:
             if role not in {"user", "assistant", "system"}:
                 flags.append("dropped_illegal_role")
                 continue
-            if len(content) > 2000:
-                content = content[:2000]
+            if len(content) > self.settings.max_history_msg_chars:
+                content = content[: self.settings.max_history_msg_chars]
                 flags.append("history_msg_truncated")
             cleaned.append({"role": role, "content": content})
 

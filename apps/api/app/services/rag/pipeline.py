@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -9,6 +11,7 @@ from app.services.rag.bm25.index import get_default_bm25
 from app.services.rag.citations.verify import verify_citations
 from app.services.rag.context.assembler import ContextAssembler
 from app.services.rag.fusion.rrf import fuse_hits
+from app.services.rag.generator.token_sink import emit_sources
 from app.services.rag.generator.service import CANCELLED_ANSWER, AnswerGenerator
 from app.services.rag.grounding.evaluator import GroundingEvaluator
 from app.services.rag.query_rewrite.rewriter import QueryRewriter, RewriteResult
@@ -71,6 +74,7 @@ class RAGPipeline:
                 flags=["refused", f"refusal:{decision.reason}", *cache_flags],
             )
 
+        await emit_sources(decision.sources)
         bundle = self.context.assemble(
             question=question,
             history=history,
@@ -106,8 +110,11 @@ class RAGPipeline:
             flags.append("retrieval_cache_hit")
             return cached
         await ensure_seeded(self.vector)
-        bm25_hits = get_default_bm25().search(query, top_k=top_k)
-        vector_hits = await self.vector.search(query, top_k=top_k)
+        # Local BM25 (CPU) and vector search (often a network hop) run concurrently
+        bm25_hits, vector_hits = await asyncio.gather(
+            asyncio.to_thread(get_default_bm25().search, query, top_k),
+            self.vector.search(query, top_k=top_k),
+        )
         fused = fuse_hits([bm25_hits, vector_hits], top_k=top_k)
         cache.set(key, fused)
         flags.append("retrieval_cache_miss")

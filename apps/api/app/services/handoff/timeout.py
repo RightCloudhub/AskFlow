@@ -20,8 +20,12 @@ from app.schemas.ticket import TicketCreate
 from app.services.notify.service import NotifyService
 from app.services.ticket.repository.service import TicketRepository
 
+CONVERSATION_TAG_LEN = 8
+
 
 class HandoffTimeoutSweeper:
+    """Expire queued handoffs, then — only after the caller commits — announce them (D-09)."""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.settings = get_settings()
@@ -34,63 +38,49 @@ class HandoffTimeoutSweeper:
                 HandoffSession.created_at <= cutoff,
             )
         )
-        sessions = list(result.scalars().all())
-        outcomes: list[dict] = []
-        repo = TicketRepository(self.db)
+        outcomes = [await self._expire(s) for s in result.scalars().all()]
+        await self.db.flush()
+        return [o for o in outcomes if o is not None]
+
+    async def publish(self, outcomes: list[dict]) -> None:
+        """Webhook + metric for committed timeouts. Never call before ``db.commit()``."""
         notify = NotifyService(self.db)
-
-        for session in sessions:
-            # CAS: only one worker wins the timeout transition
-            cas = await self.db.execute(
-                update(HandoffSession)
-                .where(
-                    HandoffSession.id == session.id,
-                    HandoffSession.status == HandoffStatus.QUEUED.value,
-                )
-                .values(
-                    status=HandoffStatus.TIMED_OUT.value,
-                    timed_out_at=datetime.now(UTC),
-                )
-            )
-            if cas.rowcount == 0:
-                continue
-
-            title = f"转人工超时: {session.conversation_id[:8]}"
-            ticket, created = await repo.create_or_get_open(
-                session.user_id,
-                TicketCreate(
-                    title=title,
-                    description=session.summary or "handoff timeout",
-                    type="handoff_timeout",
-                    priority=TicketPriority.HIGH.value,
-                    conversation_id=session.conversation_id,
-                    content={"handoff_id": session.id},
-                ),
-            )
-
-            conv = await self.db.get(Conversation, session.conversation_id)
-            if conv is not None:
-                conv.status = ConversationStatus.ACTIVE.value
-
+        for outcome in outcomes:
             await notify.emit_safe(
                 NotifyEvent.HANDOFF_TIMEOUT.value,
-                {
-                    "handoff_id": session.id,
-                    "ticket_id": ticket.id,
-                    "conversation_id": session.conversation_id,
-                    "user_id": session.user_id,
-                },
+                {k: outcome[k] for k in ("handoff_id", "ticket_id", "conversation_id", "user_id")},
             )
             HANDOFF_TIMEOUT_TOTAL.inc()
 
-            outcomes.append(
-                {
-                    "handoff_id": session.id,
-                    "ticket_id": ticket.id,
-                    "ticket_created": created,
-                    "conversation_id": session.conversation_id,
-                }
+    async def _expire(self, session: HandoffSession) -> dict | None:
+        # CAS: only one worker wins the timeout transition
+        cas = await self.db.execute(
+            update(HandoffSession)
+            .where(
+                HandoffSession.id == session.id,
+                HandoffSession.status == HandoffStatus.QUEUED.value,
             )
-
-        await self.db.flush()
-        return outcomes
+            .values(status=HandoffStatus.TIMED_OUT.value, timed_out_at=datetime.now(UTC))
+        )
+        if cas.rowcount == 0:
+            return None
+        ticket, created = await TicketRepository(self.db).create_or_get_open(
+            session.user_id,
+            TicketCreate(
+                title=f"转人工超时: {session.conversation_id[:CONVERSATION_TAG_LEN]}",
+                description=session.summary or "handoff timeout",
+                type="handoff_timeout",
+                priority=TicketPriority.HIGH.value,
+                conversation_id=session.conversation_id,
+                content={"handoff_id": session.id},
+            ),
+        )
+        conv = await self.db.get(Conversation, session.conversation_id)
+        conv.status = ConversationStatus.ACTIVE.value
+        return {
+            "handoff_id": session.id,
+            "ticket_id": ticket.id,
+            "ticket_created": created,
+            "conversation_id": session.conversation_id,
+            "user_id": session.user_id,
+        }

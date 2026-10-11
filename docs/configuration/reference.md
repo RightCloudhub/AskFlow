@@ -25,10 +25,11 @@ See [Basics](basics.md) and [Accounts, access, and hosting](access.md).
 | `JWT_ALGORITHM` | `HS256` | Token signing algorithm; retain unless changing the authentication integration |
 | `RATE_LIMIT_PER_MINUTE` | `60` | Per-IP HTTP requests per minute per process; minimum effectively 1; not a distributed or WebSocket-message limit |
 | `TRUST_PROXY_HEADERS` | `false` | Trust forwarded client IP for rate limiting; enable only behind a controlled proxy |
+| `TRUSTED_PROXY_HOPS` | `1` | Number of trusted proxies appending to `X-Forwarded-For`; the limiter reads the Nth entry from the right, never the spoofable leftmost one |
 | `DISABLE_LOCAL_REGISTER` | `false` | Blocks local self-registration in all modes when true |
 | `ALLOW_LOCAL_REGISTER` | `false` | Permits local registration in staging/production, unless explicitly disabled |
 | `ALLOW_BOOTSTRAP_ADMIN` | `false` | Allows first-user admin bootstrap in staging/production; development/test permit it separately |
-| `METRICS_TOKEN` | Unset | Required `X-Metrics-Token` value for `/metrics` only when set in staging/production |
+| `METRICS_TOKEN` | Unset | **Required** in staging/production (startup refuses without it); `/metrics` demands the `X-Metrics-Token` header |
 | `ASKFLOW_PROFILE` | `full` | Feature bundle: `core-only`, `faq-only`, `mvp`, `enterprise`, `full` |
 | `ASKFLOW_FEATURES` | Empty text | Comma-separated additions/removals such as `+teams,-mcp`; dependencies may add removed prerequisites back |
 
@@ -128,7 +129,8 @@ See [Accounts](access.md), [Service operations](service.md), and [Channels](chan
 | `MCP_ENABLED` | `false` | Gate for implemented approved-tool registration, not a remote MCP connection |
 | `MCP_TOOL_WHITELIST` | `search_knowledge` | Comma-separated allowed names; unknown tools can be echo stubs |
 | `SIEM_WEBHOOK_URL` | Unset | Destination for explicit audit push; does not start automatic forwarding |
-| `FEISHU_VERIFICATION_TOKEN` | Unset | Feishu event verification value; required for the intended authenticated production setup |
+| `FEISHU_VERIFICATION_TOKEN` | Unset | Feishu event verification value, compared in constant time |
+| `FEISHU_ENCRYPT_KEY` | Unset | Feishu Encrypt Key: enables `X-Lark-Signature` checks, a 5-minute timestamp window, nonce replay protection and encrypted-event decryption; staging/production reject every event without it |
 | `FEISHU_APP_ID` | Unset | Feishu outbound-reply application ID |
 | `FEISHU_APP_SECRET` | Unset | Feishu outbound-reply application credential |
 | `WECOM_TOKEN` | Unset | Supported plain/test verification token; not complete production POST authentication |

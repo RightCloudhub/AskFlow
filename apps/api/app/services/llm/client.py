@@ -36,6 +36,7 @@ class _StreamCtx:
     base_url: str
     headers: dict[str, str]
     body: dict[str, Any]
+    timeout: httpx.Timeout
 
 
 class LLMClient:
@@ -53,10 +54,23 @@ class LLMClient:
         self.api_key = api_key
         self.timeout = timeout
         self._transport = transport
+        self._http: httpx.AsyncClient | None = None
 
     @property
     def available(self) -> bool:
         return bool(self.base_url and self.api_key)
+
+    @property
+    def http(self) -> httpx.AsyncClient:
+        """One pooled client per process: keep-alive saves a TCP+TLS handshake per call."""
+        if self._http is None:
+            self._http = httpx.AsyncClient(timeout=self.timeout, transport=self._transport)
+        return self._http
+
+    async def aclose(self) -> None:
+        if self._http is not None:
+            await self._http.aclose()
+            self._http = None
 
     async def complete(self, req: ChatRequest) -> str:
         body = _to_payload(req, stream=False)
@@ -78,17 +92,11 @@ class LLMClient:
         if not self.available:
             raise RuntimeError("llm_not_configured")
         try:
-            async with httpx.AsyncClient(
-                timeout=self.timeout,
-                transport=self._transport,
-            ) as client:
-                resp = await client.post(
-                    f"{self.base_url}{CHAT_PATH}",
-                    headers=self._headers(),
-                    json=body,
-                )
-                resp.raise_for_status()
-                return resp.json()
+            resp = await self.http.post(
+                f"{self.base_url}{CHAT_PATH}", headers=self._headers(), json=body
+            )
+            resp.raise_for_status()
+            return resp.json()
         except Exception as exc:
             LLM_ERROR_TOTAL.labels(purpose=purpose, error_class=type(exc).__name__).inc()
             raise
@@ -97,16 +105,16 @@ class LLMClient:
         if not self.available:
             raise RuntimeError("llm_not_configured")
         timeout = httpx.Timeout(self.timeout, read=STREAM_READ_TIMEOUT_SEC)
+        ctx = _StreamCtx(
+            client=self.http,
+            base_url=self.base_url or "",
+            headers=self._headers(),
+            body=body,
+            timeout=timeout,
+        )
         try:
-            async with httpx.AsyncClient(timeout=timeout, transport=self._transport) as client:
-                ctx = _StreamCtx(
-                    client=client,
-                    base_url=self.base_url or "",
-                    headers=self._headers(),
-                    body=body,
-                )
-                async for token in _stream_tokens(ctx):
-                    yield token
+            async for token in _stream_tokens(ctx):
+                yield token
         except Exception as exc:
             LLM_ERROR_TOTAL.labels(purpose="stream", error_class=type(exc).__name__).inc()
             raise
@@ -118,6 +126,7 @@ async def _stream_tokens(ctx: _StreamCtx) -> AsyncIterator[str]:
         f"{ctx.base_url}{CHAT_PATH}",
         headers=ctx.headers,
         json=ctx.body,
+        timeout=ctx.timeout,
     ) as resp:
         resp.raise_for_status()
         async for line in resp.aiter_lines():

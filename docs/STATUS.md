@@ -9,6 +9,7 @@
 | **对照 PRD** | `docs/prd/PRD.md` **v1.3** |
 | **闭环/安全审查** | `docs/engineering/business-loop-security-fallback-review.md` |
 | **安全 pre-commit** | `docs/engineering/security-precommit-checklist.md` |
+| **后端加固与规划** | `docs/engineering/backend-plan.md`（2026-10-11：审计 D-01…D-20 全部修复，399 测试通过） |
 
 ---
 

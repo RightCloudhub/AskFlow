@@ -5,12 +5,12 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.after_commit import on_commit
 from app.core.config import get_settings
 from app.models.document import Document
 from app.models.enums import DocumentStatus
-from app.services.knowledge.indexer.service import IndexerService
+from app.services.knowledge.indexer.service import IndexerService, remove_from_index_on_commit
 from app.services.knowledge.storage.local import LocalObjectStorage, safe_filename
-from app.services.rag.bm25.index import get_default_bm25
 from app.services.rag.vector.store import get_default_vector_store
 from app.workers.index_worker.queue import IndexJob, get_index_queue
 
@@ -70,15 +70,9 @@ class DocumentService:
         if doc is None:
             return False
         if doc.storage_key:
-            try:
-                self.storage.delete(doc.storage_key)
-            except Exception:
-                pass
-        bm25 = get_default_bm25()
-        remaining = [d for d in bm25._docs if str(d.get("doc_id")) != document_id]
-        bm25.clear()
-        if remaining:
-            bm25.add_documents(remaining)
+            key = doc.storage_key
+            on_commit(self.db, lambda: self.storage.delete(key))
+        remove_from_index_on_commit(self.db, document_id)
         await get_default_vector_store().delete_document(document_id)
         await self.db.delete(doc)
         await self.db.flush()

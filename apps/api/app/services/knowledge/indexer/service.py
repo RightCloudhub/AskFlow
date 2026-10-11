@@ -5,15 +5,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.after_commit import on_commit
 from app.models.document import Document
 from app.models.enums import DocumentStatus
 from app.services.knowledge.chunker.chunker import chunk_text
 from app.services.knowledge.parser.parser import parse_bytes
 from app.services.knowledge.storage.local import LocalObjectStorage
 from app.services.rag.bm25.index import get_default_bm25
+from app.services.rag.retrieval_cache import get_retrieval_cache
 from app.services.rag.vector.store import get_default_vector_store
 
 logger = logging.getLogger("askflow.indexer")
@@ -43,7 +45,7 @@ class IndexerService:
             chunks = chunk_text(text)
             generation = (doc.generation or 0) + 1
             new_docs = _chunk_payloads(doc, chunks, generation)
-            _replace_bm25(doc.id, new_docs)
+            _replace_bm25_on_commit(self.db, doc.id, new_docs)
             await get_default_vector_store().delete_document(doc.id)
             if new_docs:
                 await get_default_vector_store().upsert_chunks(new_docs)
@@ -108,12 +110,37 @@ def _chunk_payloads(doc: Document, chunks: list[str], generation: int) -> list[d
     ]
 
 
-def _replace_bm25(doc_id: str, new_docs: list[dict[str, Any]]) -> None:
-    """write-new-then-delete for this doc_id in the process BM25 index."""
-    bm25 = get_default_bm25()
-    remaining = [d for d in bm25._docs if str(d.get("doc_id")) != doc_id]
-    bm25.clear()
-    if remaining:
-        bm25.add_documents(remaining)
-    if new_docs:
-        bm25.add_documents(new_docs)
+def _replace_bm25_on_commit(db: AsyncSession, doc_id: str, new_docs: list[dict[str, Any]]) -> None:
+    """Swap the document's chunks in the process BM25 index once the DB commit lands (D-11)."""
+
+    def apply() -> None:
+        get_default_bm25().replace_document(doc_id, new_docs)
+        get_retrieval_cache().clear()
+
+    on_commit(db, apply)
+
+
+def remove_from_index_on_commit(db: AsyncSession, doc_id: str) -> None:
+    _replace_bm25_on_commit(db, doc_id, [])
+
+
+async def rehydrate_index(db: AsyncSession, storage: LocalObjectStorage | None = None) -> int:
+    """Rebuild BM25 + vector chunks for every ACTIVE document from object storage on boot.
+
+    The indexes are in-process; without this every uploaded document vanished from search
+    after a restart. Returns the number of documents restored.
+    """
+    storage = storage or LocalObjectStorage()
+    result = await db.execute(
+        select(Document).where(
+            Document.status == DocumentStatus.ACTIVE.value, Document.storage_key.is_not(None)
+        )
+    )
+    docs = list(result.scalars().all())
+    for doc in docs:
+        text = parse_bytes(storage.get(doc.storage_key), filename=doc.filename)
+        payloads = _chunk_payloads(doc, chunk_text(text), doc.generation or 1)
+        get_default_bm25().replace_document(doc.id, payloads)
+        await get_default_vector_store().delete_document(doc.id)
+        await get_default_vector_store().upsert_chunks(payloads)
+    return len(docs)

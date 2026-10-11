@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,6 +90,18 @@ class TicketRepository:
         result = await self.db.execute(select(Ticket).where(Ticket.id == ticket_id))
         return result.scalar_one_or_none()
 
+    async def mark_first_response(self, conversation_id: str) -> None:
+        """Stamp ``first_responded_at`` on open tickets of a conversation a human just answered."""
+        await self.db.execute(
+            update(Ticket)
+            .where(
+                Ticket.conversation_id == conversation_id,
+                Ticket.status.in_(self.OPEN_STATUSES),
+                Ticket.first_responded_at.is_(None),
+            )
+            .values(first_responded_at=datetime.now(UTC))
+        )
+
     async def update_status(
         self,
         ticket: Ticket,
@@ -100,9 +112,7 @@ class TicketRepository:
         description: str | None = None,
     ) -> Ticket:
         if status is not None:
-            ticket.status = status
-            if status == TicketStatus.RESOLVED.value:
-                ticket.resolved_at = datetime.now(UTC)
+            _apply_status(ticket, status)
         if priority is not None:
             ticket.priority = priority
         if assignee is not None:
@@ -112,3 +122,13 @@ class TicketRepository:
         await self.db.flush()
         await self.db.refresh(ticket)
         return ticket
+
+
+def _apply_status(ticket: Ticket, status: str) -> None:
+    """Move a ticket to ``status`` and stamp SLA timestamps (first response, resolution)."""
+    now = datetime.now(UTC)
+    ticket.status = status
+    if status != TicketStatus.PENDING.value and ticket.first_responded_at is None:
+        ticket.first_responded_at = now
+    if status == TicketStatus.RESOLVED.value:
+        ticket.resolved_at = now

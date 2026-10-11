@@ -38,6 +38,8 @@ class Embedder(Protocol):
 
     async def embed(self, texts: list[str]) -> list[list[float]]: ...
 
+    async def aclose(self) -> None: ...
+
 
 def _tokenize(text: str) -> list[str]:
     lower = (text or "").lower()
@@ -88,6 +90,9 @@ class OfflineEmbedder:
         finally:
             EMBEDDING_LATENCY.labels(backend=self.backend).observe(time.perf_counter() - started)
 
+    async def aclose(self) -> None:
+        """Nothing to release: offline hashing holds no connection."""
+
     def _one(self, text: str) -> list[float]:
         vec = [0.0] * self._dim
         tokens = _tokenize(text)
@@ -120,6 +125,7 @@ class OpenAIEmbedder:
         self._dim = dim
         self._timeout = timeout
         self._transport = transport
+        self._http: httpx.AsyncClient | None = None
 
     @property
     def model(self) -> str:
@@ -147,23 +153,27 @@ class OpenAIEmbedder:
         finally:
             EMBEDDING_LATENCY.labels(backend=self.backend).observe(time.perf_counter() - started)
 
+    @property
+    def http(self) -> httpx.AsyncClient:
+        """Pooled per embedder instance (connection reuse across calls)."""
+        if self._http is None:
+            self._http = httpx.AsyncClient(timeout=self._timeout, transport=self._transport)
+        return self._http
+
+    async def aclose(self) -> None:
+        if self._http is not None:
+            await self._http.aclose()
+            self._http = None
+
     async def _request(self, texts: list[str]) -> list[list[float]]:
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
         payload = {"model": self._model, "input": texts}
-        async with httpx.AsyncClient(
-            timeout=self._timeout,
-            transport=self._transport,
-        ) as client:
-            resp = await client.post(
-                f"{self._base_url}{EMBED_PATH}",
-                headers=headers,
-                json=payload,
-            )
-            resp.raise_for_status()
-            data = resp.json()
+        resp = await self.http.post(f"{self._base_url}{EMBED_PATH}", headers=headers, json=payload)
+        resp.raise_for_status()
+        data = resp.json()
         items = sorted(data.get("data") or [], key=lambda x: int(x.get("index", 0)))
         vectors = [list(map(float, item["embedding"])) for item in items]
         if vectors and self._dim is None:

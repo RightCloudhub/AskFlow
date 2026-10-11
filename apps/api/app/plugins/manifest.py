@@ -78,18 +78,31 @@ def resolve_features(
 
     selected: set[str] = set(profiles[name])
     add, remove = parse_feature_deltas(feature_deltas)
-    selected |= add
-    selected -= remove
-
-    unknown = selected - known
+    unknown = (selected | add | remove) - known
     if unknown:
         raise ManifestError(f"Unknown plugin id(s): {sorted(unknown)}")
+    selected = (selected | add) - remove
+    resolved = _expand_deps(selected, plugins_meta)
+    _reject_readded(remove & resolved, resolved, plugins_meta)
+    return frozenset(resolved)
 
-    return frozenset(_expand_deps(selected, plugins_meta))
+
+def _reject_readded(readded: set[str], resolved: set[str], plugins_meta: dict[str, Any]) -> None:
+    """A removed plugin that another enabled plugin still needs is a config error (D-05)."""
+    if not readded:
+        return
+    needs = {
+        pid: sorted(set((plugins_meta[pid] or {}).get("depends") or []) & readded)
+        for pid in sorted(resolved)
+    }
+    blockers = {pid: deps for pid, deps in needs.items() if deps}
+    raise ManifestError(
+        f"Cannot remove {sorted(readded)}: still required by {blockers}; remove those too"
+    )
 
 
 def _expand_deps(selected: set[str], plugins_meta: dict[str, Any]) -> set[str]:
-    """Close dependency set; fail if missing dependency not in selection after close."""
+    """Close the selection over ``depends``; unknown ids and cycles raise ``ManifestError``."""
     resolved: set[str] = set()
     visiting: set[str] = set()
 

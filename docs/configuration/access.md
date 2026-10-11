@@ -89,9 +89,9 @@ Allowing a second origin does not redirect the frontend's relative API requests 
 
 `RATE_LIMIT_PER_MINUTE=60` is the default per-IP HTTP request limit. Shared networks may put many users behind one IP. Set a measured limit and test; this is not a per-customer billing or model-spend cap.
 
-`TRUST_PROXY_HEADERS=false` is the default. Set it true only when the API is reachable through a trusted proxy that controls forwarded client-address headers. Otherwise callers could supply misleading addresses. Restart and have the operator verify the address used for rate limiting.
+`TRUST_PROXY_HEADERS=false` is the default. Set it true only when the API is reachable through a trusted proxy that controls forwarded client-address headers. Otherwise callers could supply misleading addresses. With several proxies in front (for example CDN + Nginx) also set `TRUSTED_PROXY_HOPS` to their count. Restart and have the operator verify the address used for rate limiting.
 
-`METRICS_TOKEN` optionally protects `/metrics` using the `X-Metrics-Token` header in staging/production. It is not enforced in development/test. Configure the monitoring collector accordingly and keep monitoring endpoints on the intended network. It does not protect `/health` or ordinary API routes.
+`METRICS_TOKEN` is mandatory in staging/production: the API refuses to start without it and `/metrics` requires the `X-Metrics-Token` header. It is not enforced in development/test. Configure the monitoring collector accordingly and keep monitoring endpoints on the intended network. It does not protect `/health` or ordinary API routes.
 
 ## Example production-mode decisions
 

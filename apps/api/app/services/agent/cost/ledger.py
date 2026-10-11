@@ -66,7 +66,7 @@ class CostLedger:
             "total_prompt_tokens": sum(e.prompt_tokens for e in billed),
             "total_completion_tokens": sum(e.completion_tokens for e in billed),
             "estimated_usd": round(sum(e.estimated_usd for e in billed), 6),
-            "calls": len(self.entries),
+            "calls": len(usage),
             "entries": [
                 {
                     "purpose": e.purpose,

@@ -4,12 +4,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 
 from app.core.deps import DbSession, require_admin
-from app.middleware.metrics import SLA_EVENTS_TOTAL
-from app.models.enums import NotifyEvent
 from app.models.ticket import Ticket
 from app.models.user import User
 from app.services.notify.service import NotifyService
 from app.services.ticket.sla.engine import SLAEngine
+from app.services.ticket.sla.publish import publish_sla_changes
 
 router = APIRouter(dependencies=[Depends(require_admin)])
 DEFAULT_SLA_TICKET_LIMIT = 50
@@ -52,23 +51,8 @@ async def sla_status(
 async def scan_sla(db: DbSession, _user: User = Depends(require_admin)) -> dict:
     engine = SLAEngine(db)
     changes = await engine.scan()
-    notify = NotifyService(db)
-    for ch in changes:
-        event = (
-            NotifyEvent.SLA_BREACHED.value
-            if ch.current == "breached"
-            else NotifyEvent.SLA_WARNING.value
-        )
-        SLA_EVENTS_TOTAL.labels(state=ch.current, reason=ch.reason).inc()
-        await notify.emit_safe(
-            event,
-            {
-                "ticket_id": ch.ticket_id,
-                "previous": ch.previous,
-                "current": ch.current,
-                "reason": ch.reason,
-            },
-        )
+    await db.commit()
+    await publish_sla_changes(NotifyService(db), changes)
     return {
         "scanned_changes": len(changes),
         "changes": [

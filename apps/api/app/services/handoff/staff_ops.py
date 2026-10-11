@@ -10,6 +10,7 @@ from app.models.conversation import Conversation, Message
 from app.models.enums import HandoffStatus, MessageRole
 from app.models.handoff import HandoffSession
 from app.services.chat.session.service import ChatService
+from app.services.ticket.repository.service import TicketRepository
 
 HTTP_FORBIDDEN = status.HTTP_403_FORBIDDEN
 HTTP_CONFLICT = status.HTTP_409_CONFLICT
@@ -73,6 +74,7 @@ class HandoffStaffOps:
         if not text:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="empty_content")
         session = await self.require_claim_access(handoff_id, agent_id, agent_role=agent_role)
+        await TicketRepository(self.db).mark_first_response(session.conversation_id)
         return await self.chat.add_message(
             session.conversation_id,
             role=MessageRole.STAFF.value,

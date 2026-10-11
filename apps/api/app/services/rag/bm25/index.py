@@ -8,6 +8,7 @@ never sees weak evidence (PRD §12.1 #3).
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass
 from typing import Any
 
@@ -72,11 +73,28 @@ class BM25Index:
         self._docs: list[dict[str, Any]] = []
         self._corpus_tokens: list[list[str]] = []
         self._bm25: BM25Okapi | None = None
+        self._swap_lock = threading.Lock()
 
     def clear(self) -> None:
         self._docs.clear()
         self._corpus_tokens.clear()
         self._bm25 = None
+
+    def replace_document(self, doc_id: str, docs: list[dict[str, Any]]) -> None:
+        """Swap every chunk of ``doc_id`` for ``docs`` (empty list removes the document)."""
+        fresh = BM25Index()
+        fresh.add_documents([*(d for d in self._docs if str(d.get("doc_id")) != doc_id), *docs])
+        # Searches run in worker threads: swap the whole state under the lock so a search
+        # never pairs the new scorer with the old document list.
+        with self._swap_lock:
+            self._docs, self._corpus_tokens, self._bm25 = (
+                fresh._docs,
+                fresh._corpus_tokens,
+                fresh._bm25,
+            )
+
+    def remove_document(self, doc_id: str) -> None:
+        self.replace_document(doc_id, [])
 
     def add_documents(self, docs: list[dict[str, Any]]) -> None:
         for d in docs:
@@ -87,9 +105,11 @@ class BM25Index:
             self._bm25 = BM25Okapi(self._corpus_tokens)
 
     def search(self, query: str, top_k: int = 5) -> list[SearchHit]:
-        if not self._bm25 or not self._docs:
+        with self._swap_lock:
+            scorer, docs = self._bm25, self._docs
+        if not scorer or not docs:
             return []
-        raw_scores = self._bm25.get_scores(_tokenize(query))
+        raw_scores = scorer.get_scores(_tokenize(query))
         ranked = sorted(enumerate(raw_scores), key=lambda x: x[1], reverse=True)[
             : max(top_k * 3, top_k)
         ]
@@ -97,7 +117,7 @@ class BM25Index:
         for idx, raw in ranked:
             if raw <= 0:
                 continue
-            d = self._docs[idx]
+            d = docs[idx]
             text = str(d.get("text", ""))
             cov = query_coverage(query, text)
             score = combine_relevance(float(raw), cov)

@@ -18,7 +18,12 @@ from app.middleware.metrics import CANCEL_REQUESTS_TOTAL, CHAT_TURNS
 from app.models.user import User
 from app.services.cancel_registry import get_cancel_registry
 from app.services.chat.session.service import ChatService
-from app.services.rag.generator.token_sink import reset_token_sink, set_token_sink
+from app.services.rag.generator.token_sink import (
+    reset_sources_sink,
+    reset_token_sink,
+    set_sources_sink,
+    set_token_sink,
+)
 
 WS_CLOSE_BAD_JSON = 4400
 WS_CLOSE_AUTH = 4401
@@ -38,7 +43,8 @@ class WsEmit:
     user_msg: Any
     asst_msg: Any
     result: Any
-    emitted: list[str]
+    streamed_tokens: bool
+    streamed_sources: bool
 
 
 async def authenticate(websocket: WebSocket, db: Any) -> User | None:
@@ -112,16 +118,28 @@ async def _handle_cancel(msg: dict) -> None:
 
 
 async def handle_message(turn: WsTurn) -> None:
+    """Stream sources and tokens live while the turn runs, commit, then close the turn.
+
+    Frame order: source* → token* (live) → [commit] → intent → side_effects → message_end.
+    The first token no longer waits for generation + commit to finish (TODO latency P0).
+    """
     parsed = await _validate_message(turn.websocket, turn.msg)
     if parsed is None:
         return
     conversation_id, content = parsed
-    emitted: list[str] = []
+    streamed = {"token": False, "source": False}
 
     async def on_token(chunk: str) -> None:
-        emitted.append(chunk)
+        streamed["token"] = True
+        await turn.websocket.send_json({"type": "token", "content": chunk})
+
+    async def on_sources(sources: list[dict]) -> None:
+        streamed["source"] = True
+        for src in sources:
+            await turn.websocket.send_json({"type": "source", **src})
 
     sink_token = set_token_sink(on_token)
+    sources_token = set_sources_sink(on_sources)
     try:
         user_msg, asst_msg, result = await ChatService(turn.db).handle_user_message(
             conversation_id, turn.user.id, content
@@ -129,13 +147,15 @@ async def handle_message(turn: WsTurn) -> None:
         await turn.db.commit()
     finally:
         reset_token_sink(sink_token)
+        reset_sources_sink(sources_token)
     await emit_turn(
         WsEmit(
             websocket=turn.websocket,
             user_msg=user_msg,
             asst_msg=asst_msg,
             result=result,
-            emitted=emitted,
+            streamed_tokens=streamed["token"],
+            streamed_sources=streamed["source"],
         )
     )
 
@@ -164,7 +184,7 @@ async def _validate_message(websocket: WebSocket, msg: dict) -> tuple[str, str] 
 
 
 async def emit_turn(emit: WsEmit) -> None:
-    """intent → source* → token* → side_effects → message_end."""
+    """intent → whatever was not streamed live (sources, tokens) → side_effects → message_end."""
     ws, result = emit.websocket, emit.result
     if result.intent:
         await ws.send_json(
@@ -175,12 +195,10 @@ async def emit_turn(emit: WsEmit) -> None:
                 "route": result.route,
             }
         )
-    for src in result.sources:
-        await ws.send_json({"type": "source", **src})
-    if emit.emitted:
-        for chunk in emit.emitted:
-            await ws.send_json({"type": "token", "content": chunk})
-    else:
+    if not emit.streamed_sources:
+        for src in result.sources:
+            await ws.send_json({"type": "source", **src})
+    if not emit.streamed_tokens:
         await emit_answer_tokens(ws.send_json, result.answer or "")
     await emit_side_effects(ws.send_json, result.side_effects or {})
     await ws.send_json(

@@ -12,11 +12,10 @@ from typing import Any
 
 from app.core import database as dbmod
 from app.core.config import Settings, get_settings
-from app.middleware.metrics import SLA_EVENTS_TOTAL
-from app.models.enums import NotifyEvent
 from app.services.handoff.timeout import HandoffTimeoutSweeper
 from app.services.notify.service import NotifyService
 from app.services.ticket.sla.engine import SLAEngine
+from app.services.ticket.sla.publish import publish_sla_changes
 
 logger = logging.getLogger("askflow.jobs")
 
@@ -25,32 +24,20 @@ MIN_INTERVAL_SEC = 15
 
 
 async def run_once() -> dict[str, Any]:
-    """Execute one sweep cycle (also usable from admin / tests)."""
+    """Execute one sweep cycle (also usable from admin / tests).
+
+    State changes are committed first; webhooks and metrics fire only for committed rows,
+    so a rolled-back cycle never notifies and the next cycle cannot double-notify (D-09).
+    """
     async with dbmod.SessionLocal() as db:
-        handoff_out = await HandoffTimeoutSweeper(db).sweep()
+        sweeper = HandoffTimeoutSweeper(db)
+        handoff_out = await sweeper.sweep()
         changes = await SLAEngine(db).scan()
-        notify = NotifyService(db)
-        for ch in changes:
-            event = (
-                NotifyEvent.SLA_BREACHED.value
-                if ch.current == "breached"
-                else NotifyEvent.SLA_WARNING.value
-            )
-            SLA_EVENTS_TOTAL.labels(state=ch.current, reason=ch.reason or "unknown").inc()
-            await notify.emit_safe(
-                event,
-                {
-                    "ticket_id": ch.ticket_id,
-                    "previous": ch.previous,
-                    "current": ch.current,
-                    "reason": ch.reason,
-                },
-            )
         await db.commit()
-        return {
-            "handoff_swept": len(handoff_out),
-            "sla_changes": len(changes),
-        }
+        await sweeper.publish(handoff_out)
+        await publish_sla_changes(NotifyService(db), changes)
+        await db.commit()
+        return {"handoff_swept": len(handoff_out), "sla_changes": len(changes)}
 
 
 async def periodic_loop(settings: Settings | None = None) -> None:

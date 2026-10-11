@@ -20,6 +20,7 @@ from app.core.security import create_access_token, hash_password
 from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.auth import TokenResponse, UserOut
+from app.services.audit.logger.service import AuditService
 from app.services.auth.jwks import JWKSValidator
 from app.utils.ids import new_id
 
@@ -32,6 +33,7 @@ USERNAME_MAX_LEN = 64
 class OIDCClaims:
     sub: str
     email: str
+    email_verified: bool
     preferred_username: str
     roles: list[str]
 
@@ -50,11 +52,9 @@ def map_roles(raw_roles: list[str], role_map: dict[str, str] | None = None) -> s
     ranked = [UserRole.ADMIN.value, UserRole.AGENT.value, UserRole.USER.value]
     found: set[str] = set()
     for r in raw_roles:
-        key = r.lower().split("/")[-1]
+        key = r.lower().strip("/")
         if key in mapping:
             found.add(mapping[key])
-        elif r.lower() in mapping:
-            found.add(mapping[r.lower()])
     for role in ranked:
         if role in found:
             return role
@@ -77,11 +77,13 @@ def claims_from_payload(data: dict[str, Any]) -> OIDCClaims:
     roles = data.get("roles") or data.get("groups") or []
     if isinstance(roles, str):
         roles = [roles]
-    email = str(data.get("email") or f"{data.get('sub', 'user')}@sso.local")
+    sub = str(data["sub"])
+    email = str(data.get("email") or f"{sub}@sso.local")
     username = str(data.get("preferred_username") or data.get("name") or email.split("@")[0])
     return OIDCClaims(
-        sub=str(data.get("sub") or new_id()),
+        sub=sub,
         email=email,
+        email_verified=data.get("email_verified") is True,
         preferred_username=username[:USERNAME_MAX_LEN],
         roles=[str(r) for r in roles],
     )
@@ -143,33 +145,61 @@ class OIDCService:
     async def login_with_id_token(self, id_token: str) -> tuple[TokenResponse, UserOut]:
         claims = self.parse_id_token(id_token)
         role = map_roles(claims.roles)
-
-        result = await self.db.execute(select(User).where(User.email == claims.email))
-        user = result.scalar_one_or_none()
-        if user is None:
-            user = User(
-                username=claims.preferred_username,
-                email=claims.email,
-                hashed_password=hash_password(new_id() + "sso"),
-                role=role,
-            )
-            self.db.add(user)
-            await self.db.flush()
-            await self.db.refresh(user)
-        else:
-            valid = {
-                UserRole.ADMIN.value,
-                UserRole.AGENT.value,
-                UserRole.USER.value,
-            }
-            if user.role != role and role in valid:
-                user.role = role
-                await self.db.flush()
-
+        user = await self._resolve_user(claims, role)
         if not user.is_active:
             raise ValueError("user_disabled")
-
+        await self._sync_role(user, role)
         token = create_access_token(
             user.id, role=user.role, extra={"sso": True, "sub_oidc": claims.sub}
         )
         return TokenResponse(access_token=token), UserOut.model_validate(user)
+
+    async def _resolve_user(self, claims: OIDCClaims, role: str) -> User:
+        """Find the account bound to ``sub``; link by email only when the IdP verified it."""
+        bound = await self._first(User.oidc_subject == claims.sub)
+        if bound is not None:
+            return bound
+        by_email = await self._first(User.email == claims.email)
+        if by_email is None:
+            return await self._create(claims, role)
+        if not claims.email_verified:
+            raise ValueError("email_not_verified")
+        by_email.oidc_subject = claims.sub
+        await AuditService(self.db).log(
+            action="auth.sso_linked",
+            resource_type="user",
+            resource_id=by_email.id,
+            actor_id=by_email.id,
+            detail={"sub": claims.sub},
+        )
+        return by_email
+
+    async def _first(self, condition: Any) -> User | None:
+        result = await self.db.execute(select(User).where(condition))
+        return result.scalar_one_or_none()
+
+    async def _create(self, claims: OIDCClaims, role: str) -> User:
+        user = User(
+            username=claims.preferred_username,
+            email=claims.email,
+            hashed_password=hash_password(new_id() + "sso"),
+            role=role,
+            oidc_subject=claims.sub,
+        )
+        self.db.add(user)
+        await self.db.flush()
+        return user
+
+    async def _sync_role(self, user: User, role: str) -> None:
+        """IdP groups are the source of truth for SSO accounts; every change is audited."""
+        if user.role == role:
+            return
+        await AuditService(self.db).log(
+            action="auth.sso_role_changed",
+            resource_type="user",
+            resource_id=user.id,
+            actor_id=user.id,
+            detail={"from": user.role, "to": role},
+        )
+        user.role = role
+        await self.db.flush()

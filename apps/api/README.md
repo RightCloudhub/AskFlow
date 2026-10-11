@@ -108,6 +108,20 @@ These migrations add the service-task tables alongside existing business tables;
 
 Do not blindly run the create-table migrations over tables already created by `create_all`. For a disposable local database, use a new SQLite file. For a retained database, compare its schema with the migrations and reconcile its Alembic revision before upgrading; stamp only a revision whose schema is already present. Task budget fields live in checkpoint JSON and have defaults for older records.
 
+## Demo data
+
+Start the API in development mode with a fresh database, then seed it through the public API
+(knowledge base, customers, chats, tickets, handoffs, gaps, drafts, a team and a launch card):
+
+```bash
+ASKFLOW_ENV=development ALLOW_BOOTSTRAP_ADMIN=1 DATABASE_URL=sqlite+aiosqlite:///./askflow.demo.db \
+  uvicorn app.main:app --port 8000 &
+python scripts/seed_demo.py --base http://127.0.0.1:8000
+```
+
+Accounts: `admin / Admin12345!` (admin) and `zhangwei`, `lina`, `wangfang`, `chenjie` with
+password `Demo12345!`. The README screenshots are taken from exactly this data set.
+
 ## Verification
 
 ```bash

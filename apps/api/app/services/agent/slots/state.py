@@ -142,7 +142,8 @@ class SlotTracker:
                 tool="search_order",
                 slot="order_id",
                 intent="order_query",
-                turns_waited=0,
+                # The ask that opens the slot is the first of ``max_turns`` asks (D-15)
+                turns_waited=1,
             ).to_dict()
         }
         return merge_patch(metadata, patch)
