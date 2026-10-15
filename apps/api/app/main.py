@@ -79,6 +79,18 @@ def _start_background_tasks(settings) -> list[asyncio.Task]:
         from app.workers.index_worker.consumer import consumer_loop
 
         tasks.append(asyncio.create_task(consumer_loop(settings), name="index_worker"))
+    from app.services.outbox.settings import OutboxSettings
+
+    if OutboxSettings().enabled:
+        from app.workers.outbox_relay import periodic_loop as outbox_loop
+
+        tasks.append(asyncio.create_task(outbox_loop(), name="outbox_relay"))
+    from app.services.channels.settings import ChannelSettings
+
+    if ChannelSettings().inbox_relay_enabled:
+        from app.workers.channel_inbox_relay import periodic_loop as inbox_loop
+
+        tasks.append(asyncio.create_task(inbox_loop(), name="channel_inbox_relay"))
     return tasks
 
 

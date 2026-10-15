@@ -98,6 +98,22 @@ class TaskTransition(Record):
     occurred_at: AwareDatetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class ConfirmationGrant(Record):
+    capability: str
+    args_hash: str
+    nonce: str = ""
+    granted_at: AwareDatetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PendingConfirmation(Record):
+    capability: str
+    step: str
+    args_hash: str
+    nonce: str
+    token: str
+    expires_at: AwareDatetime
+
+
 class Task(Record):
     task_id: str = Field(default_factory=lambda: str(uuid4()))
     scope: Scope
@@ -108,6 +124,9 @@ class Task(Record):
     owner: str = Field(min_length=1)
     status: TaskStatus = "active"
     version: int = 0
+    assurance_level: int = Field(default=1, ge=0, le=2)
+    confirmations: list[ConfirmationGrant] = Field(default_factory=list)
+    pending_confirmation: PendingConfirmation | None = None
     max_calls: int = Field(default=DEFAULT_TASK_CALLS, gt=0)
     calls_used: int = 0
     max_cost: float | None = Field(default=None, ge=0, allow_inf_nan=False)

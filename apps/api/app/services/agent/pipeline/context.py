@@ -71,3 +71,6 @@ class TurnContext:
     loop: Any = None
     rag: Any = None
     cancel_key: str | None = None
+    db: Any = None
+    user_id: str | None = None
+    assurance: int = 1

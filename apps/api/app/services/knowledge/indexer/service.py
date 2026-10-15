@@ -97,6 +97,13 @@ class IndexerService:
 
 
 def _chunk_payloads(doc: Document, chunks: list[str], generation: int) -> list[dict[str, Any]]:
+    metadata = {
+        "language": doc.language,
+        "product": doc.product,
+        "acl_groups": list(doc.acl_groups or []),
+        "valid_from": doc.valid_from.isoformat() if doc.valid_from else None,
+        "valid_to": doc.valid_to.isoformat() if doc.valid_to else None,
+    }
     return [
         {
             "doc_id": doc.id,
@@ -105,6 +112,7 @@ def _chunk_payloads(doc: Document, chunks: list[str], generation: int) -> list[d
             "generation": generation,
             "chunk_index": i,
             "indexed_at": None,
+            **metadata,
         }
         for i, ch in enumerate(chunks)
     ]

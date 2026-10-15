@@ -174,3 +174,49 @@ async def test_scoped_http_contract(monkeypatch, result):
         assert receipt.error_kind == "transient"
     if result == "forbidden":
         assert receipt.error_kind == "permission"
+
+
+@pytest.mark.asyncio
+async def test_failure_backoff_grows_with_jitter_and_dead_letters(store):
+    from app.middleware.metrics import TASKS_DEAD_LETTER_TOTAL
+
+    await enqueue(store, "backoff-job")
+    queue = DispatchQueue(store.sessions)
+    claim = await queue.claim("backoff-job")
+    await queue.record_failure(claim)
+    async with store.sessions() as db:
+        job = await db.get(ServiceDispatch, "backoff-job")
+    delay = (job.due_at.replace(tzinfo=UTC) - datetime.now(UTC)).total_seconds()
+    assert 4.5 <= delay <= 6.5  # 5s base with up to 20% jitter
+    before = TASKS_DEAD_LETTER_TOTAL._value.get()
+    for _ in range(2):
+        async with store.sessions.begin() as db:
+            await db.execute(
+                update(ServiceDispatch)
+                .where(ServiceDispatch.task_id == "backoff-job")
+                .values(due_at=datetime.now(UTC))
+            )
+        claim = await queue.claim("backoff-job")
+        await queue.record_failure(claim)
+    async with store.sessions() as db:
+        job = await db.get(ServiceDispatch, "backoff-job")
+    assert job.due_at is None and job.attempts == 3
+    assert TASKS_DEAD_LETTER_TOTAL._value.get() == before + 1
+
+
+@pytest.mark.asyncio
+async def test_expired_lease_reclaim_is_counted(store):
+    from app.middleware.metrics import TASK_LEASE_RECLAIMED_TOTAL
+
+    await enqueue(store, "reclaim-job")
+    queue = DispatchQueue(store.sessions)
+    first = await queue.claim("reclaim-job")
+    assert first is not None
+    async with store.sessions.begin() as db:
+        await db.execute(
+            update(ServiceDispatch).values(lease_until=datetime.now(UTC) - timedelta(seconds=1))
+        )
+    before = TASK_LEASE_RECLAIMED_TOTAL._value.get()
+    second = await queue.claim("reclaim-job")
+    assert second is not None
+    assert TASK_LEASE_RECLAIMED_TOTAL._value.get() == before + 1

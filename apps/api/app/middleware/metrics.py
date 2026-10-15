@@ -126,6 +126,14 @@ HISTORY_SUMMARY_TOTAL = Counter(
     "askflow_history_summary_total",
     "Mid-session history compressions",
 )
+TASKS_DEAD_LETTER_TOTAL = Counter(
+    "askflow_tasks_dead_letter_total",
+    "Tasks parked after exhausting dispatch attempts",
+)
+TASK_LEASE_RECLAIMED_TOTAL = Counter(
+    "askflow_task_lease_reclaimed_total",
+    "Dispatch leases that expired and were reclaimed",
+)
 
 
 def metrics_payload() -> tuple[bytes, str]:

@@ -130,6 +130,10 @@ class Settings(BaseSettings):
         validation_alias="HISTORY_SUMMARY_KEEP_RECENT",
     )
 
+    # Optional lexical rerank between fusion and the grounding gate (arch §4.7)
+    rerank_enabled: bool = Field(default=False, validation_alias="RERANK_ENABLED")
+    rerank_top_n: int = Field(default=8, ge=1, validation_alias="RERANK_TOP_N")
+
     # --- agent loop budgets (PRD §4.13) ---
     max_loop_steps: int = 6
     max_tool_calls: int = 4
@@ -183,8 +187,10 @@ class Settings(BaseSettings):
     wecom_token: str | None = Field(default=None, validation_alias="WECOM_TOKEN")
     wecom_corp_id: str | None = Field(default=None, validation_alias="WECOM_CORP_ID")
     wecom_agent_id: str | None = Field(default=None, validation_alias="WECOM_AGENT_ID")
+    wecom_corp_secret: str | None = Field(default=None, validation_alias="WECOM_CORP_SECRET")
     dingtalk_app_secret: str | None = Field(default=None, validation_alias="DINGTALK_APP_SECRET")
     dingtalk_app_key: str | None = Field(default=None, validation_alias="DINGTALK_APP_KEY")
+    dingtalk_robot_code: str | None = Field(default=None, validation_alias="DINGTALK_ROBOT_CODE")
 
     # --- multi-bot (E18) ---
     bot_profiles_json: str = Field(default="", validation_alias="BOT_PROFILES_JSON")

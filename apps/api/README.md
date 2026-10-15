@@ -63,6 +63,34 @@ Ticket intake is opt-in and confirms ticket registration, not resolution of the 
 
 See [runtime and recovery](../../docs/architecture/customer-service-runtime.md), [lifecycle](../../docs/architecture/customer-service-lifecycle.md) and [conformance boundaries](../../docs/architecture/agent-conformance.md).
 
+## 治理、路由与渠道投递
+
+所有副作用（任务操作、旧工具、工单/转交）经过统一的 Action Gateway：策略、幂等键、确认令牌与只追加操作台账。
+Turn Router 按固定优先级处理每回合（控制意图、在办任务续办/确认、目标置信带、步进验证），并写入路由决策记录。
+架构与不变量见 [Action Gateway](../../docs/architecture/action-gateway.md)。
+
+| Variable | Default | Behavior |
+|---|---|---|
+| `GATEWAY_POLICY_VERSION` | `1` | Policy version recorded with every ledger row |
+| `CONFIRMATION_TTL_SECONDS` | `86400` | Signed confirmation token lifetime |
+| `OTP_TTL_SECONDS` / `OTP_MAX_ATTEMPTS` | `300` / `5` | Step-up code lifetime and attempts |
+| `ASSURANCE_TTL_SECONDS` | `1800` | Elevated assurance lifetime on the conversation |
+| `ROUTER_HIGH_CONFIDENCE` / `ROUTER_MEDIUM_CONFIDENCE` | `0.7` / `0.45` | Goal-match confidence bands |
+| `OUTBOX_RELAY_ENABLED` / `OUTBOX_RELAY_POLL_SECONDS` | `true` / `2` | Task-result and confirmation events publish loop |
+| `CHANNEL_INBOX_RELAY_ENABLED` / `CHANNEL_INBOX_POLL_SECONDS` | `true` / `2` | Deduplicated channel message processing loop |
+| `OUTBOUND_MAX_ATTEMPTS` / `OUTBOUND_RATE_PER_MINUTE` | `3` / `60` | Per-channel push retries and rate limit |
+| `MEMORY_EXTRACT_ENABLED` / `MEMORY_TOP_K` | `true` / `5` | Explicit-fact extraction and prompt injection budget |
+| `RERANK_ENABLED` / `RERANK_TOP_N` | `false` / `8` | Optional lexical rerank between fusion and grounding |
+| `WECOM_CORP_SECRET` / `DINGTALK_ROBOT_CODE` | Empty | Proactive push credentials for WeCom / DingTalk |
+
+Channel webhooks now deduplicate on `(channel, message_id)` inside `channel_inbox` and, in staging/production with
+push credentials configured, acknowledge immediately while the inbox relay runs the turn and pushes the reply.
+Test/development environments keep the synchronous echo behavior. Task results are published through the outbox to
+open WebSocket conversations and to the originating channel; confirmation prompts use the same path.
+
+Customers can view and forget extracted facts with `GET /api/v1/agent/memories`,
+`DELETE /api/v1/agent/memories/{key}?expected_version=N` and `POST /api/v1/agent/memories/forget-all`.
+
 ## Authenticated task and memory APIs
 
 All paths below have the `/api/v1` prefix and are mounted by the Agent plugin. They use the authenticated user's scope; guest tokens cannot call them.
@@ -141,7 +169,14 @@ python -m pytest -q \
   tests/unit/test_plugins_*.py tests/integration/test_agent_conformance.py \
   tests/integration/test_chat_service_tasks.py \
   tests/integration/test_customer_memory_api.py \
-  tests/integration/test_service_tasks_api.py
+  tests/integration/test_service_tasks_api.py \
+  tests/unit/test_compensation.py tests/unit/test_gateway.py \
+  tests/unit/test_turn_router.py tests/unit/test_outbox_inbox.py \
+  tests/unit/test_guardrails.py tests/unit/test_memory_extract.py \
+  tests/unit/test_knowledge_filters.py \
+  tests/integration/test_memory_and_trace.py \
+  tests/integration/test_channel_inbox_flow.py \
+  tests/integration/test_handback_flow.py
 ```
 
 Tests drive `app.workers.service_tasks.run_once()` explicitly because background loops are disabled in test mode. Recorded results and production validation limits are in [STATUS](../../docs/STATUS.md).

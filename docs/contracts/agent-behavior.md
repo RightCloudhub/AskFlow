@@ -138,4 +138,23 @@
 | 历史摘要 | 以 user 角色及历史数据标记进入上下文，不提升为系统指令 |
 | 结果交付 | 仅向匹配客户的 active 会话按任务版本去重写入；无后台 WS 广播保证 |
 
-TaskStatus：`active`、`waiting_customer`、`waiting_external`、`handed_off`、`resolved`、`closed_unresolved`。自动调度仅推进 active 和到期 `retry:*`；`VerifiedWakeup` 不能替代外部事件验签。`Operation.compensation` 为声明字段，当前没有通用补偿执行器。
+TaskStatus：`active`、`waiting_customer`、`waiting_external`、`handed_off`、`resolved`、`closed_unresolved`。自动调度仅推进 active 和到期 `retry:*`；`VerifiedWakeup` 不能替代外部事件验签。`Operation.compensation` 为声明字段：普通 op id 由补偿执行器自动执行并标记 `COMPENSATED`（2026-10-16）；`irreversible:`/`owner_review:` 前缀与未知写入转人工。
+
+## 10. 统一执行与路由契约（2026-10-15，arch.md 实施）
+
+适用于 `services/agent/gateway/`、`services/agent/router/`、`services/chat/side_effects/`、`services/channels/`、`services/outbox/`。实现说明见 [Action Gateway](../architecture/action-gateway.md)。
+
+| 边界 | 当前契约 |
+|---|---|
+| Turn Router | 每回合按固定优先级：待验证码 → 控制意图 → 在办任务确认/续办 → 相关修改 → 无关直答+提醒 → 新意图；每条路由写 `router_decisions` |
+| RouterDecision.route | `CONTROL` / `TASK_RESUME` / `TASK_CREATE` / `CLARIFY` / `STEP_UP` / `INTERACTIVE` / `REFUSE` / `HANDOFF`（受理层集合；消息流水线旧 Route 集合不变） |
+| 控制意图 | 仅在会话存在在办任务时生效；取消仅针对可控制状态（active/waiting_*）；已转交/已结束拒绝 |
+| 身份等级 | L0 匿名（Widget 访客）/ L1 渠道已验证 / L2 已登录或步进验证；目标可声明 `required_assurance`，不足时进入验证码步进流程 |
+| Action Gateway | 所有副作用先策略后调用；拒绝写 `DENIED` 且不消耗任务预算；不可逆写需确认令牌或人工审批 |
+| 操作台账 | 只追加、哈希链；写意图先于外部调用；`OUTCOME_UNKNOWN` 不得盲目重放 |
+| 确认流 | 令牌绑定参数、单次使用、可过期；聊天回复「确认」消费 nonce 并授予 `ConfirmationGrant`；重放被拒 |
+| Outbox / Inbox | 状态变更与事件同事务；inbox 以 `(channel, message_id)` 去重且按会话有序；重放 webhook 只产生一次回合 |
+| 输出护栏 | `Harness.finalize` 统一执行：承诺性语句剥离、提示词泄漏抹除、长度截断 |
+| 不可信文本 | 检索证据以 «SOURCE» 定界并剥离指令行；工具输出字段经同样清洗后进入答复 |
+
+冷更新（改代码 + 本文 + 测试）：新增 router route、能力等级、策略字段、护栏模式。

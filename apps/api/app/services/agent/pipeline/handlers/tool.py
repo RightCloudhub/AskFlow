@@ -31,12 +31,17 @@ async def handle_tool(ctx: TurnContext) -> PipelineResult:
 
 
 async def _run_order_lookup(ctx: TurnContext, order_id: str) -> PipelineResult:
-    loop = ctx.loop
-    if loop is None:
-        from app.services.agent.loop.engine import LoopEngine
-        from app.services.tools.registry import registry
+    from app.services.agent.gateway.tool_bridge import build_tool_bridge
+    from app.services.agent.loop.engine import LoopEngine
+    from app.services.tools.registry import registry
 
-        loop = LoopEngine(registry.as_loop_map())
+    bridge = build_tool_bridge(ctx)
+    tools = registry.as_loop_map()
+    if bridge is not None:
+        tools = {name: bridge.wrap(name, handler) for name, handler in tools.items()}
+        loop = LoopEngine(tools)
+    else:
+        loop = ctx.loop or LoopEngine(tools)
     intent = ctx.intent_result.intent.value if ctx.intent_result else Intent.ORDER_QUERY.value
     loop_result = await loop.run(
         tool_name="search_order",
@@ -78,13 +83,20 @@ def _format_order_answer(order_id: str, loop_result: object) -> tuple[str, list[
     source = output.get("data_source", "unknown")
     answer = (
         f"订单 {order_id} 查询结果（来源：{source}）：\n"
-        f"- 状态：{data.get('status', 'unknown')}\n"
-        f"- 承运商：{data.get('carrier', '-')}\n"
-        f"- 运单号：{data.get('tracking', '-')}\n"
-        f"- ETA：{data.get('eta', '-')}"
+        f"- 状态：{_safe(data.get('status', 'unknown'))}\n"
+        f"- 承运商：{_safe(data.get('carrier', '-'))}\n"
+        f"- 运单号：{_safe(data.get('tracking', '-'))}\n"
+        f"- ETA：{_safe(data.get('eta', '-'))}"
     )
     flags: list[str] = []
     if source == "mock":
         answer += f"\n（说明：当前为降级 mock 数据，原因：{output.get('mock_reason', '')}）"
         flags.append("tool_mock")
     return answer, flags
+
+
+def _safe(value) -> str:
+    """Tool output is untrusted data: strip instruction-like content and bound length."""
+    from app.services.agent.guardrails.untrusted import FIELD_MAX_CHARS, sanitize_untrusted
+
+    return sanitize_untrusted(str(value), max_chars=FIELD_MAX_CHARS).replace("\n", " ")

@@ -29,6 +29,11 @@ class DocumentService:
         content_type: str = "text/plain",
         uploaded_by: str | None = None,
         index_now: bool = True,
+        language: str | None = None,
+        product: str | None = None,
+        acl_groups: list[str] | None = None,
+        valid_from=None,
+        valid_to=None,
     ) -> Document:
         safe_name = safe_filename(filename)
         doc = Document(
@@ -37,6 +42,11 @@ class DocumentService:
             content_type=content_type,
             status=DocumentStatus.PENDING.value,
             uploaded_by=uploaded_by,
+            language=language,
+            product=product,
+            acl_groups=list(acl_groups or []),
+            valid_from=valid_from,
+            valid_to=valid_to,
         )
         self.db.add(doc)
         await self.db.flush()

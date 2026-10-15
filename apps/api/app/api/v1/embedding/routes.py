@@ -21,12 +21,33 @@ HTTP_PAYLOAD_TOO_LARGE = 413
 HTTP_NOT_FOUND = 404
 
 
+class DocumentMetadataForm:
+    """Grouped optional upload metadata; keeps the route signature small (arch §4.7)."""
+
+    def __init__(
+        self,
+        *,
+        title: str | None = Form(default=None),
+        language: str | None = Form(default=None),
+        product: str | None = Form(default=None),
+        acl_groups: str | None = Form(default=None),
+        valid_from: str | None = Form(default=None),
+        valid_to: str | None = Form(default=None),
+    ) -> None:
+        self.title = title
+        self.language = language
+        self.product = product
+        self.acl_groups = [g.strip() for g in (acl_groups or "").split(",") if g.strip()]
+        self.valid_from = _parse_validity(valid_from)
+        self.valid_to = _parse_validity(valid_to)
+
+
 @router.post("/upload", response_model=DocumentOut)
 async def upload_document(
     db: DbSession,
     user: CurrentUser,
     file: UploadFile = File(...),
-    title: str | None = Form(default=None),
+    meta: DocumentMetadataForm = Depends(),
     _admin: User = Depends(require_admin),
 ) -> DocumentOut:
     max_bytes = get_settings().max_upload_bytes
@@ -38,17 +59,22 @@ async def upload_document(
     doc = await DocumentService(db).upload(
         filename=file.filename or "upload.txt",
         data=data,
-        title=title,
+        title=meta.title,
         content_type=file.content_type or "text/plain",
         uploaded_by=user.id,
         index_now=True,
+        language=meta.language,
+        product=meta.product,
+        acl_groups=meta.acl_groups,
+        valid_from=meta.valid_from,
+        valid_to=meta.valid_to,
     )
     await AuditService(db).log(
         action="document.upload",
         resource_type="document",
         resource_id=doc.id,
         actor_id=user.id,
-        detail={"filename": file.filename, "title": title or file.filename},
+        detail={"filename": file.filename, "title": meta.title or file.filename},
     )
     return DocumentOut.model_validate(doc)
 
@@ -84,3 +110,14 @@ async def _reindex(db, document_id: str, settings) -> Document:
         await db.refresh(doc)
         return doc
     return await IndexerService(db).index_document(document_id)
+
+
+def _parse_validity(value: str | None):
+    if not value:
+        return None
+    from datetime import datetime
+
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(status_code=HTTP_BAD_REQUEST, detail="invalid_validity") from None

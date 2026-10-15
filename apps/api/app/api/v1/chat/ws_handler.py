@@ -18,6 +18,7 @@ from app.middleware.metrics import CANCEL_REQUESTS_TOTAL, CHAT_TURNS
 from app.models.user import User
 from app.services.cancel_registry import get_cancel_registry
 from app.services.chat.session.service import ChatService
+from app.services.chat.ws_registry import registry as ws_registry
 from app.services.rag.generator.token_sink import (
     reset_sources_sink,
     reset_token_sink,
@@ -127,6 +128,7 @@ async def handle_message(turn: WsTurn) -> None:
     if parsed is None:
         return
     conversation_id, content = parsed
+    ws_registry.register(str(conversation_id), turn.websocket)
     streamed = {"token": False, "source": False}
 
     async def on_token(chunk: str) -> None:

@@ -4,11 +4,12 @@ from dataclasses import dataclass
 
 from app.models.enums import MessageRole
 from app.plugins.types import ChatTurnContext
-from app.services.agent.intake.chat import maybe_create_goal_task
 from app.services.agent.pipeline.runner import MessagePipeline
+from app.services.agent.router.turn_router import TurnRouter
 from app.services.bots.profiles import get_bot
 from app.services.chat.attachments import attachment_prompt_suffix, normalize_attachments
 from app.services.chat.side_effects.apply import apply_side_effects
+from app.utils.ids import new_run_id
 from app.utils.merge import merge_patch
 
 TITLE_MAX = 40
@@ -81,18 +82,24 @@ class ChatTurn:
 
     async def _process(self, conv, *, text, history):
         meta = self._metadata(conv)
-        result = await maybe_create_goal_task(
-            self.service.db, conv, text=text, history=history, metadata=meta
+        turn_id = new_run_id()
+        action = await TurnRouter(self.service.db).route(
+            conversation=conv, text=text, history=history, metadata=meta, turn_id=turn_id
         )
-        if result is not None:
-            return result
-        return await MessagePipeline(self.service.db).handle(
+        if action.handled is not None:
+            return action.handled
+        result = await MessagePipeline(self.service.db).handle(
             text,
             history=history,
             metadata=meta,
             conversation_status=conv.status,
             cancel_key=conv.id,
+            user_id=conv.user_id,
+            run_id=turn_id,
         )
+        if action.reminder:
+            result.answer = f"{result.answer}\n{action.reminder}"
+        return result
 
     async def _effects(self, result):
         req = self.request

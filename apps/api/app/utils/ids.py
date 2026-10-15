@@ -14,4 +14,6 @@ def new_run_id() -> str:
 
 
 def new_trace_id() -> str:
-    return f"tr_{uuid.uuid4().hex[:16]}"
+    from app.core.trace import get_trace_id
+
+    return get_trace_id() or f"tr_{uuid.uuid4().hex[:16]}"

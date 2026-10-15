@@ -5,7 +5,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.services.agent.service.contracts import Candidate, Receipt
+from app.services.agent.gateway.idempotency import args_hash
+from app.services.agent.service.contracts import Candidate, ConfirmationGrant, Receipt
 from app.services.agent.service.executor import Executor
 from app.services.agent.service.lifecycle import VerifiedWakeup, wake_task
 from app.services.agent.service.registry import OperationRegistry
@@ -145,6 +146,10 @@ async def test_unknown_write_is_followed_by_read_reconciliation(store):
     original = task()
     original.goal = "Refund settled to original payment method"
     original.completion_condition = "Original request, amount and currency settled"
+    original.assurance_level = 2
+    original.confirmations.append(
+        ConfirmationGrant(capability="refund.submit", args_hash=args_hash({"order_id": "owned"}))
+    )
     await store.create(original)
     registry = OperationRegistry(
         [

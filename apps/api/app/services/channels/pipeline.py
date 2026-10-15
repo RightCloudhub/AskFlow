@@ -21,6 +21,7 @@ class ChannelTurnResult:
     route: str
     conversation_id: str
     user_id: str
+    trace_id: str | None = None
 
 
 async def run_channel_turn(
@@ -40,6 +41,7 @@ async def run_channel_turn(
         user_id=user.id,
         title=title,
         external_chat_key=chat_key or external_user_id,
+        channel=channel,
     )
     _user_msg, asst_msg, result = await ChatService(db).handle_user_message(conv.id, user.id, text)
     CHAT_TURNS.labels(route=result.route, intent=result.intent or "none").inc()
@@ -49,6 +51,7 @@ async def run_channel_turn(
         resource_id=conv.id,
         actor_id=user.id,
         detail={"external_id": external_user_id, "run_id": result.run_id, "route": result.route},
+        trace_id=result.trace_id,
     )
     return ChannelTurnResult(
         answer=asst_msg.content,
@@ -56,4 +59,5 @@ async def run_channel_turn(
         route=result.route,
         conversation_id=conv.id,
         user_id=user.id,
+        trace_id=result.trace_id,
     )

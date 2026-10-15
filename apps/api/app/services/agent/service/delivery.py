@@ -11,6 +11,7 @@ from app.models.service_task import ServiceTask
 from app.services.agent.intake.goals import GOAL_ORDER_STATUS, GOAL_TICKET_RESOLUTION
 from app.services.agent.service.contracts import Task
 from app.services.agent.service.inserts import insert_once
+from app.services.outbox.store import EVENT_TASK_RESULT, emit
 
 
 def next_due(task: Task):
@@ -88,6 +89,18 @@ async def _notify(db, task: Task) -> None:
                     "version": task.version,
                 }
             },
+        },
+    )
+    await emit(
+        db,
+        aggregate="session",
+        aggregate_id=conv.id,
+        event_type=EVENT_TASK_RESULT,
+        payload={
+            "conversation_id": conv.id,
+            "task_id": task.task_id,
+            "status": task.status,
+            "content": content,
         },
     )
 

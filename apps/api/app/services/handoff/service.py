@@ -12,11 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.conversation import Conversation
 from app.models.enums import ConversationStatus, HandoffStatus
 from app.models.handoff import HandoffSession
+from app.services.agent.intake.goals import GOAL_SPECS
+from app.services.agent.router.task_ops import open_tasks, resolve_task, resume_task
 from app.services.handoff.scope import filter_queue_by_team, merge_inbox
 
 HTTP_NOT_FOUND = status.HTTP_404_NOT_FOUND
 HTTP_FORBIDDEN = status.HTTP_403_FORBIDDEN
 HTTP_CONFLICT = status.HTTP_409_CONFLICT
+HANDOFF_TASK_SCAN_LIMIT = 50
+HANDOFF_NOTE_MAX = 80
 
 
 class HandoffService:
@@ -157,7 +161,23 @@ class HandoffService:
         if not any(h.id == session.id for h in visible):
             raise HTTPException(status_code=HTTP_FORBIDDEN, detail="out_of_scope")
 
-    async def return_to_ai(self, handoff_id: str, agent_id: str) -> HandoffSession:
+    async def return_to_ai(
+        self, handoff_id: str, agent_id: str, *, note: str | None = None
+    ) -> HandoffSession:
+        session = await self._claimed_by_agent(handoff_id, agent_id)
+        session.status = HandoffStatus.RETURNED.value
+        await self._close_session(session, actor=agent_id, note=note, resolved=False)
+        return session
+
+    async def resolve(
+        self, handoff_id: str, agent_id: str, *, note: str | None = None
+    ) -> HandoffSession:
+        session = await self._claimed_by_agent(handoff_id, agent_id)
+        session.status = HandoffStatus.RESOLVED.value
+        await self._close_session(session, actor=agent_id, note=note, resolved=True)
+        return session
+
+    async def _claimed_by_agent(self, handoff_id: str, agent_id: str) -> HandoffSession:
         session = await self.db.get(HandoffSession, handoff_id)
         if session is None:
             raise HTTPException(status_code=HTTP_NOT_FOUND, detail="Handoff not found")
@@ -165,10 +185,36 @@ class HandoffService:
             raise HTTPException(status_code=HTTP_CONFLICT, detail="Handoff not claimed")
         if session.claimed_by != agent_id:
             raise HTTPException(status_code=HTTP_FORBIDDEN, detail="Not your handoff")
-        session.status = HandoffStatus.RETURNED.value
+        return session
+
+    async def _close_session(
+        self, session: HandoffSession, *, actor: str, note: str | None, resolved: bool
+    ) -> None:
         conv = await self.db.get(Conversation, session.conversation_id)
         if conv is not None:
             conv.status = ConversationStatus.ACTIVE.value
+        await self._settle_linked_task(session, actor=actor, note=note, resolved=resolved)
         await self.db.flush()
         await self.db.refresh(session)
-        return session
+
+    async def _settle_linked_task(
+        self, session: HandoffSession, *, actor: str, note: str | None, resolved: bool
+    ) -> None:
+        """Resume (handback) or resolve the task the staff member took over (arch §4.9)."""
+        conv = await self.db.get(Conversation, session.conversation_id)
+        if conv is None:
+            return
+        tasks = await open_tasks(self.db, conv, limit=HANDOFF_TASK_SCAN_LIMIT)
+        target = next((t for t in tasks if t.status == "handed_off"), None)
+        if target is None:
+            return
+        reason = f"{'staff_resolved' if resolved else 'handback'}:{session.id}"
+        if note:
+            reason = f"{reason}:{note[:HANDOFF_NOTE_MAX]}"
+        if resolved:
+            await resolve_task(self.db, target, actor=actor, reason=reason)
+            return
+        spec = GOAL_SPECS.get(target.goal)
+        if spec is not None:
+            target.owner = spec.owner
+        await resume_task(self.db, target, actor=actor, reason=reason)

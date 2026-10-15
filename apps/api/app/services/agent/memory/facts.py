@@ -104,6 +104,15 @@ class FactStore:
             return fact_view(row) if row else None
 
     async def remember(self, scope, candidate: FactCandidate, *, expected_version: int = 0):
+        async with self.sessions.begin() as db:
+            return await self.remember_in_transaction(
+                db, scope, candidate, expected_version=expected_version
+            )
+
+    async def remember_in_transaction(
+        self, db, scope, candidate: FactCandidate, *, expected_version: int = 0
+    ):
+        """Participate in the caller's transaction (chat side effects share the turn)."""
         candidate = FactCandidate.model_validate(candidate.model_dump())
         verified = verification(candidate)
         now = datetime.now(UTC)
@@ -117,16 +126,15 @@ class FactStore:
             "expires_at": expiry,
         }
         memory_id = identity(scope, "fact", candidate.key)
-        async with self.sessions.begin() as db:
-            if expected_version == 0:
-                inserted = await insert_record(
-                    db, record_values(scope, kind="fact", key=candidate.key, values=values)
-                )
-                if not inserted:
-                    raise MemoryConflict("Memory already exists; supply its current version")
-            else:
-                await update_record(db, memory_id, expected_version=expected_version, values=values)
-            return fact_view(await db.get(AgentMemory, memory_id))
+        if expected_version == 0:
+            inserted = await insert_record(
+                db, record_values(scope, kind="fact", key=candidate.key, values=values)
+            )
+            if not inserted:
+                raise MemoryConflict("Memory already exists; supply its current version")
+        else:
+            await update_record(db, memory_id, expected_version=expected_version, values=values)
+        return fact_view(await db.get(AgentMemory, memory_id))
 
     async def delete(self, scope, key: str, *, expected_version: int) -> FactView:
         memory_id = identity(scope, "fact", key)

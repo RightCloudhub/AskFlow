@@ -1,6 +1,7 @@
 """Observe, choose a feasible micro-step, execute, and verify on the next tick."""
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from dataclasses import dataclass
@@ -29,6 +30,7 @@ from app.services.agent.service.selection import (
 from app.services.agent.service.store import TaskStore
 
 POLICY_TIMEOUT_SECONDS = 10.0
+logger = logging.getLogger(__name__)
 OWNER_REVIEW_SECONDS = 60
 MAX_CANDIDATES_PER_DECISION = 16
 
@@ -40,6 +42,7 @@ class AgentPolicy:
     observe: Callable[[Task], Awaitable[Environment]]
     propose: Callable[[Task, Environment], Awaitable[list[Candidate]]]
     verify: Callable[[Task, Environment], bool]
+    compensate: Callable[[Task, Environment], Awaitable[str | None]] | None = None
 
 
 class ServiceAgent:
@@ -81,7 +84,15 @@ class ServiceAgent:
         if verified:
             task.status, task.wake_condition, task.review_at = "resolved", None, None
             await self.store.save(task)
+            try:
+                # Ledger marking is audit-only and must not block resolution.
+                await self.executor.gateway.record_verified(task, registry=self.registry)
+            except Exception:  # audit marking must not block resolution
+                logger.debug("ledger verification marking failed", exc_info=True)
             return task
+        target = await self._compensation_target(view, env)
+        if target is not None:
+            return await self._compensate(task, key=target, env=env)
         stop = budget_stop(task)
         if stop:
             return await self._wait(task, stop)
@@ -166,6 +177,24 @@ class ServiceAgent:
         task.review_at = datetime.now(UTC) + timedelta(seconds=OWNER_REVIEW_SECONDS)
         await self.store.save(task)
         return task
+
+    async def _compensation_target(self, task: Task, env: Environment) -> str | None:
+        hook = self.policy.compensate
+        if hook is None:
+            return None
+        try:
+            return await asyncio.wait_for(hook(task, deepcopy(env)), timeout=POLICY_TIMEOUT_SECONDS)
+        except Exception:  # a failed decision must not block normal progress
+            logger.exception("compensation decision failed")
+            return None
+
+    async def _compensate(self, task: Task, *, key: str, env: Environment) -> Task:
+        receipt = await self.executor.compensate(task, original_key=key, env=env)
+        if receipt is None:
+            return await self._wait(task, "owner_review:no_safe_compensation")
+        if receipt.status in {"succeeded", "mock"}:
+            return await self._wait(task, "owner_review:compensated")
+        return await self._wait(task, "owner_review:compensation_failed")
 
     @staticmethod
     def _fresh_view(task: Task) -> Task:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -13,11 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings, get_settings
 from app.middleware.metrics import CHAT_TURNS
 from app.services.audit.logger.service import AuditService
+from app.services.channels.canonical import CanonicalMessage, session_key_for
 from app.services.channels.feishu.security import FeishuRequest, authenticate
 from app.services.channels.identity import ensure_channel_user, open_channel_conversation
+from app.services.channels.inbox import mark_published, record_inbound
 from app.services.chat.session.service import ChatService
+from app.services.outbound.senders import sender_configured
 
 CHANNEL = "feishu"
+HASH_PREFIX_LENGTH = 32
 HTTP_TIMEOUT_SEC = 10.0
 TOKEN_URL = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
 REPLY_URL = "https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reply"
@@ -121,8 +126,20 @@ class FeishuService:
             return FeishuHandleResult(kind="challenge", challenge=parsed)
         if parsed is None:
             return FeishuHandleResult(kind="ignored")
+        row = await record_inbound(self.db, _canonical(parsed))
+        if row is None:
+            return FeishuHandleResult(kind="duplicate")
+        if self._async_ingestion():
+            # Fast ACK: the inbox relay processes and pushes the reply (arch §9.1).
+            return FeishuHandleResult(kind="accepted")
+        result = await self._handle_message(parsed)
+        await mark_published(self.db, row)
+        return result
 
-        return await self._handle_message(parsed)
+    def _async_ingestion(self) -> bool:
+        if not self.settings.is_production_like:
+            return False
+        return sender_configured("feishu", self.settings)
 
     async def _handle_message(self, inbound: FeishuInbound) -> FeishuHandleResult:
         user = await ensure_channel_user(self.db, channel=CHANNEL, external_id=inbound.open_id)
@@ -132,6 +149,7 @@ class FeishuService:
             user_id=user.id,
             title=f"飞书:{inbound.open_id[:12]}",
             external_chat_key=chat_key,
+            channel=CHANNEL,
         )
         _user_msg, asst_msg, result = await ChatService(self.db).handle_user_message(
             conv.id, user.id, inbound.text
@@ -147,6 +165,7 @@ class FeishuService:
                 "run_id": result.run_id,
                 "route": result.route,
             },
+            trace_id=result.trace_id,
         )
         reply_status = "local_only"
         if inbound.message_id and self.settings.feishu_app_id:
@@ -202,3 +221,18 @@ class FeishuService:
             return data.get("tenant_access_token")
         except Exception:
             return None
+
+
+def _canonical(inbound: FeishuInbound) -> CanonicalMessage:
+    raw = inbound.raw_event or inbound.text
+    message_id = inbound.message_id or f"hash:{hashlib.sha256(raw.encode()).hexdigest()[:HASH_PREFIX_LENGTH]}"
+    chat_key = inbound.chat_id or inbound.open_id
+    return CanonicalMessage(
+        channel=CHANNEL,
+        channel_message_id=message_id,
+        channel_user_id=inbound.open_id,
+        session_key=session_key_for(channel=CHANNEL, chat_key=chat_key, user_id=inbound.open_id),
+        text=inbound.text,
+        chat_key=chat_key,
+        reply_to=inbound.message_id,
+    )

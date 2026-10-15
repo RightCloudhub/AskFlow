@@ -10,7 +10,7 @@ from app.core.deps import CurrentUser, DbSession, require_agent_or_admin
 from app.models.handoff import HandoffSession
 from app.models.user import User
 from app.schemas.chat import MessageOut
-from app.schemas.handoff import HandoffOut, StaffReplyRequest
+from app.schemas.handoff import HandoffCloseRequest, HandoffOut, StaffReplyRequest
 from app.services.handoff.service import HandoffService
 from app.services.handoff.staff_ops import HandoffStaffOps
 
@@ -59,8 +59,25 @@ async def return_handoff(
     *,
     user: CurrentUser,
     db: DbSession,
+    body: HandoffCloseRequest | None = None,
 ) -> HandoffOut:
-    session = await HandoffService(db).return_to_ai(handoff_id, user.id)
+    session = await HandoffService(db).return_to_ai(
+        handoff_id, user.id, note=body.note if body else None
+    )
+    return HandoffOut.model_validate(session)
+
+
+@router.post("/{handoff_id}/resolve", response_model=HandoffOut)
+async def resolve_handoff(
+    handoff_id: str,
+    *,
+    user: CurrentUser,
+    db: DbSession,
+    body: HandoffCloseRequest | None = None,
+) -> HandoffOut:
+    session = await HandoffService(db).resolve(
+        handoff_id, user.id, note=body.note if body else None
+    )
     return HandoffOut.model_validate(session)
 
 

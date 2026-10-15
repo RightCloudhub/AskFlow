@@ -34,6 +34,8 @@ async def wecom_events(request: Request, db: DbSession) -> Response:
     result = await WeComService(db).handle_payload(body, query=q)
     if result.kind == "echo" and result.echo_str:
         return PlainTextResponse(result.echo_str)
+    if result.kind == "duplicate":
+        return JSONResponse({"errcode": 0, "errmsg": "duplicate"})
     if result.kind == "message":
         from app.core.config import get_settings
 

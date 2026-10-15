@@ -141,19 +141,19 @@ async def test_write_timeout_is_unknown_and_cannot_be_replayed(store):
     await store.create(original)
     registry = OperationRegistry(
         [
-            operation("refund.submit", timeout, effect="write", timeout_seconds=0.01),
+            operation("order.write", timeout, effect="write", timeout_seconds=0.01),
         ]
     )
     executor = Executor(registry, store)
     receipt = await executor.execute(
-        original, call("refund.submit"), env=environment("refund.submit")
+        original, call("order.write"), env=environment("order.write")
     )
     restored = await store.load(original.task_id, SCOPE)
     assert receipt.status == "unknown"
     assert restored.status == "waiting_external"
     assert restored.wake_condition == "reconcile:request-1"
     with pytest.raises(ValueError, match="task_not_active"):
-        await executor.execute(restored, call("refund.submit"), env=environment("refund.submit"))
+        await executor.execute(restored, call("order.write"), env=environment("order.write"))
 
 
 @pytest.mark.asyncio

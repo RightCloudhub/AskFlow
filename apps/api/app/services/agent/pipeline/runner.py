@@ -66,8 +66,11 @@ class MessagePipeline:
         metadata: dict[str, Any] | None = None,
         conversation_status: str = "active",
         cancel_key: str | None = None,
+        user_id: str | None = None,
+        run_id: str | None = None,
     ) -> PipelineResult:
-        run_id = new_run_id()
+        self.user_id = user_id
+        run_id = run_id or new_run_id()
         ledger = CostLedger(run_id)
         self._seed_cost(ledger)
         ids = TurnIds(
@@ -164,6 +167,8 @@ class MessagePipeline:
             loop=self.loop,
             rag=self.rag,
             cancel_key=payload.cancel_key,
+            db=self.db,
+            user_id=self.user_id,
         )
         return await self._dispatch(Route.TOOL.value, turn)
 
@@ -214,6 +219,8 @@ class MessagePipeline:
             loop=self.loop,
             rag=self.rag,
             cancel_key=payload.cancel_key,
+            db=self.db,
+            user_id=self.user_id,
         )
         return await self._dispatch(route_key, turn)
 

@@ -26,9 +26,9 @@
 |---|---|---|
 | 默认订单 | 聊天建任务 → worker → scoped webhook → 验证 → 会话回写 | 需要匹配客户/订单的真实回执；本地 mock 不结案 |
 | 可选工单 | `ticket_resolution` 白名单 → `ticket.create` → 登记回执 | `resolved` 目前仅表示工单登记，非原问题解决 |
-| 可选人工转交 | `human_handoff` 白名单 → `handoff.enqueue`；策略要求观察 claimed | 无自动接单事件唤醒；验证接管 API 是独立控制动作 |
+| 可选人工转交 | `human_handoff` 白名单 → `handoff.enqueue`；策略要求观察 claimed；领取后可返还（恢复任务）或解决（结算任务）（2026-10-16） | 无自动接单事件唤醒；验证接管 API 是独立控制动作 |
 | 通知 | chat/email 候选、偏好与健康过滤、回执验证 | 宿主注入 sender；无默认 worker builder 或聊天映射 |
-| 退款 | submit/status 两个操作、到账状态验证、未知写入保护 | 宿主注入连接器；无默认 worker、真实资金验收或自动补偿 |
+| 退款 | submit/status 两个操作、到账状态验证、未知写入保护 | 宿主注入连接器；无默认 worker 或真实资金验收；退款补偿显式声明 `irreversible:` |
 | 直接回答与降级 | FAQ/product RAG、拒答、澄清及未接管的旧工具/工单/转交 | 原 Loop 仍是固定工具执行，不具备通用计划图 |
 
 `SERVICE_TASKS_GOALS` 默认 `order_status`；支持 `order/ticket/handoff` 别名。移除目标只改变新受理；关闭总开关并重启 API 会停用受理和后台调度。已发出的业务请求不会因此撤销。
@@ -38,14 +38,14 @@
 | 能力 | 已实现证据 | 剩余差距 |
 |---|---|---|
 | 目标持有 | 检查点、范围隔离、版本 CAS、消息/任务同事务、持久派发租约 | 多目标拆分、计划依赖图、跨会话自动匹配未实现 |
-| 受理与续办 | intent→goal 目录；订单槽位兼容；判定器有 resume 分支 | 聊天未查询 open_task，也未执行 resume 分支 |
+| 受理与续办 | intent→goal 目录；订单槽位兼容；判定器有 resume 分支 | 已由 Turn Router 接入聊天续办/确认/控制意图（2026-10-15）；多目标拆分仍缺 |
 | 环境感知 | 每 tick observe；有效证据和 sourced_facts 过滤；权限与实时事实优先 | 库存/队列/通道等不是已全面接入的业务观察源 |
 | 自主判断 | 候选硬过滤、去重、带来源效用或确定性排序；决策含 expected_result/stop_conditions | 默认订单仍是单候选；多候选通知尚未进入默认业务；无计划图 |
-| 动作执行 | OperationRegistry、先写意图、回执保存、请求键复用、写入 unknown 保护 | compensation 仍为元数据，无通用补偿执行器 |
+| 动作执行 | OperationRegistry、先写意图、回执保存、请求键复用、写入 unknown 保护、声明式补偿执行（2026-10-16） | 仅普通 op id 自动补偿；不可逆/人工前缀与未知写入转人工 |
 | 反馈校正 | 分类恢复、只读退避、冷却与重选、责任人检查 | 外部事件订阅、未知写入对账和人工领取唤醒未自动接入 |
 | 预算 | 调用次数、无进展次数、可选费用与 deadline 校验 | 费用依赖候选估计；默认聊天任务未设置 max_cost/deadline |
 | 对象协调 | worker 对带 order_id 的任务取得按组织/客户隔离的对象租约 | 直接调用运行时需宿主加锁；无跨系统恰好一次保证 |
-| 记忆 | 偏好 API、FactStore 每轮读取、TimelineStore 派发后追加、ExperienceStore 条件匹配 | 无自动事实提取、经验生产/消费与统一客户管理接口 |
+| 记忆 | 偏好 API、FactStore 每轮读取、TimelineStore 派发后追加、ExperienceStore 条件匹配 | 已接入每回合确定性事实抽取与事实查看/遗忘 API（2026-10-15）；经验生产/消费仍缺 |
 | 结果验证 | 应用 verify；模拟/过期证据过滤；订单归属核对；按版本去重回写 | 无通用客户/人工确认 HTTP 通道；退款的金额/币种等完整产品验收仍待实现 |
 
 费用上限不等于实际账单上限；租约竞争测试不等于生产多实例故障切换验收。参数和默认值见 [运行时](./customer-service-runtime.md)。
@@ -68,12 +68,12 @@
 | 阶段 | 当前进展 | 未完成的放行项 |
 |---|---|---|
 | P0 订单闭环 | 聊天受理、派发、验证、结果回写、偏好与任务控制已接入 | 真实订单系统及部署验收 |
-| P1 受理层 | intake 抽取与目标目录已实现 | waiting_customer 聊天续办、多目标 |
+| P1 受理层 | intake 抽取、目标目录与 Turn Router 聊天续办/控制意图/决策记录已实现 | 多目标 |
 | P2 装配与域 | policies 注册表、domains/order 合并已实现；兼容入口保留 | 后续域逐项验收 |
 | P3 操作目录 | ticket/handoff 可接管；notify 独立模块已实现 | 通知接入、人工事件驱动、全域等价验收 |
 | P4 判断与环境 | 候选比较、来源事实、决策字段、通知多候选已实现 | 真实多候选业务环境、依赖图与重规划 |
 | P5 记忆扩展 | 事实、时间线、经验模块和偏好/事实读管线已实现 | 自动采集与经验消费、客户界面、完整保留闭环 |
-| P6 写入与预算 | 退款适配、对象锁与任务预算已实现 | 真实连接器、未知退款对账、自动补偿、费用来源 |
+| P6 写入与预算 | 退款适配、对象锁、任务预算与声明式补偿执行已实现 | 真实连接器、未知退款对账、费用来源 |
 | P7 旧管线收敛 | 目标开关分流，避免同一消息重复业务副作用 | 完整业务迁移、影子模式、降级验收和旧代码清理 |
 
 原重构计划描述的是目标设计；不能把其中的“新增/待建”当成当前缺失，也不能把阶段内某个模块落地当成整阶段完成。
@@ -90,5 +90,7 @@
 | 运行、恢复、预算、选择、锁与迁移 | `tests/unit/test_service_*.py` |
 | 受理与目标目录 | `tests/unit/test_intake_*.py` |
 | 记忆验证、隔离、删除与权限 | `tests/unit/test_memory_*.py`、`test_customer_memory.py` |
+| 补偿执行与台账标记 | `tests/unit/test_compensation.py` |
+| 人工返还与解决 | `tests/integration/test_handback_flow.py` |
 
 命令见 [API README](../../apps/api/README.md#verification)，本次实际复验记录见 [STATUS](../STATUS.md#4-验证记录)。真实订单/退款连接器、生产 PostgreSQL、多实例压力与外部事件验签不在本地测试通过声明内。

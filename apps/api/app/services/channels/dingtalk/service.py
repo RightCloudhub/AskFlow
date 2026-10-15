@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.services.channels.canonical import CanonicalMessage, session_key_for
+from app.services.channels.inbox import mark_published, record_inbound
 from app.services.channels.pipeline import run_channel_turn
 
 CHANNEL = "dingtalk"
+HASH_PREFIX_LENGTH = 32
 
 
 @dataclass
@@ -84,14 +88,21 @@ class DingTalkService:
         if parsed is None:
             return DingTalkHandleResult(kind="ignored")
         uid, text = parsed
+        chat_key = str(body.get("conversationId") or uid)
+        row = await record_inbound(
+            self.db, _canonical(body, uid=uid, text=text, chat_key=chat_key)
+        )
+        if row is None:
+            return DingTalkHandleResult(kind="duplicate")
         turn = await run_channel_turn(
             self.db,
             channel=CHANNEL,
             external_user_id=uid,
             text=text,
-            chat_key=str(body.get("conversationId") or uid),
+            chat_key=chat_key,
             title_prefix="钉钉",
         )
+        await mark_published(self.db, row)
         return DingTalkHandleResult(
             kind="message",
             reply_text=turn.answer,
@@ -99,3 +110,18 @@ class DingTalkService:
             route=turn.route,
             reply_status="local_only",
         )
+
+
+def _canonical(body: dict[str, Any], *, uid: str, text: str, chat_key: str) -> CanonicalMessage:
+    raw = json.dumps(body, sort_keys=True, ensure_ascii=False, default=str)
+    message_id = str(
+        body.get("msgId") or body.get("msgid") or f"hash:{hashlib.sha256(raw.encode()).hexdigest()[:HASH_PREFIX_LENGTH]}"
+    )
+    return CanonicalMessage(
+        channel=CHANNEL,
+        channel_message_id=message_id,
+        channel_user_id=uid,
+        session_key=session_key_for(channel=CHANNEL, chat_key=chat_key, user_id=uid),
+        text=text,
+        chat_key=chat_key,
+    )

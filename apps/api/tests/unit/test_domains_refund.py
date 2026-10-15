@@ -14,7 +14,13 @@ from app.services.agent.domains.refund import (
     refund_agent,
     refund_operations,
 )
-from app.services.agent.service.contracts import Environment, Evidence, OperationCall
+from app.services.agent.gateway.idempotency import args_hash
+from app.services.agent.service.contracts import (
+    ConfirmationGrant,
+    Environment,
+    Evidence,
+    OperationCall,
+)
 from app.services.agent.service.driver import advance
 from app.services.agent.service.executor import Executor
 from app.services.agent.service.registry import OperationRegistry
@@ -23,7 +29,8 @@ from tests.unit.test_service_agent import SCOPE, store, task
 __all__ = ["store"]
 
 ORDER_ID = "owned"
-AMOUNT_CENTS = 19900
+AMOUNT_CENTS = 4900
+OVER_LIMIT_CENTS = 6000
 REASON = "商品破损"
 SLOW_SUBMIT_SECONDS = 0.05
 FAST_TIMEOUT_SECONDS = 0.01
@@ -46,6 +53,10 @@ def refund_task():
     original.goal = REFUND_GOAL
     original.completion_condition = REFUND_GOAL
     original.inputs = dict(REFUND_ARGS)
+    original.assurance_level = 2
+    original.confirmations.append(
+        ConfirmationGrant(capability=REFUND_OPERATION, args_hash=args_hash(REFUND_ARGS))
+    )
     return original
 
 
@@ -152,3 +163,28 @@ async def test_customer_confirmation_completes_the_wait(store):
     result = await advance(agent, original.task_id, scope=SCOPE)
     assert result.status == "resolved"
     assert result.calls_used == 0
+
+
+@pytest.mark.asyncio
+async def test_over_limit_refund_waits_for_human_approval(store):
+    invoked = []
+
+    async def submit(request):
+        invoked.append(request)
+        return {"status": "ok", "refund_id": "rf-1"}
+
+    executor = Executor(
+        OperationRegistry(refund_operations(submit=submit, status_query=refunded_status)), store
+    )
+    original = refund_task()
+    over_args = {**REFUND_ARGS, "amount_cents": OVER_LIMIT_CENTS}
+    original.inputs = over_args
+    await store.create(original)
+    request = OperationCall(operation_id=REFUND_OPERATION, key="rf-over", arguments=over_args)
+    receipt = await executor.execute(original, request, env=refund_env())
+    assert receipt.status == "failed"
+    assert receipt.error == "human_approval_required"
+    restored = await store.load(original.task_id, SCOPE)
+    assert restored.status == "waiting_external"
+    assert restored.wake_condition == "owner_review:human_approval"
+    assert invoked == []

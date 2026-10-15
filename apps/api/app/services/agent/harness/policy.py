@@ -84,6 +84,7 @@ class Harness:
         flags: list[str] = []
         raw = (text or "").strip()
         if not raw:
+            _count_block("empty")
             return PrepareResult(
                 allowed=False,
                 text="",
@@ -92,6 +93,7 @@ class Harness:
                 flags=["block_empty"],
             )
         if len(raw) > self.settings.max_question_chars:
+            _count_block("too_long")
             return PrepareResult(
                 allowed=False,
                 text=raw[: self.settings.max_question_chars],
@@ -100,6 +102,7 @@ class Harness:
                 flags=["block_too_long"],
             )
         if self._looks_like_injection(raw):
+            _count_block("injection")
             return PrepareResult(
                 allowed=False,
                 text=raw,
@@ -158,10 +161,14 @@ class Harness:
         flags: list[str] = []
         if not body:
             return FinalizeResult(text=MSG_EMPTY_OUTPUT, flags=["empty_output"])
+        from app.services.agent.guardrails.output import review_output
+
+        body, guard_flags = review_output(body)
+        flags.extend(guard_flags)
         max_chars = self.settings.max_answer_chars
         if len(body) > max_chars:
             truncated = body[:max_chars].rstrip() + MSG_TRUNCATED_SUFFIX
-            return FinalizeResult(text=truncated, flags=["truncated"], truncated=True)
+            return FinalizeResult(text=truncated, flags=[*flags, "truncated"], truncated=True)
         return FinalizeResult(text=body, flags=flags)
 
     def clarify_message(self) -> str:
@@ -215,3 +222,12 @@ class Harness:
             used += n
         acc.reverse()
         return acc
+
+
+def _count_block(reason: str) -> None:
+    try:
+        from app.middleware.metrics import HARNESS_BLOCK
+
+        HARNESS_BLOCK.labels(stage="prepare", reason=reason).inc()
+    except Exception:  # noqa: BLE001, S110 - metrics must never block input handling
+        pass

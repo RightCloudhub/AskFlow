@@ -19,10 +19,19 @@ class GoalSpec:
     namespace: str
     completion_condition: str
     owner: str = "customer_support"
+    version: int = 1
+    required_assurance: int = 1
 
 
+# Irreversible business goals require an authenticated (L2) principal (arch §4.2).
+GOAL_ASSURANCE = {GOAL_REFUND_REQUEST: 2}
 GOAL_SPECS = {
-    goal: GoalSpec(goal=goal, namespace=namespace, completion_condition=goal)
+    goal: GoalSpec(
+        goal=goal,
+        namespace=namespace,
+        completion_condition=goal,
+        required_assurance=GOAL_ASSURANCE.get(goal, 1),
+    )
     for goal, namespace in (
         (GOAL_ORDER_STATUS, "order"),
         (GOAL_TICKET_RESOLUTION, "ticket"),

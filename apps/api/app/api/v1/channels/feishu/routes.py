@@ -33,6 +33,8 @@ async def feishu_events(request: Request, db: DbSession) -> JSONResponse:
         return JSONResponse({"code": 400, "msg": "invalid_body"}, status_code=400)
     if result.kind == "challenge":
         return JSONResponse({"challenge": result.challenge})
+    if result.kind in {"duplicate", "accepted"}:
+        return JSONResponse({"code": 0, "msg": result.kind})
     if result.kind != "message":
         return JSONResponse({"code": 0, "msg": "ignored"})
     body_out: dict[str, Any] = {

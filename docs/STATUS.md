@@ -13,6 +13,33 @@
 
 ---
 
+## 目标架构实施（2026-10-15，对照 arch.md）
+
+按 [arch.md](../arch.md) 目标架构完成结构性调整：单一 Action Gateway、Turn Router、事务性 outbox 与渠道 inbox、
+输出护栏、记忆读写与知识过滤。全量测试通过（含新增 60+ 用例）；新增生产文件硬指标违规为 0（对照 HEAD 基线）。
+
+| 能力 | 实现 | 证据 |
+|---|---|---|
+| Action Gateway | 能力目录/策略/幂等/确认令牌/只追加台账（哈希链） | `services/agent/gateway/` · `tests/unit/test_gateway.py` |
+| 执行路径统一 | 任务操作、旧工具、工单/转交副作用全部过网关 | `service/executor.py`、`gateway/tool_bridge.py`、`side_effects/*` |
+| Turn Router | 优先级路由、控制意图、在办任务续办/确认、置信带、步进验证、决策记录 | `services/agent/router/` · `tests/unit/test_turn_router.py` |
+| 闭环 | 事务性 outbox + 中继；渠道主动推送（飞书/企微/钉钉发送器）+ WebSocket 广播 | `services/outbox/`、`services/outbound/`、`services/chat/ws_registry.py` |
+| 渠道边缘 | `(channel, message_id)` 去重、按会话有序处理、租约防并发、生产环境快速 ACK + 中继 | `services/channels/inbox.py`、`workers/channel_inbox_relay.py` |
+| 护栏 | 输出承诺/泄漏检查；检索与工具文本按不可信数据处理 | `services/agent/guardrails/` · `tests/unit/test_guardrails.py` |
+| 记忆读写 | 每回合确定性事实抽取（验证门）、事实查看/遗忘 API、直答注入已知信息块 | `memory/extract.py`、`api/v1/agent/memories.py` |
+| 知识过滤 | 文档语言/产品/ACL/有效期元数据、检索前过滤、可选词法重排 | `models/document.py`、`rag/pipeline.py`、`rag/rerank/` |
+| 可观测 | HTTP trace_id 贯穿回合与审计；`HARNESS_BLOCK` 指标生效 | `core/trace.py`、`middleware/logging.py` |
+| 人工返还 | 领取后返还（handback）恢复关联任务与会话；解决（resolve）结算任务并停放派发 | `services/handoff/service.py` · `tests/integration/test_handback_flow.py` |
+| 补偿执行 | 普通 op id 声明自动执行并标记 `COMPENSATED`；不可逆/人工前缀转人工 | `service/executor_compensation.py` · `tests/unit/test_compensation.py` |
+| 派发韧性 | 失败指数退避 + 抖动、死信计数、过期租约回收计数 | `service/dispatch.py` · `middleware/metrics.py` |
+
+新增迁移：`20261015_governance_tables`（台账/outbox/inbox/决策/身份/验证码/确认 nonce）、`20261016_document_metadata`。
+新增环境变量与行为见 [API README](../apps/api/README.md#治理路由与渠道投递) 与 [Action Gateway 架构](./architecture/action-gateway.md)。
+
+剩余边界（未实现，不得宣称为已完成）：控制面配置界面、经验记忆的生产/消费、真实退款连接器与生产 PostgreSQL 故障切换。
+
+2026-10-16 增量：人工返还（handback）与解决（resolve）恢复/结算关联任务、派发失败指数退避与死信/租约回收指标、声明式补偿执行器（`COMPENSATED`）。全量 479 passed；离线 eval `passed=8 failed=0`；新增生产文件硬指标违规 0，ruff 与 HEAD 基线持平（124）。
+
 ## 客服 Agent 与插件增量（2026-10-04）
 
 对应独立方案 [customer-service-agent.md](./prd/customer-service-agent.md)，完整业务范围尚未验收：
@@ -28,7 +55,7 @@
 | 任务控制 | 认证客户查看/取消；基于当前人员已领取转交的验证接管 |
 | 插件发现 | `/admin/plugins` 只读展示 profile、插件依赖与扩展点；`GET /api/v1/admin/features` 提供数据 |
 
-仍待完成：多目标依赖图、跨会话自动续办、人工接单/外部事件自动唤醒、真实退款与自动补偿、经验自动生产/消费、统一记忆管理与生产 PostgreSQL 故障切换。费用目前为候选估计累计，默认聊天任务未设置费用上限或 deadline；工单目标完成当前表示登记成功。
+仍待完成：多目标依赖图、跨会话自动续办、人工接单/外部事件自动唤醒、真实退款连接器与退款对账（退款补偿显式声明 `irreversible:`）、经验自动生产/消费、统一记忆管理与生产 PostgreSQL 故障切换。费用目前为候选估计累计，默认聊天任务未设置费用上限或 deadline；工单目标完成当前表示登记成功。
 
 实现边界见 [运行时](./architecture/customer-service-runtime.md)、[生命周期](./architecture/customer-service-lifecycle.md)、[客户记忆](./architecture/customer-preference-memory.md) 与 [Agent 差距](./architecture/agent-conformance.md)。最近五次提交对照见 [README](../README.md#近期进展与路线图)。
 

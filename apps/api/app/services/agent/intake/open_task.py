@@ -14,7 +14,9 @@ from app.services.agent.service.inserts import insert_once
 from app.services.agent.service.settings import ServiceSettings
 
 
-async def open_goal_task(db, conversation, decision: IntakeDecision, *, inputs=None) -> Task | None:
+async def open_goal_task(
+    db, conversation, decision: IntakeDecision, *, inputs=None, assurance: int = 1
+) -> Task | None:
     settings = ServiceSettings()
     if decision.verdict != "goal" or not settings.takes_over(decision.goal):
         return None
@@ -34,6 +36,7 @@ async def open_goal_task(db, conversation, decision: IntakeDecision, *, inputs=N
         inputs=inputs or ({"order_id": decision.object_key} if decision.object_key else {}),
         completion_condition=spec.completion_condition,
         owner=spec.owner,
+        assurance_level=assurance,
     )
     await insert_once(
         db,

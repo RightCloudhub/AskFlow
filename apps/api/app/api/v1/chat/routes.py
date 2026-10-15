@@ -156,4 +156,5 @@ async def chat_ws(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         pass
     finally:
+        ws_handler.ws_registry.unregister_all(websocket)
         WS_CONNECTIONS.dec()

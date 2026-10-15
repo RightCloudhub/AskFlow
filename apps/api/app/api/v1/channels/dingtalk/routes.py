@@ -25,6 +25,8 @@ async def dingtalk_events(request: Request, db: DbSession) -> JSONResponse:
     result = await DingTalkService(db).handle_payload(body, headers=headers)
     if result.kind == "challenge":
         return JSONResponse({"challenge": result.challenge})
+    if result.kind == "duplicate":
+        return JSONResponse({"code": 0, "msg": "duplicate"})
     if result.kind == "message":
         from app.core.config import get_settings
 

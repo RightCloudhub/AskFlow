@@ -31,8 +31,11 @@ class RetrievalCache:
     def enabled(self) -> bool:
         return self.ttl > 0
 
-    def make_key(self, query: str, top_k: int) -> str:
-        raw = f"{top_k}\n{query.strip().lower()}"
+    def make_key(self, query: str, top_k: int, filters: dict | None = None) -> str:
+        import json
+
+        filter_part = json.dumps(filters, sort_keys=True, default=str) if filters else ""
+        raw = f"{top_k}\n{query.strip().lower()}\n{filter_part}"
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     def get(self, key: str) -> Any | None:

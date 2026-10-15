@@ -25,3 +25,7 @@ class HandoffOut(BaseModel):
 
 class StaffReplyRequest(BaseModel):
     content: str
+
+
+class HandoffCloseRequest(BaseModel):
+    note: str | None = None

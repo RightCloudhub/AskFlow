@@ -8,7 +8,7 @@ from app.plugins.types import ChatTurnContext
 from app.services.agent.pipeline.defaults import resolve_side_effects
 
 # Explicit order: domain effects then gap, cost, run replay
-HANDLER_ORDER = ("ticket", "handoff", "gap", "cost", "agent_run")
+HANDLER_ORDER = ("ticket", "handoff", "gap", "memory", "cost", "agent_run")
 
 
 async def apply_side_effects(
@@ -17,7 +17,7 @@ async def apply_side_effects(
 ) -> dict[str, Any]:
     handlers = resolve_side_effects()
     # Always run gap/cost/agent_run if registered even when key not in se
-    always = {"gap", "cost", "agent_run"}
+    always = {"gap", "memory", "cost", "agent_run"}
     for key in HANDLER_ORDER:
         handler = handlers.get(key)
         if handler is None:
