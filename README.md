@@ -27,10 +27,11 @@ AskFlow 将 Honest RAG、受约束的 Agent、工单与人工协作放在同一�
 |---|---|
 | **Honest RAG** | 混合检索知识库，先检查证据再生成；弱证据拒答，答案带引用 |
 | **持久服务任务** | 从聊天受理订单查询，保存检查点与操作台账，有限重试并在重启后继续处理 |
+| **执行治理** | 所有副作用经统一 Action Gateway：能力分级、策略、幂等键、确认令牌与只追加台账；声明式补偿 |
 | **工单与人工协作** | 创建去重工单、暖转人工、认领接管、跟踪 SLA 与通知 |
 | **客户记忆** | 明确确认偏好、按版本纠正和删除；任务运行时读取有效偏好与已验证事实 |
 | **知识运营** | 上传与索引、知识缺口聚合、草稿审核、发布版本与回滚 |
-| **多渠道接入** | Web、嵌入式 Widget、飞书、企业微信与钉钉共用客服处理能力 |
+| **多渠道接入** | Web、嵌入式 Widget、飞书、企业微信与钉钉共用客服处理能力；消息按渠道去重，结果经 outbox 主动推送 |
 | **企业治理** | OIDC SSO、技能组、连接器、审计、用户导出/删除、质检与运营分析 |
 | **模型与可观测** | 按 purpose 选模型与 fallback，记录 token/估计费用，提供运行回放与 Prometheus 指标 |
 | **可插拔交付** | 使用 profile 与 feature 增量组合能力，在管理页查看插件依赖和加载状态 |
@@ -141,20 +142,23 @@ docker compose -f infra/compose/dev/docker-compose.yml up -d
 
 ```mermaid
 flowchart TD
-    Channels["Web / Widget / 飞书 / 企微 / 钉钉"] --> Chat["认证 · 会话状态 · Harness"]
-    Chat --> Intake["目标受理"]
-    Intake -->|命中启用目标| Tasks["持久任务 + 数据库派发"]
-    Intake -->|直答或未接管| Pipeline["消息流水线"]
+    Channels["Web / Widget / 飞书 / 企微 / 钉钉"] --> Inbox["渠道 inbox：去重 · 有序处理 · 租约"]
+    Inbox --> Chat["认证 · 会话状态 · Harness · 护栏"]
+    Chat --> Router["Turn Router：控制意图 · 续办 / 确认 · 置信带"]
+    Router -->|新目标| Tasks["持久任务 + 数据库派发"]
+    Router -->|直答或未接管| Pipeline["消息流水线"]
     Pipeline --> RAG["混合检索 · Grounding · 引用"]
     Pipeline --> Legacy["工具 · 工单 · 人工 · 澄清 / 拒答"]
     Tasks --> Worker["Worker · 策略注册 · 权限与预算"]
-    Worker --> Domains["订单 / 工单 / 人工转交"]
-    Domains --> Verify["回执验证 · 恢复 · 会话结果回写"]
+    Worker --> Gateway["Action Gateway：策略 · 幂等 · 确认 · 台账"]
+    Gateway --> Domains["订单 / 工单 / 人工转交 / 退款 / 通知"]
+    Domains --> Verify["回执验证 · 恢复 · 补偿 · 会话结果回写"]
+    Verify --> Outbox["事务性 outbox → WebSocket / 渠道推送"]
     Memory["有效偏好与事实"] --> Worker
-    Tasks --> Ledger["检查点 · 操作台账 · 决策记录"]
+    Tasks --> Ledger["检查点 · 决策记录 · 操作台账（哈希链）"]
 ```
 
-默认只有订单目标走持久任务路径；工单和人工转交可按目标白名单接管。退款与通知已有独立适配模块，尚未接入默认聊天/worker。消息流水线继续承担直接回答和未接管业务，详见 [运行时](./docs/architecture/customer-service-runtime.md) 与 [生命周期](./docs/architecture/customer-service-lifecycle.md)。
+默认只有订单目标走持久任务路径；工单和人工转交可按目标白名单接管，退款与通知已有独立适配模块。Turn Router 每回合按固定优先级处理控制意图、在办任务续办/确认与新目标受理；所有副作用统一经过 Action Gateway（策略、幂等键、确认令牌、只追加台账）。领取转交的人工可返还（恢复任务）或解决（结算任务）。消息流水线继续承担直接回答和未接管业务，详见 [Action Gateway](./docs/architecture/action-gateway.md)、[运行时](./docs/architecture/customer-service-runtime.md) 与 [生命周期](./docs/architecture/customer-service-lifecycle.md)。
 
 | 层次 | 技术 |
 |---|---|
@@ -190,6 +194,8 @@ data/samples/           # 样例数据与改写词典
 | `SERVICE_TASKS_ENABLED` | `true`；启用目标受理与后台 worker（还需 Agent 插件） |
 | `SERVICE_TASKS_GOALS` | `order_status`；可选增加 `ticket_resolution,human_handoff` |
 | `SERVICE_TASK_POLL_SECONDS` | `5`；任务扫描间隔，最小 1 秒 |
+| `OUTBOX_RELAY_ENABLED` / `CHANNEL_INBOX_RELAY_ENABLED` | `true`；任务结果发布与渠道消息去重处理的中继循环 |
+| `GATEWAY_POLICY_VERSION` / `CONFIRMATION_TTL_SECONDS` | `1` / `86400`；策略版本与确认令牌有效期 |
 | `ORDER_LOOKUP_URL` / `ORDER_LOOKUP_TOKEN` | 订单 HTTP 接口及可选 bearer token |
 | `LLM_BASE_URL` / `LLM_API_KEY` | 可选 OpenAI 兼容生成与流式回答 |
 | `EMBEDDING_*` / `CHROMA_HOST` / `CHROMA_PERSIST_DIR` | 可选外部 embedding 与 Chroma；Chroma 需安装 `.[vector]` |
@@ -201,17 +207,19 @@ data/samples/           # 样例数据与改写词典
 
 ## 服务任务与客户记忆
 
-订单消息带有效订单号时，系统先回复受理确认，再由 worker 查询与验证结果。订单接口需要返回匹配的 `customer_id`、`order_id` 和具体 `status`；缺少配置、mock 或归属不符时保留未解决状态。结果保存到聊天历史，当前没有后台结果的实时 WebSocket 推送。
+订单消息带有效订单号时，系统先回复受理确认，再由 worker 查询与验证结果。订单接口需要返回匹配的 `customer_id`、`order_id` 和具体 `status`；缺少配置、mock 或归属不符时保留未解决状态。结果保存到聊天历史，并经事务性 outbox 推送到打开的 WebSocket 会话与来源渠道。
 
 | 接口（前缀 `/api/v1`） | 用途 |
 |---|---|
 | `GET /agent/tasks`、`GET /agent/tasks/{task_id}` | 查看本人任务和公开摘要 |
 | `POST /agent/tasks/{task_id}/cancel` | 按版本取消目标，保留未决操作 |
 | `POST /admin/service-tasks/{task_id}/accept-handoff` | 绑定当前人员已领取的转交并接管 |
+| `POST /admin/handoffs/{handoff_id}/return`、`/resolve` | 领取后返还给 AI（恢复任务）或标记解决（结算任务） |
 | `GET /agent/preferences`、`PUT /agent/preferences` | 查看、确认和纠正客户偏好 |
 | `DELETE /agent/preferences/{key}` | 按版本删除指定偏好 |
+| `GET /agent/memories`、`DELETE /agent/memories/{key}` | 查看与遗忘每回合抽取的客户事实 |
 
-偏好支持 `language`、`response_detail`、`contact_channel`，要求明确同意，默认保留 30 天。事实、事件和经验已有内部存储模块；事实自动提取、经验自动学习和客户管理页面尚未接入。所有记忆只作为数据，不授予权限。
+偏好支持 `language`、`response_detail`、`contact_channel`，要求明确同意，默认保留 30 天。事实支持每回合确定性抽取与查看/遗忘 API；事件与经验已有内部存储模块，经验自动学习与统一客户管理页面尚未接入。所有记忆只作为数据，不授予权限。
 
 请求格式、版本冲突与保留规则见 [任务接口](./docs/architecture/customer-service-lifecycle.md)、[客户记忆](./docs/architecture/customer-preference-memory.md) 和 [API README](./apps/api/README.md)。
 
@@ -249,29 +257,29 @@ python3 scripts/ops/check_code_metrics.py
 | 当前完成情况与生产限制 | [项目状态](./docs/STATUS.md) |
 | 产品需求与 Agent 目标 | [PRD v1.3](./docs/prd/PRD.md) · [客服 Agent 方案](./docs/prd/customer-service-agent.md) |
 | 运行、恢复与任务控制 | [运行时](./docs/architecture/customer-service-runtime.md) · [生命周期](./docs/architecture/customer-service-lifecycle.md) |
-| 架构与工程原则 | [架构索引](./docs/architecture/README.md) · [安全 / 性能 / 记忆三支柱](./docs/architecture/pillars.md) |
+| 架构与工程原则 | [架构索引](./docs/architecture/README.md) · [Action Gateway](./docs/architecture/action-gateway.md) · [安全 / 性能 / 记忆三支柱](./docs/architecture/pillars.md) |
 | 本地开发 | [API](./apps/api/README.md) · [Web](./apps/web/README.md) |
 | 部署、监控与排障 | [试点接入](./deploy/checklists/pilot-integration.md) · [可观测索引](./docs/observability/README.md) · [Runbook](./deploy/runbooks/) |
 | 全部文档 | [文档中心](./docs/README.md) |
 
 ## 近期进展与路线图
 
-本轮文档对照最近五次提交（2026-10-03 至 2026-10-04）：
+本轮文档对照最近五次提交（2026-10-04 至 2026-10-16）：
 
 | 提交 | 变化 |
 |---|---|
-| [`2b38655`](https://github.com/RightCloudhub/AskFlow/commit/2b38655) | 持久客服任务、操作台账、故障恢复链与订单适配 |
-| [`4527fbb`](https://github.com/RightCloudhub/AskFlow/commit/4527fbb) | 更新客服 Agent 方案的实施进展 |
-| [`79dcdf4`](https://github.com/RightCloudhub/AskFlow/commit/79dcdf4) | 客户偏好、任务 API、聊天受理、后台派发与结果回写 |
-| [`bd9828b`](https://github.com/RightCloudhub/AskFlow/commit/bd9828b) | 插件发现与只读管理页 |
-| [`2bc7cd4`](https://github.com/RightCloudhub/AskFlow/commit/2bc7cd4) | 通用受理与业务域、事实/事件/经验存储、对象锁、预算和一致性测试 |
+| [`ac1ac80`](https://github.com/RightCloudhub/AskFlow/commit/ac1ac80) | arch.md 目标架构：Action Gateway、Turn Router、渠道 inbox/outbox、输出护栏、记忆读写、人工返还与声明式补偿执行 |
+| [`7472c2c`](https://github.com/RightCloudhub/AskFlow/commit/7472c2c) | 运营反馈体验：知识缺口原因、账号类同义词、转交列表可读性与按钮可见性 |
+| [`57bd97e`](https://github.com/RightCloudhub/AskFlow/commit/57bd97e) | 审计缺陷 D-01…D-20 修复与 WebSocket 流式输出 |
+| [`49672f2`](https://github.com/RightCloudhub/AskFlow/commit/49672f2) | README 界面预览截图（压缩 WebP） |
+| [`9fc7f52`](https://github.com/RightCloudhub/AskFlow/commit/9fc7f52) | Web 界面刷新：对话台、管理控制台与 Widget |
 
 下一阶段重点：
 
-- 自动续办与多目标依赖计划。
-- 人工接单、外部事件唤醒和未知写入对账。
+- 多目标依赖计划与跨会话自动续办。
+- 外部事件订阅、人工接单自动唤醒与未知写入对账。
 - 真实退款/通知连接器与完整业务验收。
-- 记忆管理、经验消费与保留策略的完整接入。
+- 经验记忆的生产/消费与统一记忆管理界面。
 - PostgreSQL 故障切换、多实例派发与部署环境验证。
 
 阶段状态见 [Agent 差距清单](./docs/architecture/agent-conformance.md) 和 [重构计划](./docs/architecture/agent-refactoring-plan.md)。
