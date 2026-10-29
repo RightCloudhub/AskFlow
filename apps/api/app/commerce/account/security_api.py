@@ -10,7 +10,7 @@ from app.commerce.account import mfa, schemas
 from app.commerce.account.hooks import password_policy
 from app.commerce.account.models import RecoveryCode, UserSession
 from app.commerce.account.repository import security_for
-from app.commerce.account.sessions import logout, revoke_all
+from app.commerce.account.sessions import logout, revoke_all, revoke_family
 from app.commerce.core.audit import audit
 from app.commerce.core.deps import MallContext
 from app.commerce.core.errors import MallError
@@ -25,14 +25,15 @@ SESSION_FIELDS = ("id", "device", "user_agent", "last_active", "created_at", "ex
 
 @router.get("/sessions")
 async def sessions(ctx: MallContext, cursor: str = ""):
-    rows, after = await owned_page(ctx.db, UserSession, owner_id=ctx.user.id, cursor=cursor)
+    rows, after = await owned_page(ctx.db, UserSession, owner_id=ctx.user.id, cursor=cursor,
+                                  filters=(UserSession.consumed_at.is_(None),))
     return {"items": [view(row, SESSION_FIELDS) for row in rows], "next_cursor": after}
 
 
 @router.delete("/sessions/{session_id}")
 async def revoke_session(session_id: str, ctx: MallContext):
     row = await owned(ctx.db, UserSession, owner_id=ctx.user.id, resource_id=session_id)
-    row.revoked_at = datetime.now(UTC)
+    await revoke_family(ctx.db, row)
     await audit(ctx.db, actor_id=ctx.user.id, action="session_revoke", resource_id=session_id)
     return {"status": "revoked"}
 

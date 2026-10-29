@@ -89,13 +89,19 @@ async def revoke_all(db, user_id: str):
     await db.flush()
 
 
+async def revoke_family(db, row):
+    await db.execute(update(UserSession).where(UserSession.user_id == row.user_id,
+        UserSession.family_id == row.family_id, UserSession.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(UTC)))
+
+
 async def logout(db, claims: dict):
     if claims.get("jti"):
         await insert_once(db, AccessRevocation, values={"jti": claims["jti"], "user_id": claims["sub"],
             "expires_at": datetime.fromtimestamp(claims["exp"], UTC)}, unique=["jti"])
     if claims.get("sid"):
         row = await owned(db, UserSession, owner_id=claims["sub"], resource_id=claims["sid"])
-        row.revoked_at = datetime.now(UTC)
+        await revoke_family(db, row)
     await audit(db, actor_id=claims["sub"], action="logout")
 
 
