@@ -1,7 +1,7 @@
 """Add versioned service task checkpoints.
 
 Revision ID: 20261003_service_tasks
-Revises: None (first checked-in migration; existing tables are bootstrapped separately).
+Revises: 20261002_core_baseline (frozen customer-service bootstrap).
 """
 
 import sqlalchemy as sa
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "20261003_service_tasks"
-down_revision = None
+down_revision = "20261002_core_baseline"
 branch_labels = None
 depends_on = None
 ID_LENGTH = 36
