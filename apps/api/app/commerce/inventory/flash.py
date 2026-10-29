@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select, update
 
 from app.commerce.core.errors import MallError
-from app.commerce.core.repository import cas, owned
+from app.commerce.core.repository import cas
 from app.commerce.core.schemas import utc
 from app.commerce.core.services import service
 from app.commerce.infra.runtime import infra

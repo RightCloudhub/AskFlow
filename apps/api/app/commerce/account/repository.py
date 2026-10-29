@@ -16,15 +16,21 @@ async def find_identity(db, identifier: str):
 
 
 async def security_for(db, user_id: str):
+    statement = select(UserSecurity).where(UserSecurity.user_id == user_id).execution_options(populate_existing=True)
+    row = await db.scalar(statement)
+    if row is not None:
+        return row
     await insert_once(db, UserSecurity, values={"user_id": user_id}, unique=["user_id"])
-    return await db.scalar(select(UserSecurity).where(UserSecurity.user_id == user_id)
-                           .execution_options(populate_existing=True))
+    return await db.scalar(statement)
 
 
 async def profile_for(db, user_id: str):
+    statement = select(UserProfile).where(UserProfile.user_id == user_id).execution_options(populate_existing=True)
+    row = await db.scalar(statement)
+    if row is not None:
+        return row
     await insert_once(db, UserProfile, values={"user_id": user_id}, unique=["user_id"])
-    return await db.scalar(select(UserProfile).where(UserProfile.user_id == user_id)
-                           .execution_options(populate_existing=True))
+    return await db.scalar(statement)
 
 
 async def identity_by_id(db, user_id: str, *, lock: bool = False):

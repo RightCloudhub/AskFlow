@@ -77,3 +77,13 @@ async def test_forged_callback_is_rejected(mall_runtime):
     response = await mall_runtime.client.post("/api/v1/mall/payment/callbacks/mock",
         content=callback_body(payment), headers={"X-Payment-Signature": "forged"})
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [b"{", b'{"amount_cents": 1.5}', b"[]"])
+async def test_signed_malformed_payload_is_rejected(mall_runtime, body):
+    response = await mall_runtime.client.post("/api/v1/mall/payment/callbacks/mock",
+        content=body, headers={"X-Payment-Signature": sign(body)})
+    assert response.status_code == 422
+    async with mall_runtime.sessions() as db:
+        assert await db.scalar(select(func.count()).select_from(JournalEntry)) == 0

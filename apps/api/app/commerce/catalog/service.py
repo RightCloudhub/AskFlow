@@ -56,7 +56,20 @@ class CatalogService:
         if spu.status != "active":
             raise MallError("resource_not_found", status=404)
         ids = await self.db.scalars(select(Sku.id).where(Sku.spu_id == spu_id, Sku.status == "active"))
-        return {**view(spu, SPU_FIELDS), "skus": [await self.quote(key) for key in ids]}
+        data = view(spu, SPU_FIELDS)
+        data["images"] = ["/api/v1/mall/files/" + key for key in spu.images]
+        return {**data, "skus": [await self.quote(key) for key in ids]}
+
+    async def update_product(self, product_id: str, payload):
+        row = await self.entity(Spu, product_id, lock=True)
+        if row.version != payload.expected_version:
+            raise MallError("version_conflict")
+        if payload.category_id:
+            await self.entity(Category, payload.category_id)
+        before = view(row, SPU_FIELDS)
+        await cas(self.db, row, values=payload.model_dump(exclude={"expected_version"}))
+        await self.changed(row, product_id)
+        return {**view(row, SPU_FIELDS), "before": before}
 
     async def create_category(self, payload):
         if payload.parent_id:

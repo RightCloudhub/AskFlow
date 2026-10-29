@@ -9,6 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 
 from app.commerce.core.errors import MallError
+from app.commerce.core.constants import NAME_SIZE
 from app.commerce.core.models import IdempotencyRecord
 from app.commerce.core.repository import insert_once
 from app.core.config import get_settings
@@ -32,7 +33,7 @@ def decode_response(result):
 
 
 async def execute(db, *, scope: str, key: str, arguments: dict, action):
-    if not key or len(key) > get_settings().mall_password_max_length:
+    if not key or len(key) > NAME_SIZE:
         raise MallError("idempotency_key_required", status=400)
     key_hash, digest = sha256(key.encode()).hexdigest(), args_hash(arguments)
     created = await insert_once(db, IdempotencyRecord, values={

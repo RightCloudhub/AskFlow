@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.commerce.core.constants import NAME_SIZE, MAX_PAGE_SIZE, PAGE_SIZE
 from app.commerce.core.schemas import Cents, Schema, Versioned
@@ -22,6 +22,19 @@ class ProductInput(Schema):
     category_id: str | None = None
     attributes: dict[str, str] = Field(default_factory=dict)
     images: list[str] = Field(default_factory=list, max_length=MAX_PAGE_SIZE)
+
+    @field_validator("images")
+    @classmethod
+    def valid_images(cls, keys):
+        from app.commerce.infra.objects import OBJECT_KEY
+
+        if any(not OBJECT_KEY.fullmatch(key) for key in keys):
+            raise ValueError("Images must be uploaded object keys")
+        return keys
+
+
+class ProductUpdate(ProductInput, Versioned):
+    pass
 
 
 class SkuInput(Schema):

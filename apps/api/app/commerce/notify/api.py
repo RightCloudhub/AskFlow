@@ -9,9 +9,9 @@ from pydantic import Field, field_validator
 
 from app.commerce.core.commands import command
 from app.commerce.core.deps import MallContext
-from app.commerce.core.repository import owned
-from app.commerce.core.schemas import Schema
-from app.commerce.notify.models import Notification
+from app.commerce.core.repository import owned, owned_page
+from app.commerce.core.schemas import Schema, view
+from app.commerce.notify.models import Notification, NotificationPreference
 from app.commerce.notify.service import NotificationService
 
 HOURS_IN_DAY = 24
@@ -55,3 +55,10 @@ async def mark_read(notification_id: str, ctx: MallContext):
 async def preference(payload: Preference, ctx: MallContext):
     return await command(ctx, "notify.preferences", payload=payload,
                          action=lambda: NotificationService(ctx.db).preference(ctx.user.id, payload))
+
+
+@router.get("/preferences")
+async def preferences(ctx: MallContext, cursor: str = ""):
+    rows, after = await owned_page(ctx.db, NotificationPreference, owner_id=ctx.user.id, cursor=cursor)
+    fields = ("id", "event_type", "channel", "enabled", "quiet_start", "quiet_end", "timezone", "version")
+    return {"items": [view(row, fields) for row in rows], "next_cursor": after}
