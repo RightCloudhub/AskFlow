@@ -17,7 +17,7 @@ dependencies = [
   "passlib[bcrypt]>=1.7.4",
   "bcrypt>=4.0.0,<4.1.0",
   "httpx>=0.28.0",
-  "redis>=5.2.0",
+  "argon2-cffi>=23.1.0",
   "prometheus-client>=0.21.0",
   "python-multipart>=0.0.17",
   "pyyaml>=6.0.2",
@@ -37,6 +37,12 @@ dev = [
 vector = [
   "chromadb>=0.5.0",
 ]
+redis = ["redis>=5.2.0"]
+mall-full = ["redis>=5.2.0", "boto3>=1.35.0", "aio-pika>=9.4.0", "aiokafka>=0.12.0"]
+security = ["pip-audit>=2.7.0", "bandit>=1.7.0"]
+telemetry = ["opentelemetry-instrumentation-fastapi>=0.50b0",
+  "opentelemetry-instrumentation-httpx>=0.50b0", "opentelemetry-instrumentation-sqlalchemy>=0.50b0",
+  "opentelemetry-instrumentation-redis>=0.50b0"]
 
 [build-system]
 requires = ["setuptools>=75.0"]
@@ -51,6 +57,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = ["mall_profile(name): select the commerce integration assembly"]
 
 [tool.ruff]
 line-length = 100

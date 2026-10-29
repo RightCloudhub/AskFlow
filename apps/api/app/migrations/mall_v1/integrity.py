@@ -19,6 +19,10 @@ def install(connection):
             if connection.dialect.name == "sqlite":
                 sql = f"CREATE TRIGGER IF NOT EXISTS {name} BEFORE {operation} ON {table} BEGIN SELECT RAISE(ABORT, 'financial entries are append-only'); END"
             else:
+                present = connection.scalar(text("SELECT 1 FROM pg_trigger WHERE tgname=:name "
+                    "AND tgrelid=CAST(:table AS regclass)"), {"name": name, "table": table})
+                if present:
+                    continue
                 sql = f"CREATE TRIGGER {name} BEFORE {operation} ON {table} FOR EACH ROW EXECUTE FUNCTION mall_reject_financial_mutation()"
             connection.execute(text(sql))
 
