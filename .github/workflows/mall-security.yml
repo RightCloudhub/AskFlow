@@ -1,0 +1,64 @@
+name: mall-security
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: [apps/api/**, apps/web/**, scripts/ops/**, .github/workflows/mall-security.yml]
+permissions: {contents: read}
+jobs:
+  new-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
+          path: audit-base
+      - uses: actions/setup-python@v6
+        with: {python-version: "3.12"}
+      - uses: actions/setup-node@v6
+        with: {node-version: "24"}
+      - run: pip install -e 'apps/api[dev,mall-full,security]'
+      - name: Commerce static analysis
+        run: |
+          ruff check apps/api/app/commerce apps/api/tests/mall
+          bandit -r apps/api/app/commerce -ll
+      - name: Dependency gate regression tests
+        run: python -m unittest discover -s scripts/ops/tests -p 'test_*.py'
+      - name: Dependency inventory (baseline reported separately)
+        continue-on-error: true
+        run: pip-audit --format json --output pip-audit.json
+      - run: npm ci
+        working-directory: apps/web
+      - name: Web dependency inventory
+        continue-on-error: true
+        working-directory: apps/web
+        run: npm audit --omit=dev --json > npm-audit.json
+      - name: Install base dependencies in an isolated environment
+        run: |
+          python -m venv /tmp/mall-audit-base
+          /tmp/mall-audit-base/bin/pip install pip-audit -e 'audit-base/apps/api[dev]'
+          npm ci --prefix audit-base/apps/web
+      - name: Base Python inventory
+        continue-on-error: true
+        run: /tmp/mall-audit-base/bin/pip-audit --format json --output base-pip-audit.json
+      - name: Base web inventory
+        continue-on-error: true
+        run: npm audit --prefix audit-base/apps/web --omit=dev --json > base-npm-audit.json
+      - name: Block introduced dependency findings
+        run: |
+          python scripts/ops/check_mall_audit.py pip base-pip-audit.json pip-audit.json
+          python scripts/ops/check_mall_audit.py npm base-npm-audit.json apps/web/npm-audit.json
+      - name: Build and mall UI helpers
+        working-directory: apps/web
+        run: |
+          npm run build
+          npm run test:mall
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: mall-dependency-inventory
+          path: |
+            pip-audit.json
+            apps/web/npm-audit.json
+            base-pip-audit.json
+            base-npm-audit.json

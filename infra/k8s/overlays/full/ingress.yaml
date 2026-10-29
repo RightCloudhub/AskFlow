@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: askflow-mall
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [shop.example.invalid]
+      secretName: mall-tls
+  rules:
+    - host: shop.example.invalid
+      http:
+        paths:
+          - path: /shop
+            pathType: Prefix
+            backend: {service: {name: askflow-mall, port: {name: http}}}
+          - path: /admin
+            pathType: Prefix
+            backend: {service: {name: askflow-mall, port: {name: http}}}
+          - path: /assets
+            pathType: Prefix
+            backend: {service: {name: askflow-mall, port: {name: http}}}
+          - path: /api/v1
+            pathType: Prefix
+            backend: {service: {name: askflow-mall, port: {name: http}}}
+          - path: /
+            pathType: Exact
+            backend: {service: {name: askflow-mall, port: {name: http}}}

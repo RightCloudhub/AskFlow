@@ -1,0 +1,138 @@
+name: mall-verification
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - apps/api/**
+      - apps/web/**
+      - packages/contracts/features.yaml
+      - scripts/loadtest/**
+      - infra/**
+      - .github/workflows/mall.yml
+permissions: {contents: read}
+env:
+  ASKFLOW_ENV: test
+  SECRET_KEY: ephemeral-ci-key-not-for-production
+  ASKFLOW_PROFILE: mall-only
+  LLM_BASE_URL: ""
+  LLM_API_KEY: ""
+  EMBEDDING_BASE_URL: ""
+  EMBEDDING_API_KEY: ""
+jobs:
+  business-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_USER: mall, POSTGRES_PASSWORD: mall, POSTGRES_DB: mall_test}
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U mall" --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    defaults:
+      run: {working-directory: apps/api}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with: {python-version: "3.12"}
+      - run: pip install -e '.[dev,mall-full]'
+      - name: SQLite and PostgreSQL business matrix
+        env:
+          MALL_TEST_DATABASE_URL: postgresql+asyncpg://mall:mall@localhost:5432/mall_test
+          MALL_TEST_REDIS_URL: redis://localhost:6379/15
+          MALL_REQUIRE_FULL: "1"
+        run: python -m pytest tests/mall -q --junitxml=test-results/mall.xml --cov=app.commerce --cov-report=xml --cov-report=term-missing --cov-fail-under=85
+      - name: Financial coverage gate
+        run: python -m coverage report --include='*/commerce/payment/*,*/commerce/wallet/*,*/commerce/order/refunds.py,*/commerce/referral/*' --fail-under=95
+      - name: Offline mall chat eval
+        working-directory: .
+        env:
+          MALL_TEST_DATABASE_URL: postgresql+asyncpg://mall:mall@localhost:5432/mall_test
+          MALL_TEST_REDIS_URL: redis://localhost:6379/15
+        run: |
+          PYTHONPATH=apps/api python evals/runners/run_mall_eval.py
+          PYTHONPATH=apps/api python evals/runners/run_mall_eval.py --full --output artifacts/mall-eval-full.xml
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: mall-test-results
+          path: |
+            apps/api/test-results/mall.xml
+            apps/api/coverage.xml
+            artifacts/mall-eval*.xml
+  deployment-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      POSTGRES_PASSWORD: ephemeral-config-only
+      REPLICATION_PASSWORD: ephemeral-config-only
+      MINIO_ROOT_USER: ephemeral-config-only
+      MINIO_ROOT_PASSWORD: ephemeral-config-only
+    steps:
+      - uses: actions/checkout@v6
+      - uses: azure/setup-kubectl@v4
+      - name: Render deployment examples without starting services
+        run: |
+          cp infra/compose/prod/.env.example infra/compose/prod/.env
+          docker compose -f infra/compose/lite/docker-compose.yml config --quiet
+          docker compose -f infra/compose/prod/docker-compose.yml config --quiet
+          kubectl kustomize infra/k8s/overlays/lite > /tmp/mall-lite.yaml
+          kubectl kustomize infra/k8s/overlays/full > /tmp/mall-full.yaml
+  migration-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_USER: mall, POSTGRES_PASSWORD: mall, POSTGRES_DB: mall_migration}
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U mall" --health-interval 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with: {python-version: "3.12"}
+      - run: pip install -e 'apps/api[dev]'
+      - name: Upgrade downgrade upgrade on disposable databases
+        working-directory: apps/api
+        run: |
+          export DATABASE_URL=sqlite+aiosqlite:///./migration-test.db
+          alembic upgrade head
+          alembic downgrade 20261016_document_metadata
+          alembic upgrade head
+          export DATABASE_URL=postgresql+asyncpg://mall:mall@localhost:5432/mall_migration
+          alembic upgrade head
+          alembic downgrade 20261016_document_metadata
+          alembic upgrade head
+  smoke-load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: sqlite+aiosqlite:////tmp/mall-load.db
+      ASKFLOW_INFRA: lite
+      RATE_LIMIT_PER_MINUTE: "100000"
+      MALL_RATE_LIMIT_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with: {python-version: "3.12"}
+      - run: pip install -e 'apps/api[dev]'
+      - uses: grafana/setup-k6-action@v1
+      - run: alembic upgrade head
+        working-directory: apps/api
+      - run: PYTHONPATH=apps/api python scripts/loadtest/seed.py --users 2
+      - name: Start isolated API and wait for readiness
+        run: |
+          PYTHONPATH=apps/api uvicorn app.main:app --port 8000 > /tmp/mall-load.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/health/ready; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - run: k6 run scripts/loadtest/mall-smoke.js
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: mall-load-summary
+          path: artifacts/mall-smoke-summary.json

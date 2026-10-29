@@ -1,0 +1,23 @@
+FROM node:24-alpine AS web
+WORKDIR /build/apps/web
+COPY apps/web/package*.json ./
+RUN npm ci
+COPY apps/web/ ./
+RUN npm run build
+
+FROM python:3.12-slim AS api
+ARG API_EXTRAS=""
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /opt/askflow/apps/api
+COPY apps/api/ ./
+RUN if [ -n "$API_EXTRAS" ]; then pip install --no-cache-dir ".[${API_EXTRAS}]"; else pip install --no-cache-dir .; fi \
+    && groupadd --gid 10001 askflow \
+    && useradd --uid 10001 --gid askflow --no-create-home askflow \
+    && mkdir -p /data/revisions /data/objects /opt/askflow/web \
+    && chown -R askflow:askflow /data /opt/askflow
+COPY packages/contracts/ /opt/askflow/packages/contracts/
+COPY data/samples/ /opt/askflow/data/samples/
+COPY --from=web /build/apps/web/dist/ /opt/askflow/web/
+USER askflow
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

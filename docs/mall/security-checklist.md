@@ -1,6 +1,6 @@
 # 商城安全检查清单
 
-状态：M0设计及后续验证清单，**未执行扫描/渗透/自动化验收**，不宣称ASVS认证。位置为计划域，完成状态见STATUS。
+状态：源码定位及后续验证清单，**未执行扫描/渗透/自动化验收**，不宣称ASVS认证。表中的实现位置需与测试结果一起复核，不能只据源码定位判定通过。
 
 | ASVS L2 / API Top10 | 实现与检查位置 | 必须验证 |
 |---|---|---|
@@ -25,7 +25,7 @@
 - 回调HMAC+时间窗+永久业务流水唯一；同流水不同报文告警；晚付取消清算不复活订单。
 - 每journal多posting借贷平衡；快照CAS/非负；财务chain head不分叉；ORM/DB只追加；更正只能冲正。
 - 调账申请人与批准人不同，wallet:adjust/wallet:approve、step-up、version；两次批准一条journal。
-- 对账四类检查：借贷、快照、哈希、网关；差异持久化/财务通知；发现篡改停止自动资金处理。
+- 对账四类检查：借贷、快照、哈希、网关；差异持久化/财务通知；运维发现篡改后按 runbook 暂停相关资金处理，不宣称实现了自动冻结总开关。
 - 邀请奖励退款冲正，已花奖励转追偿不扣负；规则版本和防刷信号HMAC留存。
 
 ## AskFlow不变量
@@ -33,3 +33,7 @@
 Harness安全文案/阈值仍为冷代码常量；检索和工具输出为不可信文本，不能授予身份或变更资金；模型只见当前允许能力；所有mall.*写经过Gateway及台账；跨客户订单查询不能用用户文本补造owner mapping。
 
 真实支付商户、外发邮件短信、静态加密密钥轮换、PG容灾、保留政策和ASVS渗透需要部署验收；mock通过不能替代真实生产认证。
+
+## 已编写的测试入口（全部未运行）
+
+`apps/api/tests/mall/`：account/mfa 检查认证与恢复，addresses/catalog/orders 检查归属、版本、服务端计价，payment/refunds 检查签名与幂等，wallet/wallet_immutability/reconciliation/finance_controls 检查资金与双人控制，referral/referral_rewards 检查防刷与冲正，rbac_notify/support/chat_eval 检查权限、通知与 Gateway。`apps/web/tests/mall-session.test.ts` 检查共享 refresh 单飞和撤销家族；浏览器购物冒烟在 `scripts/e2e/mall.mjs`。完整 ASVS 逐条证据与全适配器故障测试仍需补齐，覆盖率以报告为准。

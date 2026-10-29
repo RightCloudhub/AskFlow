@@ -1,6 +1,6 @@
 # 数据模型与事务边界
 
-状态：M0 设计。表在关闭插件时保留；所有新增表走 Alembic。UUID 字符串跨 SQLite/PG；金额 BIGINT，currency 明确；UTC 时间，API 时区规范化；JSON 不用于替代可约束的资金字段。
+状态：设计已按当前源码补充，迁移未运行。表在关闭插件时保留；所有新增表走 Alembic。UUID 字符串跨 SQLite/PG；金额 BIGINT，currency 明确；UTC 时间，API 时区规范化；JSON 不用于替代可约束的资金字段。
 
 ```mermaid
 erDiagram
@@ -55,19 +55,20 @@ FK 跨域引用用于数据库完整性，跨域代码只调用 service。删除
 
 | 表 / 所有模块 | 主要字段 | 唯一键、索引与约束 |
 |---|---|---|
-| user_profiles / account | user_id,nickname,phone_cipher,phone_hash,avatar,region,locale | user_id PK；phone_hash unique；手机号静态加密 |
-| user_security / account | user_id,email_verified,phone_verified,totp_cipher,mfa_enabled,last_totp_step,version | user_id PK；TOTP 步长 CAS 防重放 |
+| user_profiles / account | id,user_id,nickname,phone_cipher,phone_hash,avatar,region,locale | user_id unique；phone_hash unique；手机号静态加密 |
+| user_security / account | id,user_id,email_verified,phone_verified,totp_cipher,mfa_enabled,last_totp_step,auth_epoch,version | user_id unique；TOTP 步长 CAS 防重放 |
+| user_security_resets / account | id,user_id,requested_by,approved_by,reason,status,version | 重置 MFA 双人复核，不能自批 |
 | user_sessions / account | id,user_id,family_id,refresh_hash,parent_id,device,ip_hash,ua,last_active,expires_at,consumed_at,revoked_at,version | refresh_hash unique；user/family 索引；轮换是新行 |
-| access_revocations / account | jti,user_id,expires_at | jti PK；过期清理；access 的 sid/family 也校验 |
+| access_revocations / account | id,jti,user_id,expires_at | jti unique；过期清理；access 的 sid/family 也校验 |
 | verification_codes / account | id,user_id?,target_hash,target_cipher,purpose,code_hash,attempts,expires_at,consumed_at | 注册前可无 user；target+purpose 索引；消费 CAS |
 | recovery_codes / account | id,user_id,code_hash,consumed_at | user+hash unique；只存 keyed hash |
-| login_attempts / account | id,account_hash,ip_hash,failures,locked_until,last_failure | scope+key unique；账号/IP 指数退避 |
+| login_attempts / account | id,scope,key_hash,failures,locked_until,last_failure | scope+key_hash unique；账号/IP 分 scope 指数退避 |
 | addresses / account | id,user_id,name_cipher,phone_cipher,address_cipher,is_default,version | owner 索引；默认地址 service 原子设置 |
 | categories / catalog | id,parent_id,name,slug,active,version | slug unique；parent FK；服务拒绝树循环 |
 | spus / catalog | id,category_id,title,description,attributes,images,status,version | category/status 索引 |
 | skus / catalog | id,spu_id,code,title,attributes,status,currency,version | code unique；status 仅 draft/active/inactive |
 | sku_prices / catalog | id,sku_id,original_cents,sale_cents,activity_cents,valid_from,valid_to,version | 金额非负；当前价格在主库确定；历史保留 |
-| inventory / inventory | sku_id,available,reserved,sold,version,last_fence | sku PK；全部非负 CHECK |
+| inventory / inventory | id,sku_id,available,reserved,sold,version,last_fence | sku unique；全部非负 CHECK |
 | inventory_reservations / inventory | id,order_id,sku_id,qty,expires_at,status,version | order+sku unique；qty>0；status/expiry 索引 |
 | inventory_movements / inventory | id,sku_id,order_id?,business_key,available_delta,reserved_delta,kind | business_key unique；只追加 |
 | flash_sales / inventory | id,name,start,end,status,version | start<end；活动状态索引 |
@@ -79,10 +80,10 @@ FK 跨域引用用于数据库完整性，跨域代码只调用 service。删除
 | orders / order | id,user_id,status,currency,total_cents,wallet_cents,refunded_cents,refund_reserved_cents,address_snapshot,expires_at,version | 金额/退款累计 CHECK；owner+status 游标索引 |
 | order_items / order | id,order_id,sku_id,title_snapshot,price_cents,qty,total_cents | 快照不随商品变更；qty>0 |
 | order_status_history / order | id,order_id,from_status,to_status,actor_id,reason,version | order+version unique；只追加 |
-| payments / payment | id,order_id?,user_id,topup_id?,method,currency,amount_cents,wallet_cents,external_cents,status,request_key,provider_ref,version | request_key unique；金额拆分之和正确；order/topup 二选一 |
+| payments / payment | id,order_id?,user_id,topup_id?,method,currency,amount_cents,wallet_cents,external_cents,status,request_key,provider_ref,payer_hash,version | request_key unique；金额拆分之和正确；order/topup 二选一；付款关联只存摘要 |
 | payment_callbacks / payment | id,channel,transaction_id,payment_id,body_digest,raw_payload,signature_valid,status,error_kind | channel+transaction unique；相同流水不同 body 拒绝；不存请求凭据 |
 | refunds / order | id,order_id,user_id,payment_id?,amount_cents,wallet_cents,external_cents,status,request_key,approval_actor,provider_ref,original_status,version | request_key unique；非负；累计申请额度原子预留 |
-| gateway_transactions / payment | id,request_key,payment_id?,refund_id?,kind,amount_cents,currency,status,settled_at | mock 持久状态；请求键 unique；可主动查单/账单 |
+| gateway_transactions / payment | id,request_key,payment_id?,refund_id?,kind,amount_cents,currency,status,settled_at,payer_hash | mock 持久状态；请求键 unique；可主动查单/账单 |
 | wallet_accounts / wallet | id,user_id?,code,currency,normal_side,balance_cents,frozen?,version | owner/code/currency unique；用户科目非负 |
 | wallet_journal_entries / wallet | id,business_key,currency,seq,description,actor_id,total_cents,prev_hash,row_hash,reversal_of? | business_key unique；currency+seq unique；reversal_of unique；只追加 |
 | wallet_postings / wallet | id,journal_id,account_id,side,amount_cents | 金额>0；借/贷枚举；只追加；journal/account 索引 |
@@ -92,8 +93,8 @@ FK 跨域引用用于数据库完整性，跨域代码只调用 service。删除
 | reconciliation_runs / wallet | id,business_date,kind,status,summary,started_at,finished_at | date+kind+run 标识；允许复核再次运行 |
 | reconciliation_diffs / wallet | id,run_id,entity_id,kind,severity,expected,actual,status,resolution_ref | run+entity+kind unique；不能删除差异 |
 | referral_codes / referral | id,user_id,code | user/code 均 unique |
-| referral_relations / referral | id,inviter_id,invitee_id,code_id,device_hash,ip_hash,rule_version | invitee unique；inviter!=invitee；绑定不可变 |
-| referral_rewards / referral | id,relation_id,order_id,rule_version,amount_cents,status,eligible_at,journal_id?,reversal_id?,version | relation+order+rule unique；最多发一次 |
+| referral_relations / referral | id,inviter_id,invitee_id,code_id,device_hash,ip_hash,phone_segment_hash,payer_hash,rule_version | invitee unique；inviter!=invitee；数据库图锁防循环、绑定不可变 |
+| referral_rewards / referral | id,relation_id,kind,order_id?,rule_version,amount_cents,status,eligible_at,expires_at?,journal_id?,reversal_id?,version | relation+kind+rule_version unique；注册／首单分别待发，最多各发一次 |
 | risk_events / referral | id,user_id,scope,rule,score,signals_hash,decision,review_actor?,version | 用户/时间/决策索引；原始手机号/IP不记录 |
 | notification_templates / notify | id,event_type,locale,version,subject,body,channels,active | event+locale+version unique；模板安全格式化 |
 | notifications / notify | id,user_id,event_id,event_type,locale,subject,body,read_at | user+event unique；owner/read 游标索引 |
@@ -109,6 +110,10 @@ FK 跨域引用用于数据库完整性，跨域代码只调用 service。删除
 | idempotency_records / core | id,scope,key_hash,request_hash,status,response,http_status,expires_at | scope+key_hash unique；首个响应持久化；键冲突409 |
 | worker_leases / core | key,owner,fence,expires_at,version | key PK；过期 CAS 领取；旧 fence 不提交 |
 | event_consumer_receipts / core | event_id,consumer,processed_at | 复合 PK；同事务业务+receipt |
+| mall_event_retries / core | event_id,next_attempt_at | event_id 是 outbox FK/PK；商城失败退避，不修改原信封 |
+| wallet_reversal_requests / wallet | id,original_id,requested_by,approved_by,journal_id,reason,status,version | 两人不同；原始证据不修改；批准只追加反向分录 |
+
+以上表的主键概述以冻结迁移为准：mall_settings、worker_leases、wallet_chain_heads、admin_permissions、role_permissions、user_roles 均有 UUID id；各业务 key 是 unique，不是表主键。图中的 owner 是模块职责，不表示所有引用都可由任意模块直接查询。
 
 ## 关键事务
 

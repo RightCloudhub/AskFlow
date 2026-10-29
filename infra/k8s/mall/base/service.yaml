@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: askflow-mall
+spec:
+  selector: {app: askflow-mall}
+  ports: [{name: http, port: 8000, targetPort: http}]

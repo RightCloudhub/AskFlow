@@ -8,6 +8,8 @@ AskFlow 将 Honest RAG、受约束的 Agent、工单与人工协作放在同一�
 
 [用户指南 / User guide](./docs/user-guide/README.md) · [快速开始](#快速开始) · [核心能力](#核心能力) · [界面预览](#界面预览) · [架构](#架构) · [文档中心](./docs/README.md) · [项目状态](./docs/STATUS.md) · [反馈问题](https://github.com/RightCloudhub/AskFlow/issues)
 
+商城扩展源码见 [商城文档](./docs/mall/README.md)：账号安全、商品库存、订单、mock 支付退款、复式钱包、邀请、通知和客服接入。使用独立的 `mall` / `mall-lite` / `mall-only` profile；原有客服 profile 保持原插件清单。本次按 code-only 要求交付，测试、构建、迁移和性能均未执行，边界见 [阶段报告](./docs/mall/implementation.md)。
+
 ## 目录
 
 - [核心能力](#核心能力)
@@ -191,6 +193,7 @@ data/samples/           # 样例数据与改写词典
 |---|---|
 | `ASKFLOW_PROFILE` | `full`；也可选择 `enterprise`、`mvp`、`faq-only`、`core-only` |
 | `ASKFLOW_FEATURES` | 可选插件增量，例如 `+sla,-mcp` |
+| `ASKFLOW_INFRA` | 商城基础设施 `lite` / `full` / `custom`，独立于插件开关，支持逐端口覆盖 |
 | `SERVICE_TASKS_ENABLED` | `true`；启用目标受理与后台 worker（还需 Agent 插件） |
 | `SERVICE_TASKS_GOALS` | `order_status`；可选增加 `ticket_resolution,human_handoff` |
 | `SERVICE_TASK_POLL_SECONDS` | `5`；任务扫描间隔，最小 1 秒 |
@@ -206,6 +209,8 @@ data/samples/           # 样例数据与改写词典
 生产接入从 [试点检查清单](./deploy/checklists/pilot-integration.md) 开始；使用生产环境配置与独立密钥，完成真实依赖联调后再放量。
 
 ## 服务任务与客户记忆
+
+启用 `mall_order` 且未配置 `ORDER_LOOKUP_URL` 时，订单查询接管为进程内商城数据库查询，仍强制认证客户归属。商城还提供兼容契约的内部 HTTP 端点；详情见 [商城 API](./docs/mall/api.md)。
 
 订单消息带有效订单号时，系统先回复受理确认，再由 worker 查询与验证结果。订单接口需要返回匹配的 `customer_id`、`order_id` 和具体 `status`；缺少配置、mock 或归属不符时保留未解决状态。结果保存到聊天历史，并经事务性 outbox 推送到打开的 WebSocket 会话与来源渠道。
 
@@ -259,6 +264,7 @@ python3 scripts/ops/check_code_metrics.py
 | 运行、恢复与任务控制 | [运行时](./docs/architecture/customer-service-runtime.md) · [生命周期](./docs/architecture/customer-service-lifecycle.md) |
 | 架构与工程原则 | [架构索引](./docs/architecture/README.md) · [Action Gateway](./docs/architecture/action-gateway.md) · [安全 / 性能 / 记忆三支柱](./docs/architecture/pillars.md) |
 | 本地开发 | [API](./apps/api/README.md) · [Web](./apps/web/README.md) |
+| 商城部署、使用与待运行验收 | [商城入口](./docs/mall/README.md) · [用户与管理员](./docs/mall/usage.md) · [验证清单](./docs/mall/validation.md) |
 | 部署、监控与排障 | [试点接入](./deploy/checklists/pilot-integration.md) · [可观测索引](./docs/observability/README.md) · [Runbook](./deploy/runbooks/) |
 | 全部文档 | [文档中心](./docs/README.md) |
 

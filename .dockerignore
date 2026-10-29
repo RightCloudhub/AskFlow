@@ -1,0 +1,15 @@
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/.env
+**/.env.*
+**/*.sqlite3
+artifacts
+**/.coverage
+.git
+**/test-results
+**/dist
+data/revisions

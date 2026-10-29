@@ -1,0 +1,86 @@
+name: mall-manual-load
+on:
+  workflow_dispatch:
+    inputs:
+      preset:
+        type: choice
+        options: [lite, full]
+        default: lite
+      scenario:
+        type: choice
+        options: [detail, search, cart, order, wallet, flash]
+        default: detail
+      rate:
+        description: Offered requests per second (calibrate to the runner)
+        default: "300"
+        type: string
+      users:
+        description: Isolated fixture accounts; flash requires independent buyers
+        default: "200"
+        type: string
+permissions: {contents: read}
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_USER: mall, POSTGRES_PASSWORD: mall, POSTGRES_DB: mall_load}
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U mall" --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      ASKFLOW_ENV: development
+      ASKFLOW_PROFILE: mall-only
+      ASKFLOW_INFRA: ${{ inputs.preset }}
+      DATABASE_URL: ${{ inputs.preset == 'full' && 'postgresql+asyncpg://mall:mall@localhost:5432/mall_load' || 'sqlite+aiosqlite:////tmp/mall-load.db' }}
+      REDIS_URL: redis://localhost:6379/0
+      SEARCH_BACKEND: ${{ inputs.preset == 'full' && 'pg_fts' || 'sqlite_fts' }}
+      OBJECT_STORE: local
+      SECRET_KEY: ephemeral-workflow-never-production
+      MALL_RATE_LIMIT_ENABLED: "false"
+      RATE_LIMIT_PER_MINUTE: "1000000"
+      MALL_SCENARIO: ${{ inputs.scenario }}
+      MALL_RATE: ${{ inputs.rate }}
+      MALL_LOAD_USERS: ${{ inputs.users }}
+      MALL_DURATION_SECONDS: "60"
+      MALL_VUS: "200"
+      LLM_BASE_URL: ""
+      LLM_API_KEY: ""
+      EMBEDDING_BASE_URL: ""
+      EMBEDDING_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with: {python-version: "3.12"}
+      - uses: grafana/setup-k6-action@v1
+      - run: pip install -e 'apps/api[mall-full]'
+      - run: alembic upgrade head
+        working-directory: apps/api
+      - run: PYTHONPATH=apps/api python scripts/loadtest/seed.py --users "$MALL_LOAD_USERS"
+      - name: Start isolated load target
+        run: |
+          PYTHONPATH=apps/api uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/mall-load.log 2>&1 &
+          if [ "$ASKFLOW_INFRA" = full ]; then
+            PYTHONPATH=apps/api python -m app.commerce.worker > /tmp/mall-worker.log 2>&1 &
+          fi
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/health/ready; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Offered load and success thresholds
+        run: k6 run scripts/loadtest/mall.js
+      - name: Record benchmark boundary
+        if: ${{ !cancelled() }}
+        run: |
+          echo "Shared CI runner; database and load generator share resources. This is not the dedicated 4-vCPU acceptance baseline." >> "$GITHUB_STEP_SUMMARY"
+          echo "FTS search and local objects explicitly override full infrastructure. Rate limiting is disabled to isolate capacity; separate limiter and fault tests remain required." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: mall-load-summary
+          path: artifacts/*-summary.json

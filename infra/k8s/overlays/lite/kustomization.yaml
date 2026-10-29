@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../mall/base
+  - volume.yaml
+configMapGenerator:
+  - name: mall-config
+    literals:
+      - ASKFLOW_ENV=development
+      - ASKFLOW_PROFILE=mall-lite
+      - ASKFLOW_INFRA=lite
+      - DATABASE_URL=sqlite+aiosqlite:////data/askflow.db
+      - LOCAL_OBJECT_DIR=/data/objects
+      - REVISION_STORE_DIR=/data/revisions
+      - INSTANCE_COUNT=1
+      - WEB_CONCURRENCY=1
+      - MALL_DEMO_MAILBOX_ENABLED=false
+patches:
+  - path: storage.yaml

@@ -8,6 +8,8 @@ lite：一个API容器、SQLite持久卷、本地对象目录、memory协调/out
 
 full：PG主库+只读副本、Redis、MinIO、ES、多API、独立worker、nginx；先一次migration job，再API/worker。PG复制用于读扩展，自动主库选举/故障切换未交付。对象bucket/ES索引初始化独立job，凭据环境注入，不写入版本库。
 
+知识修订文件由 API 与索引 worker 共享：Compose 使用 revisions 数据卷，Kubernetes full 使用支持 ReadWriteMany 的 mall-revisions PVC；lite 保存在单一数据卷。配置正确的存储类并将修订文件纳入备份，不能让多副本使用互不共享的容器目录。
+
 生产设置ASKFLOW_ENV、SECRET_KEY、METRICS_TOKEN、PAYMENT_CALLBACK_SECRET、MALL_TOTP_KEY、MALL_REFRESH_SECRET等独立强密钥；MALL_PUBLIC_REGISTER显式开才允许公共注册。INSTANCE_COUNT/WEB_CONCURRENCY必须与副本声明匹配；lite禁止多副本。
 
 Web由同镜像或nginx静态资源服务，/api,/internal按不同访问策略，internal仅可信服务网络；健康区分live/ready，metrics仅内网token。CORS白名单，HTTPS，cookieSecure。worker与API同版本schema，separate模式API不启动商城重复循环。

@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: ../../..
+      dockerfile: infra/compose/Dockerfile.mall
+    image: askflow-mall:lite
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      ASKFLOW_ENV: development
+      ASKFLOW_PROFILE: mall-lite
+      ASKFLOW_INFRA: lite
+      DATABASE_URL: sqlite+aiosqlite:////data/askflow.db
+      SECRET_KEY: ${SECRET_KEY:-local-demo-only-change-before-network-use}
+      LOCAL_OBJECT_DIR: /data/objects
+      REVISION_STORE_DIR: /data/revisions
+      MALL_DEMO_MAILBOX_ENABLED: "true"
+      WEB_CONCURRENCY: "1"
+      INSTANCE_COUNT: "1"
+      RATE_LIMIT_PER_MINUTE: "600"
+      CORS_ORIGINS: '["http://localhost:8000","http://127.0.0.1:8000"]'
+    volumes: ["mall_data:/data"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+volumes:
+  mall_data:

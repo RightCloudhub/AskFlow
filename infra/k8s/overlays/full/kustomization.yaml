@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../mall/base
+  - worker.yaml
+  - migration.yaml
+  - autoscaling.yaml
+  - ingress.yaml
+  - revisions.yaml
+images:
+  - name: askflow-mall
+    newTag: full
+configMapGenerator:
+  - name: mall-config
+    literals:
+      - ASKFLOW_ENV=production
+      - ASKFLOW_PROFILE=mall
+      - ASKFLOW_INFRA=full
+      - INSTANCE_COUNT=8
+      - WEB_CONCURRENCY=1
+      - WORKER_MODE=separate
+      - MALL_PUBLIC_REGISTER=false
+      - MALL_DEMO_MAILBOX_ENABLED=false
+      - S3_BUCKET=askflow
+      - REVISION_STORE_DIR=/data/revisions
+      - CORS_ORIGINS=["https://shop.example.invalid"]
+replicas:
+  - name: askflow-mall
+    count: 2
+patches:
+  - path: storage.yaml

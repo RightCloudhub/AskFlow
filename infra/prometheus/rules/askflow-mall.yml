@@ -1,0 +1,53 @@
+groups:
+  - name: askflow-mall-financial-invariants
+    rules:
+      - alert: MallNegativeInventory
+        expr: askflow_mall_negative_inventory > 0
+        for: 0m
+        labels: {severity: critical}
+        annotations:
+          summary: "商城库存出现负值"
+          runbook: "docs/mall/runbook.md#秒杀与库存"
+      - alert: MallUnbalancedJournal
+        expr: askflow_mall_unbalanced_journals > 0
+        for: 0m
+        labels: {severity: critical}
+        annotations:
+          summary: "商城存在借贷不平衡分录"
+          runbook: "docs/mall/runbook.md#对账差异"
+      - alert: MallReconciliationDifference
+        expr: askflow_mall_reconciliation_diffs > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "商城对账存在未处理差异"
+      - alert: MallCallbackRejected
+        expr: max(askflow_mall_callback_rejections_window) > 0
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "支付回调金额或流水不匹配"
+      - alert: MallFlashBacklog
+        expr: askflow_mall_flash_queue_length > 1000
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "秒杀请求队列积压"
+      - alert: MallSearchCircuitOpen
+        expr: askflow_mall_breaker_open{adapter="search"} > 0
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "商城搜索熔断，检查数据库降级负载"
+      - alert: MallOutboxBacklog
+        expr: max(askflow_mall_outbox_backlog) > 1000
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "商城 outbox 中继积压"
+      - alert: MallOrderLatency
+        expr: histogram_quantile(0.99, sum by(le)(rate(askflow_http_request_duration_seconds_bucket{method="POST",route="/api/v1/mall/order/orders"}[5m]))) > 0.2
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "商城下单 P99 超过初始 200ms 目标"

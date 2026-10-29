@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: askflow-mall
+spec:
+  strategy: {type: Recreate}
+  template:
+    spec:
+      containers:
+        - name: api
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: mall-data}

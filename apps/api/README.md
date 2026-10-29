@@ -37,6 +37,8 @@ uvicorn app.main:app --reload --port 8000
 
 ## Service tasks and order connector
 
+With `mall_order` enabled and `ORDER_LOOKUP_URL` empty, the scoped adapter reads the authenticated customer's mall orders in-process. An explicit URL retains precedence. The mall also exposes `GET /internal/mall/orders/lookup?order_id=&customer_id=` with the same flat contract and a required, nonempty `ORDER_LOOKUP_TOKEN` bearer credential. Cross-customer queries return 404. Mock payment/logistics do not make the persisted mall order itself a mock lookup result.
+
 Chat intake creates a durable task and dispatch row in the same transaction as the messages. The API starts a database-backed worker when the Agent plugin and service tasks are enabled, except in `ASKFLOW_ENV=test`. Redis is not required for this scheduler.
 
 | Variable | Default | Behavior |
@@ -59,7 +61,7 @@ The service verifies both IDs and requires a concrete status. Missing configurat
 
 Completed or waiting tasks can append one deduplicated assistant update to an active conversation. Read the conversation messages again to see that update; the worker does not broadcast a new WebSocket frame.
 
-Ticket intake is opt-in and confirms ticket registration, not resolution of the reported problem. Handoff intake is also opt-in: enqueueing alone does not prove acceptance, and there is no automatic claim-event subscription. Notification and refund adapters require host-supplied connectors and are absent from the default policy registry; adding `notify` or `refund` to the allowlist does not wire them into chat.
+Ticket intake is opt-in and confirms ticket registration, not resolution of the reported problem. Handoff intake is also opt-in: enqueueing alone does not prove acceptance. The original profiles still require host-supplied notification/refund connectors; adding a goal to the allowlist does not install one. Mall plugins install their scoped refund connector and `mall.*` capabilities with Gateway confirmation, L2 assurance and approval limits. Refunds execute against the durable mock gateway; no production PSP integration is claimed.
 
 See [runtime and recovery](../../docs/architecture/customer-service-runtime.md), [lifecycle](../../docs/architecture/customer-service-lifecycle.md) and [conformance boundaries](../../docs/architecture/agent-conformance.md).
 
@@ -115,14 +117,17 @@ Set `ASKFLOW_PROFILE` and optional `ASKFLOW_FEATURES` before starting the API. T
 
 ## Database upgrades
 
-The latest five commits introduce this migration chain:
+The retained migration chain now starts with a frozen core bootstrap and ends with the mall schema:
 
 | Revision | Adds |
 |---|---|
+| `20261002_core_baseline` | Missing legacy tables needed before service/governance foreign keys; existing tables retained |
 | `20261003_service_tasks` | Versioned `service_tasks` checkpoints |
 | `20261003_customer_preferences` | `customer_preferences` |
 | `20261003_service_dispatches` | Durable `service_dispatches` leases |
 | `20261004_agent_memories_locks` | `agent_memories` and `service_object_locks` |
+| `20261016_document_metadata` | Previous head; intermediate governance revisions remain unchanged |
+| `20261029_mall_v1` | Frozen commerce tables, constraints and SQLite/PostgreSQL append-only triggers |
 
 For an existing deployment managed by Alembic, set its `DATABASE_URL` and run before starting the updated API:
 
@@ -132,9 +137,21 @@ python -m alembic current
 python -m alembic upgrade head
 ```
 
-These migrations add the service-task tables alongside existing business tables; they are not a complete initial application schema. Startup currently calls `init_db/create_all` to create missing ORM tables, including these new ones, but does not update Alembic's revision record.
+Empty databases use `alembic upgrade head`, including the core baseline. Development/test may still use `init_db/create_all`; staging/production require migrations and only check readiness at startup. Core bootstrap downgrade intentionally preserves legacy customer-service tables; mall downgrade removes mall data only. Neither upgrade nor downgrade has been executed for this delivery.
 
 Do not blindly run the create-table migrations over tables already created by `create_all`. For a disposable local database, use a new SQLite file. For a retained database, compare its schema with the migrations and reconcile its Alembic revision before upgrading; stamp only a revision whose schema is already present. Task budget fields live in checkpoint JSON and have defaults for older records.
+
+Never stamp `head` to bypass the mall migration on a pre-mall database. Review missing baseline tables separately on an existing stamped installation. Test empty, create_all-managed and prior-head databases independently on both dialects; see [migration verification](../../docs/mall/validation.md).
+
+## Mall profiles and lightweight mode
+
+`mall` combines the MVP customer-service plugins with commerce; `mall-lite` retains offline RAG/Agent and customer support; `mall-only` includes commerce and human tickets without RAG/Agent. The five original profiles do not enable commerce automatically.
+
+Use [.env.mall.example](./.env.mall.example) as an overlay; optional infrastructure libraries are in `.[mall-full]`. `ASKFLOW_INFRA=lite` selects SQLite-compatible coordination, memory cache/limits, local objects, database outbox and in-process workers. The full preset selects Redis, S3 and Elasticsearch adapters; `DATABASE_URL` and `DATABASE_READ_URLS` remain explicit. External mail/SMS default to console and do not deliver verification codes outside the restricted development demo mailbox.
+
+From the repository root, the single-container example is `docker compose -f infra/compose/lite/docker-compose.yml up --build`; the complete topology is in `infra/compose/prod`. Both are **unexecuted deployment material**. Browser routes start at `/shop`; commerce administration is under `/admin/mall`, and the read-only infrastructure matrix is at `/admin/infra` / `GET /api/v1/admin/infra`.
+
+Read the [design and boundaries](../../docs/mall/implementation.md), [runbook](../../docs/mall/runbook.md) and [commands to run later](../../docs/mall/validation.md) before deployment. Do not infer coverage, benchmark or migration success from the presence of source files.
 
 ## Demo data
 

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mall-revisions
+spec:
+  accessModes: [ReadWriteMany]
+  resources:
+    requests: {storage: 10Gi}

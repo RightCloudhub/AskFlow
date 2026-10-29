@@ -24,6 +24,7 @@ apps/web/dist/
 .env
 .env.*
 !.env.example
+!.env.mall.example
 apps/api/.env
 
 # Runtime / uploads
@@ -44,3 +45,9 @@ apps/api/data/revisions/
 
 # Other
 tmp/
+
+# Mall benchmark fixtures contain session credentials.
+artifacts/
+apps/api/test-results/
+apps/api/coverage.xml
+apps/api/data/mall-objects/
