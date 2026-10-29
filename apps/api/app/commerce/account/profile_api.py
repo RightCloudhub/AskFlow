@@ -4,10 +4,9 @@ from hashlib import sha256
 
 from fastapi import APIRouter, UploadFile
 
-from app.commerce.account.addresses import AddressService
 from app.commerce.account.crypto import decrypt, digest, encrypt
 from app.commerce.account.repository import find_identity, profile_for, security_for
-from app.commerce.account.schemas import AddressInput, AddressPatch, BindingChange, CloseAccount, ProfilePatch
+from app.commerce.account.schemas import BindingChange, CloseAccount, ProfilePatch
 from app.commerce.account.verification import consume_proof
 from app.commerce.core.audit import audit
 from app.commerce.core.deps import MallContext
@@ -99,29 +98,6 @@ def _binding_origin(ctx, *, row, security, channel):
     if not verified:
         raise MallError("verified_contact_required", status=403)
     return other, current
-
-
-@router.get("/addresses")
-async def addresses(ctx: MallContext, cursor: str = ""):
-    return await AddressService(ctx.db).list(ctx.user.id, cursor=cursor)
-
-
-@router.post("/addresses")
-async def add_address(payload: AddressInput, ctx: MallContext):
-    return await execute(ctx.db, scope="address:" + ctx.user.id, key=ctx.key, arguments=payload.model_dump(),
-                         action=lambda: AddressService(ctx.db).save(ctx.user.id, payload))
-
-
-@router.patch("/addresses/{address_id}")
-async def edit_address(address_id: str, payload: AddressPatch, ctx: MallContext):
-    return await AddressService(ctx.db).save(ctx.user.id, payload, address_id=address_id)
-
-
-@router.delete("/addresses/{address_id}")
-async def delete_address(address_id: str, ctx: MallContext):
-    row = await AddressService(ctx.db).get(ctx.user.id, address_id)
-    await ctx.db.delete(row)
-    return {"status": "deleted"}
 
 
 @router.get("/export")

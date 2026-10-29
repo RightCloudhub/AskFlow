@@ -34,7 +34,10 @@ class AddressService:
 
     async def save(self, user_id: str, payload, *, address_id: str | None = None):
         if payload.is_default:
-            await self.db.execute(update(Address).where(Address.user_id == user_id).values(is_default=False))
+            statement = update(Address).where(Address.user_id == user_id, Address.is_default)
+            if address_id:
+                statement = statement.where(Address.id != address_id)
+            await self.db.execute(statement.values(is_default=False, version=Address.version + 1))
         values = {"name_cipher": encrypt(payload.name), "phone_cipher": encrypt(payload.phone),
                   "address_cipher": encrypt(payload.address), "is_default": payload.is_default}
         if address_id:
