@@ -4,6 +4,7 @@ import zhCN from "antd/locale/zh_CN";
 import type { ReactNode } from "react";
 import { adminTheme } from "../components/admin";
 import { FeaturesProvider } from "../plugins/features";
+import { SessionBoundary } from "./SessionBoundary";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,7 +24,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         button={{ autoInsertSpace: false }}
       >
         <AntApp>
-          <FeaturesProvider>{children}</FeaturesProvider>
+          <SessionBoundary><FeaturesProvider>{children}</FeaturesProvider></SessionBoundary>
         </AntApp>
       </ConfigProvider>
     </QueryClientProvider>

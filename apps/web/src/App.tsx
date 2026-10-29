@@ -4,6 +4,9 @@ import { Spin } from "antd";
 import { getToken } from "./api/client";
 import { useFeatures } from "./plugins/features";
 import { filterRoutes } from "./plugins/registry";
+const Shop = lazy(() => import("./mall/Shop").then((m) => ({ default: m.Shop })));
+const MallAdmin = lazy(() => import("./mall/Admin").then((m) => ({ default: m.MallAdmin })));
+const InfraPage = lazy(() => import("./mall/Admin").then((m) => ({ default: m.InfraPage })));
 
 const LoginPage = lazy(() =>
   import("./pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })),
@@ -90,6 +93,8 @@ const PluginsPage = lazy(() =>
 );
 
 const PAGE_MAP: Record<string, React.ReactNode> = {
+  "mall-admin": <MallAdmin />,
+  "mall-infra": <InfraPage />,
   dashboard: <DashboardPage />,
   qc: <QcPage />,
   documents: <DocumentsPage />,
@@ -123,6 +128,13 @@ function PageFallback() {
   );
 }
 
+function HomePage() {
+  const { ready, enabled } = useFeatures();
+  if (!ready) return <PageFallback />;
+  if (enabled("mall_core") && !enabled("agent")) return <Navigate to="/shop" replace />;
+  return <RequireAuth><ChatPage /></RequireAuth>;
+}
+
 function AppRoutes() {
   const { features, enabled, ready } = useFeatures();
   const adminRoutes = filterRoutes(features);
@@ -134,34 +146,16 @@ function AppRoutes() {
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={!ready ? <PageFallback /> : enabled("mall_account") ? <Navigate to="/shop/account" replace /> : <LoginPage />} />
+        {enabled("mall_core") && <Route path="/shop/*" element={<Shop />} />}
         <Route path="/widget" element={<WidgetPage />} />
-        <Route
-          path="/"
-          element={
-            <RequireAuth>
-              <ChatPage />
-            </RequireAuth>
-          }
-        />
+        <Route path="/" element={<HomePage />} />
         {showTickets ? (
-          <Route
-            path="/tickets"
-            element={
-              <RequireAuth>
-                <TicketsPage />
-              </RequireAuth>
-            }
-          />
+          <Route path="/tickets" element={<RequireAuth><TicketsPage /></RequireAuth>} />
         ) : null}
-        <Route
-          path="/admin"
-          element={
-            <RequireAuth>
-              <AdminLayout />
-            </RequireAuth>
-          }
-        >
+        <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
+          {enabled("mall_admin") && !adminRoutes.some((route) => route.path === "") &&
+            <Route index element={<Navigate to="mall/dashboard" replace />} />}
           {adminRoutes.map((r) => (
             <Route
               key={r.path || "index"}

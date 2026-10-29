@@ -1,4 +1,5 @@
 import type { AdminNavItem, AdminRouteDef, FeatureId, NavGroupId } from "./types";
+import { MALL_NAV, MALL_ROUTES } from "../mall/admin-registry";
 
 export type NavGroupMeta = {
   id: NavGroupId;
@@ -17,6 +18,7 @@ export const NAV_GROUPS: NavGroupMeta[] = [
 
 /** Static catalog — filtered by enabled features at runtime. */
 export const ADMIN_NAV: AdminNavItem[] = [
+  ...MALL_NAV,
   {
     pluginId: "analytics",
     to: "/admin",
@@ -182,6 +184,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
 ];
 
 export const ADMIN_ROUTES: AdminRouteDef[] = [
+  ...MALL_ROUTES,
   { path: "", pluginId: "analytics", page: "dashboard" },
   { path: "qc", pluginId: "qc", page: "qc" },
   { path: "documents", pluginId: "rag", page: "documents" },

@@ -1,14 +1,8 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import { AUTH_EVENT, api, getToken } from "../api/client";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { setUnauthorizedRecovery } from "../api/client";
+import { refreshMallSession } from "../mall/session";
 import { CORE_FEATURES, parseEnvFeatures } from "./registry";
-import type { FeaturesResponse } from "./types";
+import { useFeatureDiscovery } from "./discovery";
 
 type FeaturesState = {
   ready: boolean;
@@ -17,74 +11,24 @@ type FeaturesState = {
   enabled: (id: string) => boolean;
 };
 
-/** Fail closed: only core until discovery succeeds (or env overrides). */
 const FAIL_CLOSED = new Set<string>(CORE_FEATURES);
-
 const FeaturesContext = createContext<FeaturesState>({
-  ready: false,
-  profile: "unknown",
-  features: FAIL_CLOSED,
-  enabled: (id: string) => FAIL_CLOSED.has(id),
+  ready: false, profile: "unknown", features: FAIL_CLOSED,
+  enabled: (id) => FAIL_CLOSED.has(id),
 });
 
 export function FeaturesProvider({ children }: { children: ReactNode }) {
-  const envSet = parseEnvFeatures();
-  const [profile, setProfile] = useState(envSet ? "env" : "unknown");
-  const [features, setFeatures] = useState<Set<string>>(
-    () => envSet ?? new Set(FAIL_CLOSED),
-  );
-  const [ready, setReady] = useState(Boolean(envSet));
-  const [authKey, setAuthKey] = useState(() => getToken() ?? "");
-
-  // Re-discover features after login/logout so nav and routes match the session.
+  const envSet = useMemo(parseEnvFeatures, []);
+  const { ready, profile, features } = useFeatureDiscovery(envSet);
+  const mallAccount = features.has("mall_account");
   useEffect(() => {
-    const onAuth = () => setAuthKey(getToken() ?? "");
-    window.addEventListener(AUTH_EVENT, onAuth);
-    return () => window.removeEventListener(AUTH_EVENT, onAuth);
-  }, []);
-
-  useEffect(() => {
-    if (envSet) return;
-    let cancelled = false;
-    setReady(false);
-    (async () => {
-      try {
-        const data = await api<FeaturesResponse>("/api/v1/admin/features");
-        if (cancelled) return;
-        setProfile(data.profile || "unknown");
-        // Empty list → fail closed to core, not full catalog
-        const ids =
-          data.features?.length > 0 ? data.features : [...CORE_FEATURES];
-        setFeatures(new Set(ids));
-      } catch {
-        if (!cancelled) {
-          setProfile("unknown");
-          setFeatures(new Set(CORE_FEATURES));
-        }
-      } finally {
-        if (!cancelled) setReady(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [envSet, authKey]);
-
-  const value = useMemo<FeaturesState>(
-    () => ({
-      ready,
-      profile,
-      features,
-      enabled: (id: string) => features.has(id),
-    }),
-    [ready, profile, features],
-  );
-
-  return (
-    <FeaturesContext.Provider value={value}>
-      {children}
-    </FeaturesContext.Provider>
-  );
+    setUnauthorizedRecovery(mallAccount ? refreshMallSession : null);
+    return () => setUnauthorizedRecovery(null);
+  }, [mallAccount]);
+  const value = useMemo<FeaturesState>(() => ({ ready, profile, features,
+    enabled: (id) => features.has(id),
+  }), [ready, profile, features]);
+  return <FeaturesContext.Provider value={value}>{children}</FeaturesContext.Provider>;
 }
 
 export function useFeatures(): FeaturesState {

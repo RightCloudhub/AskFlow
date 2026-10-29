@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test:client": "node --import tsx -e \"import { runClientHelperChecks } from './src/api/client.test.ts'; runClientHelperChecks(); console.log('client ok')\"",
-    "test:ops": "node --experimental-strip-types --no-warnings src/components/admin/ops-labels.test.ts"
+    "test:ops": "node --experimental-strip-types --no-warnings src/components/admin/ops-labels.test.ts",
+    "test:mall": "node --experimental-strip-types --no-warnings --test tests/mall*.test.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.2",

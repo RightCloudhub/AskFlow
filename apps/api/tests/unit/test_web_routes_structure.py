@@ -36,27 +36,38 @@ def test_user_and_admin_routes_exist():
 
 def test_frontend_feature_gated_assembly():
     """UI filters nav/routes by same enablement notion as API plugins."""
-    app = (WEB / "App.tsx").read_text(encoding="utf-8")
     main = (WEB / "main.tsx").read_text(encoding="utf-8")
     assert '<AppProviders>' in main and '</AppProviders>' in main
     assert main.index('<AppProviders>') < main.index('<App />')
     assert main.index('<App />') < main.index('</AppProviders>')
     providers = (WEB / "providers" / "AppProviders.tsx").read_text(encoding="utf-8")
     assert "<FeaturesProvider>{children}</FeaturesProvider>" in providers
+
+
+def test_frontend_navigation_uses_feature_registry():
+    app = (WEB / "App.tsx").read_text(encoding="utf-8")
     assert "filterRoutes" in app
     assert "enabled(" in app or 'enabled("ticket")' in app
     layout = (WEB / "pages" / "admin" / "AdminLayout.tsx").read_text(encoding="utf-8")
-    assert "filterNav" in layout
+    menu = (WEB / "pages" / "admin" / "layout-menu.tsx").read_text(encoding="utf-8")
+    assert "useAdminMenu" in layout and "filterNav" in menu
     assert "useFeatures" in layout
     registry = (WEB / "plugins" / "registry.ts").read_text(encoding="utf-8")
     assert "filterNav" in registry
     assert "filterRoutes" in registry
     assert "CORE_FEATURES" in registry
+
+
+def test_frontend_discovery_fails_closed():
     features = (WEB / "plugins" / "features.tsx").read_text(encoding="utf-8")
-    assert "/api/v1/admin/features" in features
+    discovery = (WEB / "plugins" / "discovery.ts").read_text(encoding="utf-8")
+    assert "useFeatureDiscovery" in features and "/api/v1/admin/features" in discovery
     # AC4 fail-closed: discovery error must not enable full catalog
     assert "CORE_FEATURES" in features
     assert "DEFAULT_FEATURES" not in features
+
+
+def test_chat_shell_gates_optional_ticket_links():
     chat = (WEB / "pages" / "user" / "ChatPage.tsx").read_text(encoding="utf-8")
     assert "<AppShell" in chat
     shell = (WEB / "components" / "layout" / "AppShell.tsx").read_text(encoding="utf-8")
@@ -73,7 +84,7 @@ def test_frontend_feature_gated_assembly():
     ("admin/HandoffsPage", "use-ops", "handoff-service", (
         "/api/v1/admin/handoffs",
     )),
-    ("user/ChatPage", "use-chat", "chat-service", (
+    ("user/ChatPage", "use-chat-page", "chat-service", (
         "/api/v1/chat/conversations",
     )),
     ("admin/TeamsPage", "use-ops", "team-service", ("/api/v1/admin/teams",)),
@@ -91,6 +102,9 @@ def test_pages_connect_to_real_apis(case):
     page_name, hook_name, service_name, endpoints = case
     page = (WEB / "pages" / f"{page_name}.tsx").read_text(encoding="utf-8")
     hook = (WEB / "hooks" / f"{hook_name}.ts").read_text(encoding="utf-8")
+    if hook_name == "use-chat-page":
+        assert 'from "./use-chat"' in hook
+        hook += (WEB / "hooks" / "use-chat.ts").read_text(encoding="utf-8")
     service = (WEB / "services" / f"{service_name}.ts").read_text(encoding="utf-8")
     assert f'from "../../hooks/{hook_name}"' in page
     assert f'from "../services/{service_name}"' in hook
