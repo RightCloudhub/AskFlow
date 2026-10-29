@@ -81,6 +81,11 @@ class ChatTurn:
         return meta
 
     async def _process(self, conv, *, text, history):
+        from app.commerce.support.chat import handle
+
+        mall_result = await handle(self.service.db, conv, text=text, history=history)
+        if mall_result is not None:
+            return mall_result
         meta = self._metadata(conv)
         turn_id = new_run_id()
         action = await TurnRouter(self.service.db).route(

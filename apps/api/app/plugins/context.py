@@ -28,6 +28,9 @@ class AppContext:
     side_effect_handlers: dict[str, SideEffectHandler] = field(default_factory=dict)
     admin_nav: list[AdminNavItem] = field(default_factory=list)
     loaded_plugins: list[str] = field(default_factory=list)
+    root_router: APIRouter = field(default_factory=empty_api_router)
+    services: dict[str, Any] = field(default_factory=dict)
+    event_consumers: dict[str, Callable] = field(default_factory=dict)
 
     def enabled(self, plugin_id: str) -> bool:
         return plugin_id in self.features

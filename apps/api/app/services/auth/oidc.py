@@ -143,16 +143,22 @@ class OIDCService:
         return claims_from_payload(data)
 
     async def login_with_id_token(self, id_token: str) -> tuple[TokenResponse, UserOut]:
+        from app.commerce.account.sessions import legacy_token_extra
+
+        user = await self.resolve_identity(id_token)
+        extra = await legacy_token_extra(self.db, user.id)
+        token = create_access_token(user.id, role=user.role,
+            extra={"sso": True, "sub_oidc": user.oidc_subject, **extra})
+        return TokenResponse(access_token=token), UserOut.model_validate(user)
+
+    async def resolve_identity(self, id_token: str) -> User:
         claims = self.parse_id_token(id_token)
         role = map_roles(claims.roles)
         user = await self._resolve_user(claims, role)
         if not user.is_active:
             raise ValueError("user_disabled")
         await self._sync_role(user, role)
-        token = create_access_token(
-            user.id, role=user.role, extra={"sso": True, "sub_oidc": claims.sub}
-        )
-        return TokenResponse(access_token=token), UserOut.model_validate(user)
+        return user
 
     async def _resolve_user(self, claims: OIDCClaims, role: str) -> User:
         """Find the account bound to ``sub``; link by email only when the IdP verified it."""

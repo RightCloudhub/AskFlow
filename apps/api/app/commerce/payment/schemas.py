@@ -22,8 +22,10 @@ class Callback(Schema):
     currency: str = Field(pattern=r"^[A-Z]{3}$")
     status: Literal["succeeded", "failed"]
     timestamp: int = Field(strict=True, gt=0)
+    payer_hash: str = Field(default="", pattern=r"^([a-f0-9]{64})?$")
 
 
 class MockOutcome(Schema):
     status: Literal["succeeded", "failed"] = "succeeded"
     deliver_callback: bool = True
+    payer_reference: str = Field(default="", max_length=NAME_SIZE)

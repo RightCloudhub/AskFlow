@@ -14,12 +14,21 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from app.core.config import get_settings
+from app.plugins.runtime import get_app_context
 
 WINDOW_SEC = 60
 UNKNOWN_CLIENT = "unknown"
 # Probe / scrape / docs paths are matched exactly, never by suffix (audit D-16).
 SKIP_SUFFIXES = ("/health", "/metrics")
 SKIP_EXACT = frozenset({"/", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"})
+
+
+def mall_limit_applies(request: Request) -> bool:
+    ctx = get_app_context()
+    if ctx is None or not ctx.enabled("mall_core") or not ctx.settings.mall_rate_limit_enabled:
+        return False
+    prefix = ctx.settings.api_prefix
+    return request.url.path.startswith((prefix + "/mall/", prefix + "/admin/mall/"))
 
 
 def client_ip(request: Request) -> str:
@@ -59,7 +68,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         settings = get_settings()
-        if settings.env == "test" or request.url.path in self._skip:
+        if settings.env == "test" or request.url.path in self._skip or mall_limit_applies(request):
             return await call_next(request)
         now = time.time()
         self._sweep(now)

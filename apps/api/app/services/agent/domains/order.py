@@ -146,6 +146,13 @@ HTTP_UNAUTHORIZED = 401
 async def scoped_order(call, scope) -> Receipt:
     settings = get_settings()
     if not settings.order_lookup_url:
+        from app.plugins.runtime import get_app_context
+
+        ctx = get_app_context()
+        if ctx is not None and ctx.enabled("mall_order"):
+            from app.commerce.support.lookup import scoped
+
+            return await scoped(call, scope)
         return Receipt(status="failed", error_kind="unavailable", error="connector_not_configured")
     headers = {}
     if settings.order_lookup_token:

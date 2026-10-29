@@ -113,5 +113,8 @@ async def metrics(request: Request) -> Response:
     """Prometheus scrape. METRICS_TOKEN is mandatory in staging/production (D-18)."""
     if not _metrics_authorized(request):
         raise HTTPException(status_code=HTTP_UNAUTHORIZED, detail="metrics_token_required")
+    from app.commerce.observability import refresh
+
+    await refresh()
     payload, content_type = metrics_payload()
     return Response(content=payload, media_type=content_type)

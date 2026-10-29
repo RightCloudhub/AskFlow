@@ -6,11 +6,14 @@ from typing import Literal
 SideEffect = Literal["read", "reversible_write", "irreversible_write"]
 
 # Explicit overrides; everything else derives from the operation's declared effect.
-IRREVERSIBLE_CAPABILITIES = frozenset({"refund.submit", "orders.cancel", "payments.refund"})
+IRREVERSIBLE_CAPABILITIES = frozenset({"refund.submit", "orders.cancel", "payments.refund",
+                                    "mall.order.cancel", "mall.refund.submit"})
 REQUIRED_ASSURANCE = {
     "refund.submit": 2,
     "orders.cancel": 2,
     "payments.refund": 2,
+    "mall.order.cancel": 2,
+    "mall.refund.submit": 2,
 }
 EFFECT_MAP: dict[str, SideEffect] = {
     "read": "read",

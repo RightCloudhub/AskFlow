@@ -23,6 +23,8 @@ def _handlers(event_type):
     from app.commerce.observability import consume
 
     handlers = [("metrics", consume)]
+    if event_type == "mall.settings.changed":
+        handlers.append(("settings", _settings))
     if enabled("notify"):
         handlers.append(("notifications", _notify))
     if enabled("referral") and event_type in {"mall.order.completed", "mall.refund.settled"}:
@@ -30,6 +32,13 @@ def _handlers(event_type):
     if enabled("catalog") and event_type == "mall.catalog.changed":
         handlers.append(("catalog", _catalog))
     return handlers
+
+
+async def _settings(_db, envelope):
+    from app.plugins.runtime import require_app_context
+
+    cache = require_app_context().services.get("mall_setting_cache", {})
+    cache.pop(envelope["payload"]["key"], None)
 
 
 async def _notify(db, envelope):

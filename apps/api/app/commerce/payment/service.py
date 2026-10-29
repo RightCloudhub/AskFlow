@@ -29,6 +29,10 @@ class PaymentService:
         return bool(await self.db.scalar(select(Payment.id).where(Payment.user_id == user_id,
             Payment.status == "pending").limit(1)))
 
+    async def payer_signal(self, user_id: str, order_id: str):
+        return await self.db.scalar(select(Payment.payer_hash).where(
+            Payment.user_id == user_id, Payment.order_id == order_id)) or ""
+
     async def start(self, user_id: str, payload):
         order = await service("order", self.db).get(user_id, payload.order_id, lock=True)
         prior = await self.db.scalar(select(Payment).where(Payment.order_id == order["id"]))

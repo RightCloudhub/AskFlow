@@ -57,6 +57,9 @@ class LedgerStore:
 
     async def append_in_transaction(self, db: AsyncSession, entry: LedgerAppend) -> OperationLedgerEntry:
         """Participate in the caller's transaction (same-txn with the audited action)."""
+        from app.services.agent.gateway.ledger_lock import acquire
+
+        await acquire(db)
         prev = await db.scalar(
             select(OperationLedgerEntry).order_by(OperationLedgerEntry.seq.desc()).limit(1)
         )

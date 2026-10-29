@@ -60,6 +60,9 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or missing"
         )
+    from app.commerce.account.legacy import validate_legacy_access
+
+    await validate_legacy_access(db, payload)
     return user
 
 

@@ -6,6 +6,8 @@ import random
 import time
 from collections import OrderedDict
 
+from app.commerce.core.errors import MallError
+from app.commerce.infra.locks import RedisLocks
 from app.commerce.infra.metrics import CACHE_TOTAL
 
 
@@ -69,6 +71,7 @@ class CachedReads:
         self.backend, self.settings = backend, settings
         self.l1 = MemoryCache(settings.cache_max_entries)
         self.shards = [asyncio.Lock() for _ in range(settings.lock_shards)]
+        self.shared = RedisLocks(backend.connection, settings) if isinstance(backend, RedisCache) else None
 
     async def get(self, key: str, loader):
         if isinstance(self.backend, OffCache):
@@ -87,16 +90,43 @@ class CachedReads:
             hit, value = await self._load_cache(key)
             if hit:
                 return value
-            value = await loader()
-            ttl = self.settings.cache_ttl_seconds if value else self.settings.cache_null_ttl_seconds
-            ttl += random.randint(0, self.settings.cache_jitter_seconds)
-            await self.l1.put(key, value, ttl=ttl)
-            try:
-                await self.backend.put(key, value, ttl=ttl)
-            except Exception:
-                CACHE_TOTAL.labels(result="degraded").inc()
-            CACHE_TOTAL.labels(result="miss").inc()
-            return value
+            return await self._coordinate(key, loader)
+
+    async def _coordinate(self, key, loader):
+        if self.shared is None:
+            return await self._fill(key, loader)
+        from redis.exceptions import RedisError
+
+        try:
+            async with self.shared.hold("cache:" + key):
+                hit, value = await self._load_cache(key)
+                return value if hit else await self._fill(key, loader)
+        except MallError as exc:
+            if exc.code != "resource_busy":
+                raise
+        except RedisError:
+            CACHE_TOTAL.labels(result="degraded").inc()
+            return await loader()
+        deadline = time.monotonic() + self.settings.external_timeout_seconds
+        while time.monotonic() < deadline:
+            hit, value = await self._load_cache(key)
+            if hit:
+                return value
+            await asyncio.sleep(self.settings.external_retry_base_seconds)
+        CACHE_TOTAL.labels(result="degraded").inc()
+        return await loader()
+
+    async def _fill(self, key, loader):
+        value = await loader()
+        ttl = self.settings.cache_ttl_seconds if value else self.settings.cache_null_ttl_seconds
+        ttl += random.randint(0, self.settings.cache_jitter_seconds)
+        await self.l1.put(key, value, ttl=ttl)
+        try:
+            await self.backend.put(key, value, ttl=ttl)
+        except Exception:
+            CACHE_TOTAL.labels(result="degraded").inc()
+        CACHE_TOTAL.labels(result="miss").inc()
+        return value
 
     async def _load_cache(self, key):
         hit, value = await self.l1.get(key)

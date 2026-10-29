@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 
 from app.commerce.core.errors import MallError
+from app.commerce.account.crypto import digest
 from app.commerce.core.repository import cas, insert_once
 from app.commerce.payment.models import GatewayTransaction
 from app.core.config import get_settings
@@ -29,7 +30,7 @@ class MockGateway:
     async def charge(self, db, request):
         await insert_once(db, GatewayTransaction, values={"request_key": request.request_key,
             "payment_id": request.id, "kind": "charge", "amount_cents": request.external_cents,
-            "currency": request.currency}, unique=["request_key"])
+            "currency": request.currency, "payer_hash": digest("mock-payer:" + request.user_id)}, unique=["request_key"])
         return await self.query(db, request.request_key)
 
     async def refund(self, db, request):
@@ -55,11 +56,12 @@ class MockGateway:
             raise MallError("gateway_transaction_missing")
         return row
 
-    async def settle(self, db, request_key: str, *, status: str):
+    async def settle(self, db, request_key: str, *, status: str, payer_reference: str = ""):
         row = await self.query(db, request_key)
         if row.status != "pending":
             if row.status != status:
                 raise MallError("gateway_outcome_conflict")
             return row
-        await cas(db, row, values={"status": status, "settled_at": datetime.now(UTC)})
+        payer = digest("mock-payer:" + payer_reference) if payer_reference else row.payer_hash
+        await cas(db, row, values={"status": status, "settled_at": datetime.now(UTC), "payer_hash": payer})
         return row

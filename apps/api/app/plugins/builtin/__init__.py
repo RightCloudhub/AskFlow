@@ -26,6 +26,7 @@ from app.plugins.builtin.ticket import TicketPlugin
 from app.plugins.builtin.tools import ToolsPlugin
 from app.plugins.builtin.wecom import WeComPlugin
 from app.plugins.builtin.widget import WidgetPlugin
+from app.plugins.builtin.mall_factories import MALL_FACTORIES
 
 # Factory map: id → instance
 BUILTIN_FACTORIES: dict[str, type] = {
@@ -55,7 +56,7 @@ BUILTIN_FACTORIES: dict[str, type] = {
 
 
 def create_builtin(plugin_id: str) -> Any:
-    cls = BUILTIN_FACTORIES.get(plugin_id)
+    cls = BUILTIN_FACTORIES.get(plugin_id) or MALL_FACTORIES.get(plugin_id)
     if cls is None:
         raise KeyError(f"No builtin plugin for {plugin_id!r}")
     return cls()

@@ -78,12 +78,23 @@ async def authenticate(websocket: WebSocket, db: Any) -> User | None:
         )
         await websocket.close(code=WS_CLOSE_AUTH)
         return None
+    from app.commerce.account.legacy import websocket_valid
+
+    websocket.state.mall_token = str(frame["token"])
+    if not await websocket_valid(websocket, db, user):
+        await websocket.close(code=WS_CLOSE_AUTH)
+        return None
     return user
 
 
 async def session_loop(websocket: WebSocket, db: Any, user: User) -> None:
     while True:
         raw = await websocket.receive_text()
+        from app.commerce.account.legacy import websocket_valid
+
+        if not await websocket_valid(websocket, db, user):
+            await websocket.close(code=WS_CLOSE_AUTH)
+            return
         try:
             msg = json.loads(raw)
         except json.JSONDecodeError:

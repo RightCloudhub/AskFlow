@@ -36,4 +36,4 @@ async def bind(payload: Bind, ctx: MallContext):
 @router.get("/rewards")
 async def rewards(ctx: MallContext, cursor: str = ""):
     rows, after = await owned_page(ctx.db, ReferralReward, owner_id=ctx.user.id, cursor=cursor)
-    return {"items": [view(row, ("id", "amount_cents", "status", "eligible_at")) for row in rows], "next_cursor": after}
+    return {"items": [view(row, ("id", "kind", "amount_cents", "status", "eligible_at", "expires_at")) for row in rows], "next_cursor": after}

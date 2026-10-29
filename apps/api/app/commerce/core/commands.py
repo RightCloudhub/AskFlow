@@ -3,7 +3,7 @@
 from app.commerce.core.audit import audit
 from app.commerce.core.idempotency import execute
 
-SENSITIVE = ("password", "token", "secret", "code", "cipher", "cookie")
+SENSITIVE = ("password", "token", "secret", "code", "cipher", "cookie", "payer")
 
 
 def safe_detail(value):

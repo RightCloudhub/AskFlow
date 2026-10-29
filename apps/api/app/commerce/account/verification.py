@@ -5,7 +5,7 @@ import re
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from pydantic import EmailStr, TypeAdapter
+from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy import select, update
 
 from app.commerce.account.crypto import TOTP_DIGITS, TOTP_MODULUS, decrypt, digest, encrypt
@@ -25,7 +25,10 @@ PHONE = re.compile(r"^\+[1-9][0-9]{7,14}$")
 def normalize_target(target: str, channel: str) -> str:
     target = target.strip().lower()
     if channel == "email":
-        return str(TypeAdapter(EmailStr).validate_python(target))
+        try:
+            return str(TypeAdapter(EmailStr).validate_python(target))
+        except ValidationError as exc:
+            raise MallError("verification_target_invalid", status=422) from exc
     if not PHONE.fullmatch(target):
         raise MallError("verification_target_invalid", status=422)
     return target

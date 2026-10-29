@@ -6,7 +6,9 @@ from functools import lru_cache
 from typing import Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
+
+from app.commerce.core.settings import CommerceSettings
 
 DEFAULT_SECRET = "change-me-in-production"
 WEAK_SECRETS = frozenset(
@@ -20,7 +22,7 @@ WEAK_SECRETS = frozenset(
 )
 
 
-class Settings(BaseSettings):
+class Settings(CommerceSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -240,6 +242,7 @@ class Settings(BaseSettings):
 
     def assert_startup_safe(self) -> None:
         """Refuse to start with weak secrets outside development/test (S-01)."""
+        self.assert_commerce_safe()
         if self.env in {"development", "test"}:
             return
         if self.secret_key in WEAK_SECRETS or len(self.secret_key) < 16:

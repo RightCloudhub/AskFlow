@@ -25,6 +25,10 @@ class AuthService:
     async def register(
         self, payload: RegisterRequest, *, role: str = UserRole.USER.value
     ) -> UserOut:
+        from app.commerce.account.legacy import enabled
+
+        if enabled():
+            raise AuthError("verified_registration_required", "Use the verified mall registration")
         existing = await self.db.execute(
             select(User).where(or_(User.username == payload.username, User.email == payload.email))
         )
@@ -51,6 +55,10 @@ class AuthService:
         return UserOut.model_validate(user)
 
     async def login(self, payload: LoginRequest) -> TokenResponse:
+        from app.commerce.account.legacy import enabled
+
+        if enabled():
+            raise AuthError("mall_login_required", "Use the mall login endpoint")
         result = await self.db.execute(select(User).where(User.username == payload.username))
         user = result.scalar_one_or_none()
         if user is None or not verify_password(payload.password, user.hashed_password):

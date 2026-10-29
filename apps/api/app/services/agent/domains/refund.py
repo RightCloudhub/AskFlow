@@ -109,3 +109,14 @@ def refund_agent(store, observe, *, submit, status_query):
     return ServiceAgent(
         store, registry, AgentPolicy(observe=observe, propose=propose_refund, verify=verify_refund)
     )
+
+
+def scoped_mall_refund_agent(store, observe, *, task):
+    """Scope comes from the persisted authenticated task, never operation arguments."""
+    from app.commerce.core.services import enabled
+    from app.commerce.support.refund_connector import MallRefundConnector
+
+    if not enabled("support") or not enabled("payment"):
+        raise ValueError("mall_refund_unavailable")
+    connector = MallRefundConnector(store.sessions, task)
+    return refund_agent(store, observe, submit=connector.submit, status_query=connector.status)

@@ -12,8 +12,10 @@ from app.commerce.core.constants import PAGE_SIZE
 from app.commerce.core.errors import MallError
 from app.commerce.core.repository import insert_once
 from app.commerce.core.schemas import Schema, Versioned
+from app.commerce.admin.roles_api import router as roles_router
 
 router = APIRouter()
+router.include_router(roles_router)
 
 
 class SettingInput(Versioned):
@@ -43,7 +45,8 @@ async def setting(key: str, payload: SettingInput, ctx=require("settings:write")
 @router.get("/roles")
 async def roles(ctx=require("rbac:write")):
     rows = await ctx.db.scalars(select(AdminRole).order_by(AdminRole.code))
-    return {"items": [{"id": row.id, "code": row.code, "name": row.name} for row in rows]}
+    return {"items": [{"id": row.id, "code": row.code, "name": row.name,
+                       "builtin": row.builtin, "version": row.version} for row in rows]}
 
 
 @router.post("/roles/grant")

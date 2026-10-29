@@ -121,6 +121,9 @@ class TicketRepository:
             ticket.description = description
         await self.db.flush()
         await self.db.refresh(ticket)
+        from app.commerce.support.hooks import ticket_changed
+
+        await ticket_changed(self.db, ticket)
         return ticket
 
 

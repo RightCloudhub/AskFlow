@@ -23,15 +23,19 @@ class ReferralRelation(MallRecord):
     code_id: Mapped[str] = mapped_column(String(ID_SIZE), ForeignKey("referral_codes.id", ondelete="RESTRICT"), nullable=False, index=True)
     device_hash: Mapped[str] = mapped_column(String(HASH_SIZE), nullable=False)
     ip_hash: Mapped[str] = mapped_column(String(HASH_SIZE), nullable=False)
+    phone_segment_hash: Mapped[str] = mapped_column(String(HASH_SIZE), default="", index=True)
+    payer_hash: Mapped[str] = mapped_column(String(HASH_SIZE), default="", index=True)
     rule_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
 
 class ReferralReward(MallRecord):
     __tablename__ = "referral_rewards"
-    __table_args__ = (UniqueConstraint("relation_id", "order_id", "rule_version"),)
+    __table_args__ = (UniqueConstraint("relation_id", "kind", "rule_version"),)
     user_id: Mapped[str] = mapped_column(String(ID_SIZE), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
     relation_id: Mapped[str] = mapped_column(String(ID_SIZE), ForeignKey("referral_relations.id", ondelete="RESTRICT"), nullable=False, index=True)
-    order_id: Mapped[str] = mapped_column(String(ID_SIZE), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False, index=True)
+    order_id: Mapped[str | None] = mapped_column(String(ID_SIZE), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(String(NAME_SIZE), default="first_order")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rule_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     amount_cents: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     status: Mapped[str] = mapped_column(String(NAME_SIZE), default="pending", nullable=False, index=True)

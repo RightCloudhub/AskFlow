@@ -12,6 +12,11 @@ PROACTIVE_TYPE = "proactive"
 
 async def publish_event(db, event, *, delivery: OutboundDelivery | None = None) -> None:
     """Consumers must be idempotent; unknown event types are acknowledged."""
+    if event.event_type.startswith("mall."):
+        from app.commerce.events import dispatch
+
+        await dispatch(db, event)
+        return
     if event.event_type not in PUSH_EVENTS:
         return
     payload = dict(event.payload or {})

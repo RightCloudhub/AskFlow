@@ -86,6 +86,17 @@ class UserAdminService:
 
     async def delete_user_data(self, user_id: str, *, actor_id: str) -> dict[str, int]:
         """GDPR-style delete: remove messages/convs/tickets/feedback; disable user."""
+        from app.plugins.runtime import get_app_context
+
+        ctx = get_app_context()
+        if ctx is not None and ctx.enabled("mall_account"):
+            from app.commerce.account.closure import close
+
+            await close(self.db, user_id, actor_id=actor_id)
+            return {"messages": 0, "conversations": 0, "tickets": 0, "feedbacks": 0}
+        return await self._delete_legacy_data(user_id, actor_id=actor_id)
+
+    async def _delete_legacy_data(self, user_id: str, *, actor_id: str) -> dict[str, int]:
         user = await self.db.get(User, user_id)
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")

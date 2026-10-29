@@ -53,10 +53,11 @@ async def mock(payment_id: str, payload: schemas.MockOutcome, ctx: MallContext):
 
     async def perform():
         row = await owned(ctx.db, Payment, owner_id=ctx.user.id, resource_id=payment_id)
-        remote = await PaymentService(ctx.db).gateway.settle(ctx.db, row.request_key, status=payload.status)
+        remote = await PaymentService(ctx.db).gateway.settle(ctx.db, row.request_key, status=payload.status,
+                                                            payer_reference=payload.payer_reference)
         body = encode({"payment_id": row.id, "transaction_id": remote.id, "status": remote.status,
             "amount_cents": remote.amount_cents, "currency": remote.currency,
-            "timestamp": int(time.time())})
+            "timestamp": int(time.time()), "payer_hash": remote.payer_hash})
         if payload.deliver_callback:
             await receive(ctx.db, body, signature=sign(body))
         return {"payment_id": row.id, "provider_status": remote.status, "data_source": "mock"}

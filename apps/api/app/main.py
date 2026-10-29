@@ -12,7 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__
 from app.api.v1 import build_api_router
 from app.core.config import get_settings
-from app.core.database import init_db
+from app.core.background import start_background_tasks
+from app.core.schema import prepare_schema
 from app.middleware.logging import RequestLoggingMiddleware
 from app.middleware.metrics import PROCESS_INFO
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -42,7 +43,7 @@ async def lifespan(_app: FastAPI):
             "plugins": ",".join(ctx.loaded_plugins),
         }
     )
-    await init_db()
+    await prepare_schema(settings)
     await boot_plugins(ctx)
     logger.info(
         "AskFlow API started env=%s version=%s profile=%s plugins=%s",
@@ -61,37 +62,7 @@ async def lifespan(_app: FastAPI):
 
 
 def _start_background_tasks(settings) -> list[asyncio.Task]:
-    if settings.env == "test":
-        return []
-    tasks: list[asyncio.Task] = []
-    from app.services.agent.service.settings import ServiceSettings
-
-    ctx = get_app_context()
-    if ServiceSettings().enabled and ctx is not None and ctx.enabled("agent"):
-        from app.workers.service_tasks import periodic_loop as service_task_loop
-
-        tasks.append(asyncio.create_task(service_task_loop(), name="service_tasks"))
-    if settings.sweeper_enabled:
-        from app.workers.enterprise_jobs import periodic_loop
-
-        tasks.append(asyncio.create_task(periodic_loop(settings), name="enterprise_jobs"))
-    if settings.index_worker_enabled:
-        from app.workers.index_worker.consumer import consumer_loop
-
-        tasks.append(asyncio.create_task(consumer_loop(settings), name="index_worker"))
-    from app.services.outbox.settings import OutboxSettings
-
-    if OutboxSettings().enabled:
-        from app.workers.outbox_relay import periodic_loop as outbox_loop
-
-        tasks.append(asyncio.create_task(outbox_loop(), name="outbox_relay"))
-    from app.services.channels.settings import ChannelSettings
-
-    if ChannelSettings().inbox_relay_enabled:
-        from app.workers.channel_inbox_relay import periodic_loop as inbox_loop
-
-        tasks.append(asyncio.create_task(inbox_loop(), name="channel_inbox_relay"))
-    return tasks
+    return start_background_tasks(settings)
 
 
 async def _stop_background_tasks(tasks: list[asyncio.Task]) -> None:
@@ -117,39 +88,49 @@ def create_app() -> FastAPI:
         docs_url=docs,
         redoc_url=redoc,
     )
-    # Starlette: last added = outermost. Rate limit outermost after CORS.
-    application.add_middleware(RequestLoggingMiddleware)
+    _configure_middleware(application, ctx)
+    _configure_routes(application, ctx)
+    if ctx.enabled("mall_core"):
+        from app.commerce.infra.telemetry import instrument
+
+        instrument(application, settings)
+    return application
+
+
+def _configure_middleware(application, ctx):
+    settings = ctx.settings
+    if not ctx.enabled("mall_core"):
+        application.add_middleware(RequestLoggingMiddleware)
     application.add_middleware(RateLimitMiddleware)
-    application.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    if ctx.enabled("mall_core"):
+        from app.commerce.core.error_handlers import install_error_handlers
+        from app.commerce.infra.middleware import MallLimitMiddleware
+        from app.commerce.infra.logging import MallRequestLogging
 
-    api = build_api_router(ctx)
-    application.include_router(api, prefix=settings.api_prefix)
+        application.add_middleware(MallLimitMiddleware)
+        application.add_middleware(MallRequestLogging)
+        install_error_handlers(application)
+        application.add_middleware(RequestLoggingMiddleware)
+    application.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
+        allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-    # Root-level health/metrics as per PRD §7.1
+
+def _configure_routes(application, ctx):
     from app.api.v1.health.routes import health, metrics
 
-    application.add_api_route(
-        "/health", health, methods=["GET"], tags=["health"], response_model=None
-    )
+    application.include_router(build_api_router(ctx), prefix=ctx.settings.api_prefix)
+    application.include_router(ctx.root_router)
+    if ctx.enabled("mall_core"):
+        from app.commerce.infra.web import mount
+
+        mount(application)
+    application.add_api_route("/health", health, methods=["GET"], tags=["health"], response_model=None)
     application.add_api_route("/metrics", metrics, methods=["GET"], tags=["health"])
 
     @application.get("/")
-    async def root() -> dict[str, str]:
-        return {
-            "name": settings.app_name,
-            "version": __version__,
-            "docs": "/docs",
-            "health": "/health",
-            "profile": settings.askflow_profile,
-        }
-
-    return application
+    async def root():
+        return {"name": ctx.settings.app_name, "version": __version__, "docs": "/docs",
+                "health": "/health", "profile": ctx.settings.askflow_profile}
 
 
 app = create_app()

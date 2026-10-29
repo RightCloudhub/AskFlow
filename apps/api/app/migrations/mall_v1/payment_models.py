@@ -24,6 +24,7 @@ class Payment(MallRecord):
     status: Mapped[str] = mapped_column(String(NAME_SIZE), default="created", nullable=False, index=True)
     request_key: Mapped[str] = mapped_column(String(NAME_SIZE), nullable=False, unique=True)
     provider_ref: Mapped[str] = mapped_column(String(NAME_SIZE), default="", nullable=False)
+    payer_hash: Mapped[str] = mapped_column(String(HASH_SIZE), default="", nullable=False, index=True)
 
 
 class PaymentCallback(MallRecord):
@@ -49,3 +50,4 @@ class GatewayTransaction(MallRecord):
     currency: Mapped[str] = mapped_column(String(CURRENCY_SIZE), default="CNY", nullable=False)
     status: Mapped[str] = mapped_column(String(NAME_SIZE), default="pending", nullable=False)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    payer_hash: Mapped[str] = mapped_column(String(HASH_SIZE), default="", nullable=False)

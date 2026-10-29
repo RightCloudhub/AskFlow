@@ -64,6 +64,65 @@ profiles:
     - dingtalk
     - qc
 
+  mall:
+    - core
+    - rag
+    - agent
+    - tools
+    - ticket
+    - handoff
+    - knowledge
+    - ops
+    - cost
+    - widget
+    - mall_core
+    - mall_account
+    - mall_catalog
+    - mall_inventory
+    - mall_order
+    - mall_payment
+    - mall_wallet
+    - mall_referral
+    - mall_notify
+    - mall_support
+    - mall_admin
+  mall-lite:
+    - core
+    - rag
+    - agent
+    - tools
+    - ticket
+    - handoff
+    - notify
+    - widget
+    - mall_core
+    - mall_account
+    - mall_catalog
+    - mall_inventory
+    - mall_order
+    - mall_payment
+    - mall_wallet
+    - mall_referral
+    - mall_notify
+    - mall_support
+    - mall_admin
+  mall-only:
+    - core
+    - ticket
+    - handoff
+    - notify
+    - mall_core
+    - mall_account
+    - mall_catalog
+    - mall_inventory
+    - mall_order
+    - mall_payment
+    - mall_wallet
+    - mall_referral
+    - mall_notify
+    - mall_support
+    - mall_admin
+
 plugins:
   core:
     depends: []
@@ -109,3 +168,25 @@ plugins:
     depends: [core]
   qc:
     depends: [analytics]
+  mall_core:
+    depends: [core]
+  mall_account:
+    depends: [mall_core]
+  mall_catalog:
+    depends: [mall_core]
+  mall_inventory:
+    depends: [mall_catalog]
+  mall_order:
+    depends: [mall_inventory, mall_account]
+  mall_payment:
+    depends: [mall_order]
+  mall_wallet:
+    depends: [mall_account]
+  mall_referral:
+    depends: [mall_wallet]
+  mall_notify:
+    depends: [mall_core, notify]
+  mall_support:
+    depends: [mall_order, ticket, handoff]
+  mall_admin:
+    depends: [mall_core]

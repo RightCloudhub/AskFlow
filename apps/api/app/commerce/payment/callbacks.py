@@ -3,6 +3,7 @@
 import hashlib
 import time
 
+from pydantic import ValidationError
 from sqlalchemy import select
 
 from app.commerce.core.audit import audit
@@ -20,7 +21,10 @@ from app.core.config import get_settings
 async def receive(db, body: bytes, *, signature: str):
     if not verify(body, signature):
         raise MallError("callback_signature_invalid", status=401)
-    payload = Callback.model_validate_json(body)
+    try:
+        payload = Callback.model_validate_json(body)
+    except ValidationError as exc:
+        raise MallError("callback_payload_invalid", status=422) from exc
     if abs(time.time() - payload.timestamp) > get_settings().mall_payment_callback_window_seconds:
         raise MallError("callback_expired", status=401)
     row = await db.get(Payment, payload.payment_id)
@@ -34,14 +38,7 @@ async def receive(db, body: bytes, *, signature: str):
     valid = (payload.amount_cents, payload.currency, payload.transaction_id) == (
         row.external_cents, row.currency, row.provider_ref)
     if not valid:
-        await insert_once(db, PaymentCallback, values={"channel": "mock_rejected",
-            "transaction_id": digest, "payment_id": row.id, "body_digest": digest,
-            "raw_payload": payload.model_dump(), "signature_valid": True,
-            "status": "rejected", "error_kind": "amount_or_identity_mismatch"},
-            unique=["channel", "transaction_id"])
-        await audit(db, actor_id=row.user_id, action="callback_mismatch", resource_id=row.id)
-        await publish(db, row, event_type="mall.payment.callback_rejected",
-                      payload={"payment_id": row.id, "requires_review": True})
+        await _reject(db, row, payload=payload, digest=digest)
         raise MallError("callback_amount_or_identity_mismatch", persist=True)
     created = await insert_once(db, PaymentCallback, values={"channel": "mock",
         "transaction_id": payload.transaction_id, "payment_id": row.id, "body_digest": digest,
@@ -54,7 +51,20 @@ async def receive(db, body: bytes, *, signature: str):
         if expected != actual:
             raise MallError("callback_conflict")
         return {"status": "accepted", "duplicate": True}
+    if payload.payer_hash:
+        row.payer_hash = payload.payer_hash
     await settle(db, row, status=payload.status)
     callback.status = "processed"
     await db.flush()
     return {"status": "accepted", "duplicate": False}
+
+
+async def _reject(db, row, *, payload, digest):
+    await insert_once(db, PaymentCallback, values={"channel": "mock_rejected",
+        "transaction_id": digest, "payment_id": row.id, "body_digest": digest,
+        "raw_payload": payload.model_dump(), "signature_valid": True,
+        "status": "rejected", "error_kind": "amount_or_identity_mismatch"},
+        unique=["channel", "transaction_id"])
+    await audit(db, actor_id=row.user_id, action="callback_mismatch", resource_id=row.id)
+    await publish(db, row, event_type="mall.payment.callback_rejected",
+                  payload={"payment_id": row.id, "requires_review": True})

@@ -22,6 +22,7 @@ async def compensate(db, payment_id: str):
         return
     remote = await MockGateway().query(db, row.request_key)
     if remote.status in {"succeeded", "failed"}:
+        row.payer_hash = remote.payer_hash
         await settle(db, row, status=remote.status)
 
 

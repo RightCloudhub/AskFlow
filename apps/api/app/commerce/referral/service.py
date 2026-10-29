@@ -1,15 +1,15 @@
 """Single-level immutable invitations and delayed, reversible rewards."""
 
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, select, update
 
 from app.commerce.account.contacts import contact
 from app.commerce.account.crypto import digest
 from app.commerce.account.repository import identity_by_id
 from app.commerce.admin.settings_service import value
-from app.commerce.core.constants import BASIS_POINTS, TOKEN_BYTES
+from app.commerce.core.constants import TOKEN_BYTES
 from app.commerce.core.errors import MallError
 from app.commerce.core.events import publish
 from app.commerce.core.repository import cas, insert_once
@@ -17,6 +17,7 @@ from app.commerce.core.schemas import utc
 from app.commerce.core.services import enabled, service
 from app.commerce.referral.models import ReferralCode, ReferralRelation, ReferralReward, RiskEvent
 from app.commerce.referral.graph import ensure_acyclic
+from app.commerce.referral import risk, rules
 
 DEVICE_RISK_SCORE = 50
 
@@ -51,6 +52,10 @@ class ReferralService:
         row = await self.db.scalar(select(ReferralRelation).where(ReferralRelation.invitee_id == user_id))
         if row.inviter_id != inviter.id:
             raise MallError("invitation_immutable")
+        if created:
+            await rules.registered(self.db, row)
+            await publish(self.db, row, event_type="mall.referral.bound", payload={
+                "user_id": inviter.id, "relation_id": row.id})
         return {"id": row.id, "bound": True, "created": created}
 
     async def completed_order(self, payload):
@@ -63,19 +68,15 @@ class ReferralService:
             ReferralRelation.invitee_id == payload["user_id"]))
         if relation is None:
             return
-        amount = await value(self.db, "mall_referral_reward_cents")
-        amount += first["total_cents"] * await value(self.db, "mall_referral_basis_points") // BASIS_POINTS
-        if not amount:
-            return
-        await insert_once(self.db, ReferralReward, values={"user_id": relation.inviter_id,
-            "relation_id": relation.id, "order_id": first["id"], "rule_version": relation.rule_version,
-            "amount_cents": amount, "eligible_at": datetime.now(UTC) + timedelta(
-                days=await value(self.db, "mall_referral_delay_days"))},
-            unique=["relation_id", "order_id", "rule_version"])
+        await rules.completed(self.db, relation, first)
 
     async def mature(self, reward_id: str):
         row = await self.db.get(ReferralReward, reward_id)
         if row is None:
+            return
+        if row.order_id is None:
+            if row.status == "pending" and row.expires_at and utc(row.expires_at) <= datetime.now(UTC):
+                await cas(self.db, row, values={"status": "cancelled"})
             return
         relation = await self.db.get(ReferralRelation, row.relation_id)
         order = await service("order", self.db).get(relation.invitee_id, row.order_id, lock=True)
@@ -96,14 +97,12 @@ class ReferralService:
     async def _eligible(self, reward, relation):
         await service("wallet", self.db).lock()
         recipient = await contact(self.db, relation.invitee_id)
-        count = await self.db.scalar(select(func.count()).select_from(ReferralRelation).where(
-            or_(ReferralRelation.device_hash == relation.device_hash, ReferralRelation.ip_hash == relation.ip_hash)))
         permitted = bool(recipient and recipient["phone_verified"])
-        risk = DEVICE_RISK_SCORE if count > await value(self.db, "mall_referral_device_limit") else 0
+        score, signals = await risk.assess(self.db, relation, reward=reward, recipient=recipient)
         approved = await self.db.scalar(select(RiskEvent.id).where(RiskEvent.scope == "referral",
             RiskEvent.decision == "approved", RiskEvent.signals_hash["reward_id"].as_string() == reward.id))
         if approved:
-            risk = 0
+            score = 0
         paid = select(func.coalesce(func.sum(ReferralReward.amount_cents), 0)).where(
             ReferralReward.user_id == reward.user_id, ReferralReward.status == "paid")
         total = await self.db.scalar(paid)
@@ -111,10 +110,13 @@ class ReferralService:
         daily = await self.db.scalar(paid.where(ReferralReward.updated_at >= today))
         limits = total + reward.amount_cents <= await value(self.db, "mall_referral_total_cents")
         limits = limits and daily + reward.amount_cents <= await value(self.db, "mall_referral_daily_cents")
-        allowed = permitted and limits and risk < await value(self.db, "mall_risk_review_score")
+        allowed = permitted and limits and score < await value(self.db, "mall_risk_review_score")
+        if allowed and score:
+            self.db.add(RiskEvent(user_id=reward.user_id, scope="referral", rule="reward_signals",
+                score=score, signals_hash={**signals, "reward_id": reward.id}, decision="allowed"))
         if not allowed:
             self.db.add(RiskEvent(user_id=reward.user_id, scope="referral", rule="reward_eligibility",
-                score=risk, signals_hash={"device": relation.device_hash, "ip": relation.ip_hash,
+                score=score, signals_hash={**signals, "device_hash": relation.device_hash, "ip_hash": relation.ip_hash,
                                          "reward_id": reward.id}, decision="review"))
         return allowed
 

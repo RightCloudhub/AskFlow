@@ -24,15 +24,23 @@ async def emit(db, *, aggregate: str, aggregate_id: str, event_type: str, payloa
     return row
 
 
-async def pending(db, *, limit: int, max_attempts: int) -> list[OutboxEvent]:
-    return list(
-        await db.scalars(
-            select(OutboxEvent)
-            .where(OutboxEvent.published_at.is_(None), OutboxEvent.attempts < max_attempts)
+async def pending(db, *, limit: int, max_attempts: int, excluded=()) -> list[OutboxEvent]:
+    from app.plugins.runtime import get_app_context
+
+    ctx = get_app_context()
+    enabled = ctx is not None and ctx.enabled("mall_core")
+    domain_filter = True if enabled else ~OutboxEvent.event_type.startswith("mall.")
+    statement = select(OutboxEvent)
+    if enabled:
+        from app.commerce.core.event_retry import ready
+
+        statement = ready(statement)
+    return list(await db.scalars(statement
+            .where(OutboxEvent.published_at.is_(None), OutboxEvent.attempts < max_attempts, domain_filter)
+            .where(OutboxEvent.id.not_in(excluded))
             .order_by(OutboxEvent.id)
             .limit(limit)
-        )
-    )
+            .with_for_update(skip_locked=True, of=OutboxEvent)))
 
 
 async def mark_published(db, event: OutboxEvent) -> None:
@@ -45,6 +53,10 @@ async def mark_published(db, event: OutboxEvent) -> None:
 
 
 async def record_failure(db, event: OutboxEvent, error: str) -> None:
+    if event.event_type.startswith("mall."):
+        from app.commerce.core.event_retry import schedule
+
+        await schedule(db, event)
     await db.execute(
         update(OutboxEvent)
         .where(OutboxEvent.id == event.id)

@@ -47,7 +47,7 @@ class WalletService:
         await chain_head(self.db, get_settings().mall_currency)
         from app.commerce.account.repository import identity_by_id
 
-        if await identity_by_id(self.db, user_id) is None:
+        if (debit in USER_KINDS or credit in USER_KINDS) and await identity_by_id(self.db, user_id) is None:
             raise MallError("account_inactive")
         debit_account = await self.account(debit, user_id=user_id if debit in USER_KINDS else None)
         credit_account = await self.account(credit, user_id=user_id if credit in USER_KINDS else None)

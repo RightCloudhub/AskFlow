@@ -1,5 +1,7 @@
 """ORM models (PRD §6 + enterprise)."""
 
+from app.commerce import models as commerce_models  # noqa: F401
+
 from app.models.agent_memory import AgentMemory
 from app.models.agent_run import AgentRun
 from app.models.audit import AuditLog
