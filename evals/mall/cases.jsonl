@@ -1,0 +1,3 @@
+{"id":"mall_order_lookup","utterance":"我的订单 {owned_order_id} 到哪了","test":"test_chat_own_order_lookup","expect":"owner-scoped database status and Gateway read record"}
+{"id":"mall_cancel_confirmation","utterance":"取消订单 {owned_order_id}","followup":"确认","test":"test_chat_cancel_confirmation_releases_inventory","expect":"confirmation then CANCELLED, inventory released, INTENT and EXECUTED"}
+{"id":"mall_refund_bola","utterance":"退款订单 {foreign_order_id}","test":"test_chat_foreign_refund_is_rejected","expect":"resource_not_found, no confirmation token or order mutation"}

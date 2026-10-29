@@ -1,0 +1,7 @@
+{
+  "name": "askflow-mall-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node mall.mjs" },
+  "devDependencies": { "playwright": "^1.56.1" }
+}
