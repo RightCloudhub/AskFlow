@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select, update
 
 from app.commerce.core.errors import MallError
+from app.commerce.core.constants import BASIS_POINTS
 from app.commerce.core.repository import owned, owned_page
 from app.commerce.core.schemas import utc, view
 from app.commerce.core.services import enabled, service
@@ -99,7 +100,9 @@ class OrderService:
         gmv = await self.db.scalar(select(func.coalesce(func.sum(Order.total_cents), 0)).where(paid))
         refunds = await self.db.scalar(select(func.count()).select_from(Order).where(Order.refunded_cents > 0))
         return {"orders": count, "paid_orders": paid_count, "gmv_cents": gmv,
-                "refunded_orders": refunds, "currency": get_settings().mall_currency}
+                "refunded_orders": refunds, "currency": get_settings().mall_currency,
+                "payment_conversion_basis_points": paid_count * BASIS_POINTS // count if count else 0,
+                "refund_rate_basis_points": refunds * BASIS_POINTS // paid_count if paid_count else 0}
 
     async def flash_order(self, user_id: str, *, sku_id: str, price_cents: int):
         from datetime import timedelta

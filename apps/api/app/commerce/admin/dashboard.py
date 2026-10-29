@@ -14,4 +14,10 @@ async def dashboard(ctx=require("order:read")):
     result = await service("order", ctx.db).summary() if enabled("order") else {}
     if enabled("wallet") and "wallet:read" in permissions:
         result["wallet_liability_cents"] = await service("wallet", ctx.db).total_liability()
+    if enabled("referral") and "risk:review" in permissions:
+        result.update(await service("referral", ctx.db).summary())
+    if enabled("support") and "support:read" in permissions:
+        from app.services.ticket.repository.service import TicketRepository
+
+        result["open_tickets"] = await TicketRepository(ctx.db).count_open()
     return result

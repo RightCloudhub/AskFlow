@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -85,6 +85,10 @@ class TicketRepository:
             stmt = stmt.where(Ticket.status == status)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def count_open(self) -> int:
+        statement = select(func.count()).select_from(Ticket).where(Ticket.status.in_(self.OPEN_STATUSES))
+        return int(await self.db.scalar(statement) or 0)
 
     async def get(self, ticket_id: str) -> Ticket | None:
         result = await self.db.execute(select(Ticket).where(Ticket.id == ticket_id))

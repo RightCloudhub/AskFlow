@@ -26,6 +26,11 @@ class ReferralService:
     def __init__(self, db):
         self.db = db
 
+    async def summary(self):
+        return {"risk_events": await self.db.scalar(select(func.count()).select_from(RiskEvent)),
+                "risk_pending": await self.db.scalar(select(func.count()).select_from(RiskEvent)
+                    .where(RiskEvent.decision == "review"))}
+
     async def close_user(self, user_id: str):
         await self.db.execute(update(ReferralReward).where(ReferralReward.user_id == user_id,
             ReferralReward.status.in_(["pending", "review"]))
