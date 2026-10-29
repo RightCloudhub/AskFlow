@@ -11,6 +11,7 @@ from pydantic_settings import SettingsConfigDict
 from app.commerce.core.settings import CommerceSettings
 
 DEFAULT_SECRET = "change-me-in-production"
+MIN_SECRET_KEY_LENGTH = 16
 WEAK_SECRETS = frozenset(
     {
         DEFAULT_SECRET,
@@ -245,7 +246,7 @@ class Settings(CommerceSettings):
         self.assert_commerce_safe()
         if self.env in {"development", "test"}:
             return
-        if self.secret_key in WEAK_SECRETS or len(self.secret_key) < 16:
+        if self.secret_key in WEAK_SECRETS or len(self.secret_key) < MIN_SECRET_KEY_LENGTH:
             raise RuntimeError(
                 "Refusing to start: SECRET_KEY is weak/default while "
                 f"ASKFLOW_ENV={self.env}. Set a strong SECRET_KEY (S-01)."

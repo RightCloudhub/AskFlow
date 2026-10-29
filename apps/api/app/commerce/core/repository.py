@@ -12,6 +12,16 @@ from app.commerce.core.errors import MallError
 async def insert_once(db, model, *, values: dict, unique: list[str] | None = None) -> bool:
     insert = sqlite_insert if db.bind.dialect.name == "sqlite" else pg_insert
     statement = insert(model).values(**values).on_conflict_do_nothing(index_elements=unique or None)
+    changes = db.info.get("mall_changes")
+    if changes is not None:
+        from app.commerce.core.changes import serializable
+
+        table = model.__table__
+        result = await db.execute(statement.returning(*table.columns))
+        row = result.mappings().first()
+        if row is not None:
+            changes.remember(table, None, serializable(row))
+        return row is not None
     result = await db.execute(statement)
     return result.rowcount == 1
 

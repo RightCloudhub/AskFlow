@@ -1,15 +1,15 @@
 """Database-serialized first-result replay within the business transaction."""
 
+import json
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-import json
+from http import HTTPStatus
 
 from fastapi.encoders import jsonable_encoder
-
 from sqlalchemy import select
 
-from app.commerce.core.errors import MallError
 from app.commerce.core.constants import NAME_SIZE
+from app.commerce.core.errors import MallError
 from app.commerce.core.models import IdempotencyRecord
 from app.commerce.core.repository import insert_once
 from app.core.config import get_settings
@@ -34,7 +34,7 @@ def decode_response(result):
 
 async def execute(db, *, scope: str, key: str, arguments: dict, action):
     if not key or len(key) > NAME_SIZE:
-        raise MallError("idempotency_key_required", status=400)
+        raise MallError("idempotency_key_required", status=HTTPStatus.BAD_REQUEST)
     key_hash, digest = sha256(key.encode()).hexdigest(), args_hash(arguments)
     created = await insert_once(db, IdempotencyRecord, values={
         "scope": scope, "key_hash": key_hash, "request_hash": digest, "status": "pending",
@@ -49,6 +49,6 @@ async def execute(db, *, scope: str, key: str, arguments: dict, action):
             raise MallError("idempotency_in_progress")
         return decode_response(row.response)
     result = await action()
-    row.status, row.response, row.http_status = "completed", encode_response(result), 200
+    row.status, row.response, row.http_status = "completed", encode_response(result), HTTPStatus.OK
     await db.flush()
     return result

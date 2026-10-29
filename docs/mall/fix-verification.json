@@ -1,0 +1,129 @@
+{
+  "python": "3.12.13",
+  "base_head": "32db6b516e1650c4328cc8bcf94b1fca8ca4bcf7",
+  "source_hashes": "fix-metrics.json:files",
+  "scope": "Partial fixes; no full/deployment/performance acceptance",
+  "pytest": [
+    {
+      "check": "full-pytest",
+      "counts": {
+        "tests": 614,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 55,
+        "passed": 559
+      },
+      "seconds": 161.18,
+      "junit_sha256": "ca94406e48950774fa82745b242bf26d731ed10b03e9ad9888f912e6d3861372",
+      "representative_tests": [
+        {
+          "test": "tests.mall.test_account_security::test_concurrent_refresh_revokes_entire_family[lite]",
+          "seconds": 0.597
+        },
+        {
+          "test": "tests.mall.test_audit_changes::test_role_grant_and_revoke_capture_actual_membership[lite]",
+          "seconds": 0.677
+        },
+        {
+          "test": "tests.mall.test_audit_changes::test_inventory_bulk_update_has_before_after[lite]",
+          "seconds": 0.472
+        },
+        {
+          "test": "tests.mall.test_inventory::test_thousand_buyers_for_one_hundred_items[lite]",
+          "seconds": 16.47
+        },
+        {
+          "test": "tests.mall.test_orders::test_concurrent_order_key_has_one_result[lite]",
+          "seconds": 1.028
+        },
+        {
+          "test": "tests.mall.test_payment::test_hundred_callbacks_settle_once[lite]",
+          "seconds": 1.82
+        }
+      ]
+    },
+    {
+      "check": "mall-suite",
+      "counts": {
+        "tests": 110,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 44,
+        "passed": 66
+      },
+      "seconds": 77.046,
+      "junit_sha256": "62d89d0c214b30cd62d34eef3b5f3f8d7b394d61750ed8fac0e501d266ad4133",
+      "representative_tests": [
+        {
+          "test": "tests.mall.test_inventory::test_thousand_buyers_for_one_hundred_items[lite]",
+          "seconds": 24.455
+        },
+        {
+          "test": "tests.mall.test_orders::test_concurrent_order_key_has_one_result[lite]",
+          "seconds": 1.474
+        },
+        {
+          "test": "tests.mall.test_payment::test_hundred_callbacks_settle_once[lite]",
+          "seconds": 3.02
+        }
+      ]
+    },
+    {
+      "check": "new-security-audit-health",
+      "counts": {
+        "tests": 22,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 11,
+        "passed": 11
+      },
+      "seconds": 10.071,
+      "junit_sha256": "001da62da3ba6584195563ac4fed9f30c2acbf16e926e21e133ba2f2bdd3b432",
+      "representative_tests": [
+        {
+          "test": "tests.mall.test_account_security::test_concurrent_refresh_revokes_entire_family[lite]",
+          "seconds": 0.597
+        },
+        {
+          "test": "tests.mall.test_audit_changes::test_role_grant_and_revoke_capture_actual_membership[lite]",
+          "seconds": 0.71
+        },
+        {
+          "test": "tests.mall.test_audit_changes::test_inventory_bulk_update_has_before_after[lite]",
+          "seconds": 0.621
+        }
+      ]
+    }
+  ],
+  "gates": {
+    "ruff_commerce": "exit 0",
+    "incremental_metrics": {
+      "production_structure": 0,
+      "blocking": 0
+    },
+    "offline_eval": {
+      "exit_code": 0,
+      "passed": 8,
+      "failed": 0
+    },
+    "sqlite_upgrade_head": "exit 0, disposable empty database only",
+    "web_build": "exit 0, tsc and vite"
+  },
+  "coverage": {
+    "commerce_percent": 63,
+    "scope": "Earlier mall-suite snapshot; not final code coverage",
+    "target_met": false
+  },
+  "not_run": [
+    "PostgreSQL/Redis full tests",
+    "SQLite downgrade and existing-db upgrade compatibility",
+    "PostgreSQL upgrade/downgrade",
+    "Browser smoke",
+    "bandit/pip-audit/npm audit gates",
+    "k6 benchmarks",
+    "Container/Kubernetes deployment",
+    "Prometheus rule firing",
+    "Final coverage 85%/financial 95%"
+  ],
+  "not_fully_written": "See fix-validation.md for FIX-ID gaps"
+}

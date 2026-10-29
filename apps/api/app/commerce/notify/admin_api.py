@@ -14,6 +14,8 @@ from app.commerce.core.schemas import Schema, view
 from app.commerce.notify.models import NotificationDelivery, NotificationTemplate
 
 BODY_LIMIT = 10000
+NOTIFY_WRITE = require("notify:write")
+
 router = APIRouter()
 
 
@@ -27,7 +29,7 @@ class Template(Schema):
 
 
 @router.post("/templates")
-async def template(payload: Template, ctx=require("notify:write")):
+async def template(payload: Template, ctx=NOTIFY_WRITE):
     async def perform():
         prior = await ctx.db.scalar(select(NotificationTemplate).where(
             NotificationTemplate.event_type == payload.event_type, NotificationTemplate.locale == payload.locale)
@@ -44,7 +46,7 @@ async def template(payload: Template, ctx=require("notify:write")):
 
 
 @router.get("/deliveries")
-async def deliveries(cursor: str = "", ctx=require("notify:write")):
+async def deliveries(cursor: str = "", ctx=NOTIFY_WRITE):
     rows = list(await ctx.db.scalars(select(NotificationDelivery).where(NotificationDelivery.id > cursor)
         .order_by(NotificationDelivery.id).limit(PAGE_SIZE)))
     return {"items": [view(row, ("id", "channel", "status", "attempts", "last_error")) for row in rows],

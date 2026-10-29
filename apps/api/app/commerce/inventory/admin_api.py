@@ -13,6 +13,8 @@ from app.commerce.inventory.service import InventoryService
 from app.services.agent.gateway.idempotency import args_hash
 
 MAX_STOCK_CHANGE = 1000000000
+INVENTORY_WRITE = require("inventory:write")
+
 router = APIRouter()
 
 from app.commerce.inventory.flash_admin import router as flash_router
@@ -25,7 +27,7 @@ class Replenish(Versioned):
 
 
 @router.get("")
-async def inventory(cursor: str = "", ctx=require("inventory:write")):
+async def inventory(cursor: str = "", ctx=INVENTORY_WRITE):
     rows = list(await ctx.db.scalars(select(Inventory).where(Inventory.id > cursor)
         .order_by(Inventory.id).limit(PAGE_SIZE + 1)))
     return {"items": [view(row, ("id", "sku_id", "available", "reserved", "version")) for row in rows[:PAGE_SIZE]],
@@ -33,12 +35,12 @@ async def inventory(cursor: str = "", ctx=require("inventory:write")):
 
 
 @router.get("/{sku_id}")
-async def stock(sku_id: str, ctx=require("inventory:write")):
+async def stock(sku_id: str, ctx=INVENTORY_WRITE):
     return await InventoryService(ctx.db).get(sku_id)
 
 
 @router.post("/{sku_id}/replenish")
-async def replenish(sku_id: str, payload: Replenish, ctx=require("inventory:write")):
+async def replenish(sku_id: str, payload: Replenish, ctx=INVENTORY_WRITE):
     key = args_hash({"user": ctx.user.id, "sku": sku_id, "key": ctx.key})
     return await command(ctx, "inventory.replenish:" + sku_id, payload=payload,
         action=lambda: InventoryService(ctx.db).replenish(sku_id, payload, business_key=key))

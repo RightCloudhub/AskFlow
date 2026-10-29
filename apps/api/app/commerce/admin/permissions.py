@@ -1,5 +1,7 @@
 """Permission checks are enforced before any domain mutation."""
 
+from http import HTTPStatus
+
 from fastapi import Depends
 from sqlalchemy import select
 
@@ -49,7 +51,7 @@ async def check(ctx, permission: str):
         return ctx
     await audit(ctx.db, actor_id=ctx.user.id, action="permission_denied",
                 detail={"permission": permission})
-    raise MallError("permission_denied", status=403, persist=True)
+    raise MallError("permission_denied", status=HTTPStatus.FORBIDDEN, persist=True)
 
 
 def require(permission: str):

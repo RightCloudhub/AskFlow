@@ -2,13 +2,14 @@
 
 import hmac
 from datetime import UTC, datetime
+from http import HTTPStatus
 
 from fastapi import APIRouter, Request, Response
 
 from app.commerce.account import schemas
 from app.commerce.account.crypto import digest
 from app.commerce.account.hooks import captcha_check
-from app.commerce.account.repository import find_identity
+from app.commerce.account.password_reset import forgot as request_reset
 from app.commerce.account.service import AccountService
 from app.commerce.account.sessions import issue_session, rotate
 from app.commerce.account.verification import send_code, verify_code
@@ -50,14 +51,14 @@ async def demo_mailbox(challenge_id: str, request: Request):
     settings = get_settings()
     allowed = settings.env == "test" or (settings.env == "development" and settings.mall_demo_mailbox_enabled)
     if not allowed:
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
     value = infra().mailbox.get(challenge_id)
     if value is None or utc(value[0]) <= datetime.now(UTC):
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
     return {"code": value[1], "data_source": "mock"}
 
 
-@router.post("/register", status_code=202)
+@router.post("/register", status_code=HTTPStatus.ACCEPTED)
 async def register(payload: schemas.Register, request: Request, db: MallDb):
     await captcha_check(request)
     return await execute(db, scope="register:" + digest(payload.username.lower()),
@@ -79,17 +80,15 @@ async def refresh(payload: schemas.Refresh, request: Request, response: Response
     if payload.refresh_token is None:
         csrf = request.headers.get("x-csrf-token", "")
         if not csrf or not hmac.compare_digest(csrf, request.cookies.get("mall_csrf", "")):
-            raise MallError("csrf_invalid", status=403)
+            raise MallError("csrf_invalid", status=HTTPStatus.FORBIDDEN)
         if request.headers.get("origin") not in get_settings().cors_origins:
-            raise MallError("csrf_invalid", status=403)
+            raise MallError("csrf_invalid", status=HTTPStatus.FORBIDDEN)
     return token_response(response, await rotate(db, raw, csrf=csrf))
 
 
 @router.post("/password/forgot")
 async def forgot(payload: schemas.Forgot, db: MallDb):
-    user = await find_identity(db, payload.identifier)
-    target = user.email if user else digest(payload.identifier) + "@invalid.local"
-    return await send_code(db, schemas.VerificationSend(target=target, channel="email", purpose="password-reset"))
+    return await request_reset(db, payload.identifier)
 
 
 @router.post("/password/reset")

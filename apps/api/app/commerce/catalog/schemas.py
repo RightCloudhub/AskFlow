@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 
-from app.commerce.core.constants import NAME_SIZE, MAX_PAGE_SIZE, PAGE_SIZE
+from app.commerce.core.constants import MAX_PAGE_SIZE, NAME_SIZE, PAGE_SIZE
 from app.commerce.core.schemas import Cents, Schema, Versioned
 
 DESCRIPTION_SIZE = 10000

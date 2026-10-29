@@ -1,5 +1,6 @@
 """Resolve optional domain service ports without implicit plugin activation."""
 
+from http import HTTPStatus
 from importlib import import_module
 
 from app.commerce.core.errors import MallError
@@ -17,5 +18,5 @@ def enabled(module: str) -> bool:
 
 def service(module: str, db):
     if not enabled(module):
-        raise MallError("capability_unavailable", status=503)
+        raise MallError("capability_unavailable", status=HTTPStatus.SERVICE_UNAVAILABLE)
     return getattr(import_module("app.commerce." + module + ".service"), FACTORIES[module])(db)

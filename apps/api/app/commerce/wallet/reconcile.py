@@ -55,10 +55,14 @@ async def _entry(db, run, *, entry, expected, chains):
     if (entry.seq, entry.prev_hash) != (previous_seq + 1, previous_hash) or entry.row_hash != row_hash(entry, lines):
         count += _diff(db, run, entity=entry.id, kind="hash_chain", expected={}, actual={})
     chains[entry.currency] = (entry.seq, entry.row_hash)
+    accumulate(expected, lines)
+    return count
+
+
+def accumulate(expected, lines):
     for line in lines:
         expected[line.account_id] = expected.get(line.account_id, 0) + (
             line.amount_cents if line.side == "debit" else -line.amount_cents)
-    return count
 
 
 def _diff(db, run, *, entity, kind, expected, actual):

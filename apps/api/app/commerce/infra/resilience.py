@@ -3,6 +3,7 @@
 import asyncio
 import random
 import time
+from http import HTTPStatus
 
 import httpx
 
@@ -21,7 +22,7 @@ class CircuitBreaker:
         self._check_open()
         if self.opened_at is not None:
             if self.probe.locked():
-                raise MallError("dependency_unavailable", status=503)
+                raise MallError("dependency_unavailable", status=HTTPStatus.SERVICE_UNAVAILABLE)
             async with self.probe:
                 return await self._attempts(action, readonly=readonly)
         return await self._attempts(action, readonly=readonly)
@@ -30,7 +31,7 @@ class CircuitBreaker:
         if self.opened_at is None:
             return
         if time.monotonic() - self.opened_at < self.settings.breaker_reset_seconds:
-            raise MallError("dependency_unavailable", status=503)
+            raise MallError("dependency_unavailable", status=HTTPStatus.SERVICE_UNAVAILABLE)
 
     async def _attempts(self, action, *, readonly):
         retries = self.settings.external_max_retries if readonly else 0
@@ -38,17 +39,20 @@ class CircuitBreaker:
             try:
                 result = await asyncio.wait_for(action(), self.settings.external_timeout_seconds)
             except (TimeoutError, ConnectionError, OSError, httpx.TransportError, httpx.HTTPStatusError) as exc:
-                if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < HTTP_SERVER_ERROR:
-                    raise
-                self._failed()
-                if attempt == retries:
-                    raise MallError("dependency_unavailable", status=503) from None
-                delay = self.settings.external_retry_base_seconds * (2 ** attempt)
-                await asyncio.sleep(delay + random.random() * delay)
+                await self._retry(exc, attempt=attempt, retries=retries)
                 continue
             self.failures, self.opened_at = 0, None
             BREAKER_STATE.labels(adapter=self.name).set(0)
             return result
+
+    async def _retry(self, exc, *, attempt, retries):
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < HTTP_SERVER_ERROR:
+            raise exc
+        self._failed()
+        if attempt == retries:
+            raise MallError("dependency_unavailable", status=HTTPStatus.SERVICE_UNAVAILABLE) from None
+        delay = self.settings.external_retry_base_seconds * (2 ** attempt)
+        await asyncio.sleep(delay + random.random() * delay)
 
     def _failed(self):
         self.failures += 1

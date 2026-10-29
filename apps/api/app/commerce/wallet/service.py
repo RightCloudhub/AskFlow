@@ -1,5 +1,7 @@
 """All wallet movement is expressed as balanced postings, including freezes."""
 
+from http import HTTPStatus
+
 from sqlalchemy import func, select
 
 from app.commerce.core.constants import PAGE_SIZE
@@ -45,9 +47,9 @@ class WalletService:
         from app.commerce.wallet.journal import chain_head
 
         await chain_head(self.db, get_settings().mall_currency)
-        from app.commerce.account.repository import identity_by_id
+        from app.commerce.account.identity import active_identity
 
-        if (debit in USER_KINDS or credit in USER_KINDS) and await identity_by_id(self.db, user_id) is None:
+        if (debit in USER_KINDS or credit in USER_KINDS) and await active_identity(self.db, user_id) is None:
             raise MallError("account_inactive")
         debit_account = await self.account(debit, user_id=user_id if debit in USER_KINDS else None)
         credit_account = await self.account(credit, user_id=user_id if credit in USER_KINDS else None)
@@ -63,15 +65,21 @@ class WalletService:
         return await self.transfer(user_id, amount=amount, key=key, debit="frozen", credit="available")
 
     async def settle(self, user_id: str, *, wallet: int, external: int, key: str):
-        await self.transfer(user_id, amount=wallet, key=key + ":wallet", debit="frozen", credit="sales")
-        await self.transfer(user_id, amount=external, key=key + ":gateway", debit="gateway", credit="sales")
+        await self.transfer(user_id, amount=wallet, key=key + ":wallet", debit="frozen", credit="deferred_sales")
+        await self.transfer(user_id, amount=external, key=key + ":gateway", debit="gateway", credit="deferred_sales")
+
+    async def recognize(self, user_id: str, *, order_id: str, amount_cents: int):
+        return await self.transfer(user_id, amount=amount_cents, key="revenue:" + order_id,
+                                   debit="deferred_sales", credit="sales")
 
     async def credit(self, user_id: str, amount: int, *, key: str, source: str = "gateway"):
         return await self.transfer(user_id, amount=amount, key=key, debit=source, credit="available")
 
-    async def refund(self, user_id: str, *, wallet: int, external: int, key: str):
-        await self.transfer(user_id, amount=wallet, key=key + ":wallet", debit="sales", credit="available")
-        await self.transfer(user_id, amount=external, key=key + ":gateway", debit="sales", credit="gateway")
+    async def refund(self, user_id: str, *, wallet: int, external: int, key: str,
+                     recognized: bool = False):
+        income = "sales" if recognized else "deferred_sales"
+        await self.transfer(user_id, amount=wallet, key=key + ":wallet", debit=income, credit="available")
+        await self.transfer(user_id, amount=external, key=key + ":gateway", debit=income, credit="gateway")
 
     async def reverse(self, journal_id: str, *, key: str, actor_id: str):
         row = await reverse(self.db, journal_id, business_key=key, actor_id=actor_id)
@@ -91,7 +99,7 @@ class WalletService:
                 WalletAccount.user_id == user_id, JournalEntry.id == journal_id)
         row = await self.db.scalar(statement)
         if row is None:
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         return view(row, ENTRY_FIELDS)
 
     async def export(self, user_id: str):

@@ -1,5 +1,7 @@
 """Custom roles and revocation use the same backend permission and audit boundary."""
 
+from http import HTTPStatus
+
 from fastapi import APIRouter
 from pydantic import Field
 from sqlalchemy import delete, select
@@ -11,6 +13,8 @@ from app.commerce.core.constants import NAME_SIZE
 from app.commerce.core.errors import MallError
 from app.commerce.core.repository import cas
 from app.commerce.core.schemas import Schema, Versioned
+
+RBAC_WRITE = require("rbac:write")
 
 router = APIRouter()
 
@@ -25,7 +29,7 @@ class PermissionInput(Versioned):
 
 
 @router.post("/roles")
-async def create(payload: RoleInput, ctx=require("rbac:write")):
+async def create(payload: RoleInput, ctx=RBAC_WRITE):
     async def perform():
         row = AdminRole(code=payload.code, name=payload.name)
         ctx.db.add(row)
@@ -36,14 +40,14 @@ async def create(payload: RoleInput, ctx=require("rbac:write")):
 
 
 @router.put("/roles/{role_id}/permissions")
-async def permissions(role_id: str, payload: PermissionInput, ctx=require("rbac:write")):
+async def permissions(role_id: str, payload: PermissionInput, ctx=RBAC_WRITE):
     if not set(payload.permissions) <= PERMISSIONS:
-        raise MallError("invalid_permission", status=422)
+        raise MallError("invalid_permission", status=HTTPStatus.UNPROCESSABLE_ENTITY)
 
     async def perform():
         row = await ctx.db.scalar(select(AdminRole).where(AdminRole.id == role_id).with_for_update())
         if row is None:
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         if row.builtin:
             raise MallError("builtin_role_immutable")
         if row.version != payload.expected_version:
@@ -58,7 +62,7 @@ async def permissions(role_id: str, payload: PermissionInput, ctx=require("rbac:
 
 
 @router.delete("/roles/grants/{user_id}/{role_id}")
-async def revoke(user_id: str, role_id: str, ctx=require("rbac:write")):
+async def revoke(user_id: str, role_id: str, ctx=RBAC_WRITE):
     async def perform():
         await ctx.db.execute(delete(UserRoleGrant).where(UserRoleGrant.user_id == user_id,
                                                         UserRoleGrant.role_id == role_id))

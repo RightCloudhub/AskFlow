@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.commerce.core.errors import MallError
 from app.commerce.referral.models import ReferralRelation
 from app.commerce.referral.service import ReferralService
+
 from .helpers import seed, transaction
 
 

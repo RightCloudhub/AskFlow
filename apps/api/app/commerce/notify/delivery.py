@@ -7,8 +7,9 @@ from sqlalchemy import select
 
 from app.commerce.account.contacts import contact
 from app.commerce.admin.settings_service import value
+from app.commerce.infra.errors import dependency_errors
 from app.commerce.infra.runtime import infra
-from app.commerce.notify.models import Notification, NotificationDelivery, NotificationPreference
+from app.commerce.notify.models import Notification, NotificationPreference
 from app.core.config import get_settings
 
 SECONDS_PER_HOUR = 3600
@@ -55,7 +56,7 @@ async def _send(row, notification, *, target):
     try:
         row.provider_ref = await sender.send(target=target, subject=notification.subject, body=notification.body)
         row.status, row.last_error = "sent", ""
-    except Exception as exc:
+    except dependency_errors() as exc:
         settings = get_settings()
         row.status = "dead" if row.attempts >= settings.mall_worker_max_attempts else "retry"
         row.last_error = type(exc).__name__

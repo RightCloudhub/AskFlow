@@ -85,7 +85,7 @@ class CommerceSettings(InfraSettings):
     def _commerce_unsafe_reasons(self) -> list[str]:
         reasons = []
         multi = max(self.instance_count, self.web_concurrency) > 1
-        if multi and (self.lock_backend == "memory" or self.rate_limit_backend == "memory"):
+        if multi and self.memory_coordination():
             reasons.append("multi-instance memory coordination/rate limiting")
         if multi and not self.mall_rate_limit_enabled:
             reasons.append("multi-instance rate limiting is disabled")
@@ -96,6 +96,9 @@ class CommerceSettings(InfraSettings):
         if self.mall_demo_mailbox_enabled and self.is_production_like:
             reasons.append("demo verification mailbox is forbidden")
         return reasons
+
+    def memory_coordination(self) -> bool:
+        return "memory" in {self.lock_backend, self.rate_limit_backend, self.flash_sale_backend}
 
     def _weak_commerce_keys(self) -> list[str]:
         values = [getattr(self, name) for name in SENSITIVE_KEYS]

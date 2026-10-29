@@ -11,18 +11,20 @@ from app.commerce.core.schemas import view
 from app.commerce.payment.models import GatewayTransaction, Payment
 from app.commerce.payment.service import PAYMENT_FIELDS
 
+FINANCE_RECONCILE = require("finance:reconcile")
+
 router = APIRouter()
 
 
 @router.get("")
-async def payments(cursor: str = "", ctx=require("finance:reconcile")):
+async def payments(cursor: str = "", ctx=FINANCE_RECONCILE):
     rows = list(await ctx.db.scalars(select(Payment).where(Payment.id > cursor).order_by(Payment.id).limit(PAGE_SIZE)))
     return {"items": [view(row, PAYMENT_FIELDS) for row in rows],
             "next_cursor": rows[-1].id if len(rows) == PAGE_SIZE else None}
 
 
 @router.get("/statement/{day}")
-async def statement(day: date, cursor: str = "", ctx=require("finance:reconcile")):
+async def statement(day: date, cursor: str = "", ctx=FINANCE_RECONCILE):
     from datetime import UTC, datetime, time, timedelta
 
     start = datetime.combine(day, time.min, UTC)

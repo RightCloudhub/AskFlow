@@ -14,6 +14,7 @@ from app.commerce.referral.models import ReferralReward, RiskEvent
 from app.commerce.referral.service import ReferralService
 from app.commerce.wallet.service import WalletService
 from app.core.config import get_settings
+
 from .helpers import place, seed, transaction
 
 
@@ -47,7 +48,7 @@ async def release(runtime, identity, order):
     async with runtime.sessions() as db:
         ids = list(await db.scalars(select(ReferralReward.id).where(ReferralReward.order_id == order["id"])))
     for identifier in ids:
-        await transaction(runtime, lambda db: ReferralService(db).mature(identifier))
+        await transaction(runtime, lambda db, identifier=identifier: ReferralService(db).mature(identifier))
 
 
 @pytest.mark.asyncio
@@ -59,8 +60,7 @@ async def test_registration_and_first_order_rewards_reverse_together(mall_runtim
     code = await transaction(mall_runtime, lambda db: ReferralService(db).code(inviter["user_id"]))
     await bind(mall_runtime, invitee, code=code["code"], device="one-device")
     async with mall_runtime.sessions() as db:
-        pending = await db.scalar(select(ReferralReward))
-        assert pending.kind == "registration" and pending.order_id is None and pending.status == "pending"
+        await assert_pending_registration(db)
     order = await completed_order(mall_runtime, invitee)
     await release(mall_runtime, invitee, order)
     await release(mall_runtime, invitee, order)
@@ -78,6 +78,13 @@ async def test_registration_and_first_order_rewards_reverse_together(mall_runtim
     async with mall_runtime.sessions() as db:
         assert (await WalletService(db).balance(inviter["user_id"]))["available_cents"] == 0
         assert all(row.status == "reversed" for row in await db.scalars(select(ReferralReward)))
+
+
+async def assert_pending_registration(db):
+    pending = await db.scalar(select(ReferralReward))
+    assert pending.kind == "registration"
+    assert pending.order_id is None
+    assert pending.status == "pending"
 
 
 @pytest.mark.asyncio

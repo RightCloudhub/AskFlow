@@ -21,12 +21,22 @@ groups:
         labels: {severity: critical}
         annotations:
           summary: "商城对账存在未处理差异"
-      - alert: MallCallbackRejected
-        expr: max(askflow_mall_callback_rejections_window) > 0
+      - alert: MallCallbackFailureRate
+        expr: sum(rate(askflow_mall_callbacks_total{outcome="rejected"}[5m])) / clamp_min(sum(rate(askflow_mall_callbacks_total[5m])), 0.001) > 0.01
         for: 1m
         labels: {severity: warning}
         annotations:
           summary: "支付回调金额或流水不匹配"
+      - alert: MallStockShortageRate
+        expr: sum(rate(askflow_mall_stock_shortage_total[5m])) / clamp_min(sum(rate(askflow_mall_stock_reservations_total[5m])), 0.001) > 0.1
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: "库存预占失败率超过 10%"}
+      - alert: MallOversold
+        expr: askflow_mall_oversold > 0
+        for: 0m
+        labels: {severity: critical}
+        annotations: {summary: "库存或秒杀配置出现超卖缺口"}
       - alert: MallFlashBacklog
         expr: askflow_mall_flash_queue_length > 1000
         for: 2m

@@ -1,5 +1,6 @@
 """Cache only irreversible revocations; active sessions always consult the database."""
 
+import logging
 import time
 from typing import Protocol
 
@@ -8,9 +9,12 @@ from sqlalchemy import select
 from app.commerce.account.crypto import digest
 from app.commerce.account.models import AccessRevocation, UserSession
 from app.commerce.infra.cache import MemoryCache, RedisCache
+from app.commerce.infra.errors import dependency_errors
 from app.commerce.infra.runtime import infra
 from app.core.config import get_settings
 from app.plugins.runtime import require_app_context
+
+logger = logging.getLogger("askflow.mall.sessions")
 
 
 class RevocationStore(Protocol):
@@ -27,8 +31,8 @@ class DatabaseRevocations:
             hit, value = await self.cache.get(key)
             if hit and value:
                 return True
-        except Exception:
-            pass
+        except dependency_errors():
+            logger.warning("revocation cache unavailable; using database")
         revoked = await self.database_revoked(db, claims)
         if revoked:
             await self.remember(key, claims)
@@ -38,8 +42,8 @@ class DatabaseRevocations:
         ttl = max(1, int(claims.get("exp", time.time()) - time.time()))
         try:
             await self.cache.put(key, True, ttl=ttl)
-        except Exception:
-            pass
+        except dependency_errors():
+            logger.warning("revocation cache unavailable; using database")
 
     @staticmethod
     async def database_revoked(db, claims: dict) -> bool:

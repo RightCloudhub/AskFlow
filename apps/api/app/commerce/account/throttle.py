@@ -1,6 +1,7 @@
 """Account/IP failure counters persist even when authentication is rejected."""
 
 from datetime import UTC, datetime, timedelta
+from http import HTTPStatus
 
 from sqlalchemy import select
 
@@ -21,7 +22,7 @@ async def attempts(db, *, identifier: str, ip: str):
         row = await db.scalar(select(LoginAttempt).where(
             LoginAttempt.scope == scope, LoginAttempt.key_hash == key).with_for_update())
         if row.locked_until and utc(row.locked_until) > datetime.now(UTC):
-            raise MallError("invalid_credentials", status=401)
+            raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
         rows.append(row)
     return rows
 
@@ -36,7 +37,7 @@ async def failed(db, rows):
             seconds = min(settings.mall_login_max_lock_seconds, settings.mall_login_lock_seconds * (2 ** exponent))
             row.locked_until = now + timedelta(seconds=seconds)
     await db.flush()
-    raise MallError("invalid_credentials", status=401, persist=True)
+    raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED, persist=True)
 
 
 def succeeded(rows):

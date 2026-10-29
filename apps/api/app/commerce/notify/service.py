@@ -7,7 +7,12 @@ from sqlalchemy import func, select
 
 from app.commerce.core.repository import insert_once, owned_page
 from app.commerce.core.schemas import view
-from app.commerce.notify.models import Notification, NotificationDelivery, NotificationPreference, NotificationTemplate
+from app.commerce.notify.models import (
+    Notification,
+    NotificationDelivery,
+    NotificationPreference,
+    NotificationTemplate,
+)
 from app.commerce.notify.templates import render
 
 NOTIFICATION_FIELDS = ("id", "event_type", "subject", "body", "read_at", "created_at")

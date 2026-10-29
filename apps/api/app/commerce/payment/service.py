@@ -1,6 +1,7 @@
 """Payments lock orders before wallet accounts; provider identities are durable."""
 
 from datetime import UTC, datetime
+from http import HTTPStatus
 
 from sqlalchemy import select
 
@@ -8,8 +9,8 @@ from app.commerce.core.errors import MallError
 from app.commerce.core.repository import cas, owned
 from app.commerce.core.schemas import view
 from app.commerce.core.services import enabled, service
-from app.commerce.payment.gateway import MockGateway
 from app.commerce.payment.contracts import RefundInstruction, RefundReceipt
+from app.commerce.payment.gateway import MockGateway
 from app.commerce.payment.models import Payment
 from app.core.config import get_settings
 
@@ -38,14 +39,7 @@ class PaymentService:
         prior = await self.db.scalar(select(Payment).where(Payment.order_id == order["id"]))
         if prior:
             return view(prior, PAYMENT_FIELDS)
-        if order["status"] != "PENDING_PAYMENT" or datetime.fromisoformat(order["expires_at"]) <= datetime.now(UTC):
-            raise MallError("order_not_payable")
-        wallet = order["total_cents"] if payload.method == "wallet" else payload.wallet_cents
-        if wallet > order["total_cents"] or (payload.method == "mock" and wallet):
-            raise MallError("payment_amount_invalid", status=422)
-        external = order["total_cents"] - wallet
-        if external and not get_settings().mall_payment_mock_enabled:
-            raise MallError("payment_gateway_unavailable", status=503)
+        wallet, external = payable_amounts(order, payload)
         row = Payment(order_id=order["id"], user_id=user_id, method=payload.method,
             currency=order["currency"], amount_cents=order["total_cents"], wallet_cents=wallet,
             external_cents=external, request_key="order:" + order["id"], status="pending")
@@ -65,7 +59,7 @@ class PaymentService:
 
     async def start_topup(self, user_id: str, topup):
         if not get_settings().mall_payment_mock_enabled:
-            raise MallError("payment_gateway_unavailable", status=503)
+            raise MallError("payment_gateway_unavailable", status=HTTPStatus.SERVICE_UNAVAILABLE)
         row = Payment(user_id=user_id, topup_id=topup["id"], method="mock", status="pending",
             amount_cents=topup["amount_cents"], external_cents=topup["amount_cents"], wallet_cents=0,
             currency=topup["currency"], request_key="topup:" + topup["id"])
@@ -93,7 +87,7 @@ class PaymentService:
 
     async def apply_refund(self, user_id: str, request: RefundInstruction):
         if request.wallet_cents and not enabled("wallet"):
-            raise MallError("capability_unavailable", status=503)
+            raise MallError("capability_unavailable", status=HTTPStatus.SERVICE_UNAVAILABLE)
         row = await owned(self.db, Payment, owner_id=user_id, resource_id=request.payment_id, lock=True)
         refunded = row.refunded_cents + request.amount_cents
         if refunded > row.amount_cents:
@@ -103,8 +97,22 @@ class PaymentService:
             remote = await self.gateway.refund(self.db, request)
             provider_ref = remote.id
         if enabled("wallet"):
+            order = await service("order", self.db).get(user_id, row.order_id, lock=True)
             await service("wallet", self.db).refund(user_id, wallet=request.wallet_cents,
-                external=request.external_cents, key="refund:" + request.id)
+                external=request.external_cents, key="refund:" + request.id,
+                recognized=order["fulfillment_status"] == "COMPLETED")
         status = "refunded" if refunded == row.amount_cents else "partially_refunded"
         await cas(self.db, row, values={"refunded_cents": refunded, "status": status})
         return RefundReceipt(provider_ref=provider_ref, status="settled")
+
+
+def payable_amounts(order, payload):
+    if order["status"] != "PENDING_PAYMENT" or datetime.fromisoformat(order["expires_at"]) <= datetime.now(UTC):
+        raise MallError("order_not_payable")
+    wallet = order["total_cents"] if payload.method == "wallet" else payload.wallet_cents
+    if wallet > order["total_cents"] or (payload.method == "mock" and wallet):
+        raise MallError("payment_amount_invalid", status=HTTPStatus.UNPROCESSABLE_ENTITY)
+    external = order["total_cents"] - wallet
+    if external and not get_settings().mall_payment_mock_enabled:
+        raise MallError("payment_gateway_unavailable", status=HTTPStatus.SERVICE_UNAVAILABLE)
+    return wallet, external

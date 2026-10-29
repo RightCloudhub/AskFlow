@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
 
-from app.commerce.core.errors import MallError
 from app.commerce.core.constants import BASIS_POINTS
+from app.commerce.core.errors import MallError
 from app.commerce.core.repository import owned, owned_page
 from app.commerce.core.schemas import utc, view
 from app.commerce.core.services import enabled, service
@@ -106,6 +106,7 @@ class OrderService:
 
     async def flash_order(self, user_id: str, *, sku_id: str, price_cents: int):
         from datetime import timedelta
+
         from app.commerce.core.events import publish
         from app.core.config import get_settings
 

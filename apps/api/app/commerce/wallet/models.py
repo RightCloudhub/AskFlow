@@ -1,6 +1,15 @@
 """wallet/models persistent entities (amounts are integer minor units)."""
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.commerce.core.constants import CURRENCY_SIZE, HASH_SIZE, ID_SIZE, NAME_SIZE

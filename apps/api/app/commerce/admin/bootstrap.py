@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, text
 
 from app.commerce.account.hooks import password_policy
-from app.commerce.account.repository import profile_for, security_for
+from app.commerce.account.identity import initialize_extensions
 from app.commerce.admin.permissions import seed_roles
 from app.commerce.core.audit import audit
 from app.core import database
@@ -41,8 +41,7 @@ async def provision(identity, password: str):
         user = User(username=identity.username, email=str(identity.email), hashed_password=hashed, role="admin")
         db.add(user)
         await db.flush()
-        await profile_for(db, user.id)
-        await security_for(db, user.id)
+        await initialize_extensions(db, user.id)
         await seed_roles(db)
         await audit(db, actor_id=user.id, action="administrator_bootstrap")
         await db.commit()

@@ -1,6 +1,7 @@
 """Scoped in-process and token-protected HTTP order connector contracts."""
 
 import hmac
+from http import HTTPStatus
 
 from fastapi import APIRouter, Request
 
@@ -36,5 +37,5 @@ async def internal(request: Request, db: MallDb, *, order_id: str, customer_id: 
     token = get_settings().order_lookup_token
     supplied = request.headers.get("authorization", "").removeprefix("Bearer ")
     if not token or not hmac.compare_digest(token, supplied):
-        raise MallError("authentication_required", status=401)
+        raise MallError("authentication_required", status=HTTPStatus.UNAUTHORIZED)
     return await lookup(db, order_id=order_id, customer_id=customer_id)

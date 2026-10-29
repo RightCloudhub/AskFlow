@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import Any
 
 from fastapi import HTTPException
@@ -14,6 +15,7 @@ from app.models.ticket import Ticket
 from app.models.user import User
 from app.services.audit.logger.service import AuditService
 
+ANONYMIZED_ID_SIZE = 8
 
 class UserAdminService:
     def __init__(self, db: AsyncSession) -> None:
@@ -26,7 +28,7 @@ class UserAdminService:
     async def set_active(self, user_id: str, active: bool, *, actor_id: str) -> User:
         user = await self.db.get(User, user_id)
         if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User not found")
         user.is_active = active
         await self.db.flush()
         await AuditService(self.db).log(
@@ -42,7 +44,7 @@ class UserAdminService:
     async def export_user_data(self, user_id: str) -> dict[str, Any]:
         user = await self.db.get(User, user_id)
         if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User not found")
         convs = await self.db.execute(select(Conversation).where(Conversation.user_id == user_id))
         conversations = list(convs.scalars().all())
         conv_ids = [c.id for c in conversations]
@@ -99,7 +101,7 @@ class UserAdminService:
     async def _delete_legacy_data(self, user_id: str, *, actor_id: str) -> dict[str, int]:
         user = await self.db.get(User, user_id)
         if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User not found")
 
         convs = await self.db.execute(select(Conversation).where(Conversation.user_id == user_id))
         conversations = list(convs.scalars().all())
@@ -124,8 +126,8 @@ class UserAdminService:
             n_fb += 1
 
         user.is_active = False
-        user.email = f"deleted+{user.id[:8]}@invalid.local"
-        user.username = f"deleted_{user.id[:8]}"
+        user.email = f"deleted+{user.id[:ANONYMIZED_ID_SIZE]}@invalid.local"
+        user.username = f"deleted_{user.id[:ANONYMIZED_ID_SIZE]}"
         await self.db.flush()
         await AuditService(self.db).log(
             action="user.data_delete",

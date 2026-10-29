@@ -13,6 +13,8 @@ from app.commerce.core.schemas import Schema, view
 from app.models.user import User
 from app.services.users.admin import UserAdminService
 
+USER_MANAGE = require("user:manage")
+
 router = APIRouter()
 
 router.include_router(reset_router)
@@ -23,14 +25,14 @@ class UserState(Schema):
 
 
 @router.get("")
-async def users(cursor: str = "", ctx=require("user:manage")):
+async def users(cursor: str = "", ctx=USER_MANAGE):
     rows = list(await ctx.db.scalars(select(User).where(User.id > cursor).order_by(User.id).limit(PAGE_SIZE)))
     return {"items": [view(row, ("id", "username", "role", "is_active")) for row in rows],
             "next_cursor": rows[-1].id if len(rows) == PAGE_SIZE else None}
 
 
 @router.post("/{user_id}/state")
-async def state(user_id: str, payload: UserState, ctx=require("user:manage")):
+async def state(user_id: str, payload: UserState, ctx=USER_MANAGE):
     if user_id == ctx.user.id:
         raise MallError("cannot_disable_self")
 

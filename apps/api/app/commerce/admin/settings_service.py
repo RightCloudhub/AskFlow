@@ -1,7 +1,9 @@
 """Whitelisted settings read on primary; no environment or Harness writes."""
 
-from sqlalchemy import select
+from http import HTTPStatus
+
 from pydantic import ValidationError
+from sqlalchemy import select
 
 from app.commerce.admin.models import MallSetting, SettingRevision
 from app.commerce.core.errors import MallError
@@ -23,7 +25,7 @@ EDITABLE = frozenset({
 
 async def value(db, key: str):
     if key not in EDITABLE:
-        raise MallError("setting_not_editable", status=422)
+        raise MallError("setting_not_editable", status=HTTPStatus.UNPROCESSABLE_ENTITY)
     row = await db.scalar(select(MallSetting).where(MallSetting.key == key))
     if row is None:
         return getattr(get_settings(), key)
@@ -44,14 +46,14 @@ async def list_settings(db):
 
 async def change(ctx, key: str, payload):
     if key not in EDITABLE:
-        raise MallError("setting_not_editable", status=422)
+        raise MallError("setting_not_editable", status=HTTPStatus.UNPROCESSABLE_ENTITY)
     settings = get_settings()
     candidate = settings.model_dump()
     candidate[key] = payload.value
     try:
         type(settings).model_validate(candidate)
     except ValidationError as exc:
-        raise MallError("invalid_setting_value", status=422) from exc
+        raise MallError("invalid_setting_value", status=HTTPStatus.UNPROCESSABLE_ENTITY) from exc
     created = await insert_once(ctx.db, MallSetting, values={"key": key,
         "value": {"value": getattr(settings, key)}, "modified_by": ctx.user.id}, unique=["key"])
     if created:

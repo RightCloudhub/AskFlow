@@ -24,7 +24,9 @@ async def transaction(runtime, action):
             await db.commit()
             return result
         except MallError as exc:
-            await (db.commit() if exc.persist else db.rollback())
+            from app.commerce.core.deps import finish_error
+
+            await finish_error(db, exc)
             raise
 
 

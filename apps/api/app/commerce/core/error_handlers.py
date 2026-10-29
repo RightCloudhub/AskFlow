@@ -1,5 +1,7 @@
 """Mall-only error normalization leaves existing customer-service responses intact."""
 
+from http import HTTPStatus
+
 from fastapi import HTTPException, Request
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
@@ -20,7 +22,7 @@ def install_error_handlers(app):
 async def integrity_handler(request: Request, exc: IntegrityError):
     if not _mall_request(request):
         raise exc
-    return JSONResponse(status_code=409, content={"code": "constraint_conflict",
+    return JSONResponse(status_code=HTTPStatus.CONFLICT, content={"code": "constraint_conflict",
         "message": "Request conflicts with existing state", "trace_id": get_trace_id() or ""})
 
 
@@ -31,7 +33,7 @@ def _mall_request(request):
 async def validation_handler(request: Request, exc: RequestValidationError):
     if not _mall_request(request):
         return await request_validation_exception_handler(request, exc)
-    return JSONResponse(status_code=422, content={"code": "validation_error",
+    return JSONResponse(status_code=HTTPStatus.UNPROCESSABLE_ENTITY, content={"code": "validation_error",
         "message": "Invalid request", "trace_id": get_trace_id() or ""})
 
 

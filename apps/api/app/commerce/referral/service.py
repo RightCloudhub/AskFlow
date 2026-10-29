@@ -7,7 +7,7 @@ from sqlalchemy import func, select, update
 
 from app.commerce.account.contacts import contact
 from app.commerce.account.crypto import digest
-from app.commerce.account.repository import identity_by_id
+from app.commerce.account.identity import active_identity
 from app.commerce.admin.settings_service import value
 from app.commerce.core.constants import TOKEN_BYTES
 from app.commerce.core.errors import MallError
@@ -15,9 +15,9 @@ from app.commerce.core.events import publish
 from app.commerce.core.repository import cas, insert_once
 from app.commerce.core.schemas import utc
 from app.commerce.core.services import enabled, service
-from app.commerce.referral.models import ReferralCode, ReferralRelation, ReferralReward, RiskEvent
-from app.commerce.referral.graph import ensure_acyclic
 from app.commerce.referral import risk, rules
+from app.commerce.referral.graph import ensure_acyclic
+from app.commerce.referral.models import ReferralCode, ReferralRelation, ReferralReward, RiskEvent
 
 DEVICE_RISK_SCORE = 50
 
@@ -46,21 +46,21 @@ class ReferralService:
         invitation = await self.db.scalar(select(ReferralCode).where(ReferralCode.code == code))
         if invitation is None or invitation.user_id == user_id:
             raise MallError("invalid_invitation")
-        inviter = await identity_by_id(self.db, invitation.user_id)
-        invitee = await identity_by_id(self.db, user_id)
+        inviter = await active_identity(self.db, invitation.user_id)
+        invitee = await active_identity(self.db, user_id)
         if inviter is None or invitee is None:
             raise MallError("invalid_invitation")
-        await ensure_acyclic(self.db, inviter_id=inviter.id, invitee_id=user_id)
-        created = await insert_once(self.db, ReferralRelation, values={"inviter_id": inviter.id,
+        await ensure_acyclic(self.db, inviter_id=inviter["id"], invitee_id=user_id)
+        created = await insert_once(self.db, ReferralRelation, values={"inviter_id": inviter["id"],
             "invitee_id": user_id, "code_id": invitation.id, "device_hash": digest("device:" + device),
             "ip_hash": digest("ip:" + ip)}, unique=["invitee_id"])
         row = await self.db.scalar(select(ReferralRelation).where(ReferralRelation.invitee_id == user_id))
-        if row.inviter_id != inviter.id:
+        if row.inviter_id != inviter["id"]:
             raise MallError("invitation_immutable")
         if created:
             await rules.registered(self.db, row)
             await publish(self.db, row, event_type="mall.referral.bound", payload={
-                "user_id": inviter.id, "relation_id": row.id})
+                "user_id": inviter["id"], "relation_id": row.id})
         return {"id": row.id, "bound": True, "created": created}
 
     async def completed_order(self, payload):
@@ -80,8 +80,7 @@ class ReferralService:
         if row is None:
             return
         if row.order_id is None:
-            if row.status == "pending" and row.expires_at and utc(row.expires_at) <= datetime.now(UTC):
-                await cas(self.db, row, values={"status": "cancelled"})
+            await self._expire_registration(row)
             return
         relation = await self.db.get(ReferralRelation, row.relation_id)
         order = await service("order", self.db).get(relation.invitee_id, row.order_id, lock=True)
@@ -98,6 +97,10 @@ class ReferralService:
             key="reward:" + row.id, source="marketing")
         await cas(self.db, row, values={"status": "paid", "journal_id": journal["id"]})
         await publish(self.db, row, event_type="mall.referral.paid", payload={"user_id": row.user_id, "reward_id": row.id})
+
+    async def _expire_registration(self, row):
+        if row.status == "pending" and row.expires_at and utc(row.expires_at) <= datetime.now(UTC):
+            await cas(self.db, row, values={"status": "cancelled"})
 
     async def _eligible(self, reward, relation):
         await service("wallet", self.db).lock()
@@ -134,21 +137,26 @@ class ReferralService:
     async def _reverse(self, row):
         if row.status in {"pending", "review"}:
             await cas(self.db, row, values={"status": "cancelled"})
-        elif row.status == "paid":
-            try:
-                async with self.db.begin_nested():
-                    result = await service("wallet", self.db).reverse(row.journal_id,
-                        key="reward-reversal:" + row.id, actor_id=row.user_id)
-            except MallError as exc:
-                if exc.code != "wallet_insufficient":
-                    raise
-                await cas(self.db, row, values={"status": "receivable"})
-                self.db.add(RiskEvent(user_id=row.user_id, scope="referral", rule="reward_receivable",
-                    score=DEVICE_RISK_SCORE, signals_hash={"reward_id": row.id}, decision="review"))
-                await publish(self.db, row, event_type="mall.referral.receivable", payload={
-                    "user_id": row.user_id, "reward_id": row.id, "requires_review": True})
-                return
-            await cas(self.db, row, values={"status": "reversed", "reversal_id": result["id"]})
+            return
+        if row.status != "paid":
+            return
+        try:
+            async with self.db.begin_nested():
+                result = await service("wallet", self.db).reverse(row.journal_id,
+                    key="reward-reversal:" + row.id, actor_id=row.user_id)
+        except MallError as exc:
+            await self._receivable(row, exc)
+            return
+        await cas(self.db, row, values={"status": "reversed", "reversal_id": result["id"]})
+
+    async def _receivable(self, row, exc):
+        if exc.code != "wallet_insufficient":
+            raise exc
+        await cas(self.db, row, values={"status": "receivable"})
+        self.db.add(RiskEvent(user_id=row.user_id, scope="referral", rule="reward_receivable",
+            score=DEVICE_RISK_SCORE, signals_hash={"reward_id": row.id}, decision="review"))
+        await publish(self.db, row, event_type="mall.referral.receivable", payload={
+            "user_id": row.user_id, "reward_id": row.id, "requires_review": True})
 
     async def reviewed(self, reward_id: str, *, approved: bool):
         row = await self.db.scalar(select(ReferralReward).where(ReferralReward.id == reward_id)

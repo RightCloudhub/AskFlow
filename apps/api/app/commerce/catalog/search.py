@@ -3,11 +3,13 @@
 import base64
 import json
 from datetime import UTC, datetime
+from http import HTTPStatus
 
 from sqlalchemy import and_, func, or_, select
 
 from app.commerce.catalog.models import Sku, SkuPrice, Spu
 from app.commerce.core.errors import MallError
+from app.commerce.infra.errors import dependency_errors
 from app.commerce.infra.runtime import infra
 
 
@@ -20,7 +22,7 @@ def cursor_value(raw: str):
             raise ValueError("cursor")
         return price, key
     except (ValueError, TypeError, UnicodeError) as exc:
-        raise MallError("invalid_cursor", status=422) from exc
+        raise MallError("invalid_cursor", status=HTTPStatus.UNPROCESSABLE_ENTITY) from exc
 
 
 async def search(db, payload):
@@ -54,7 +56,7 @@ async def _filter(db, statement, payload):
     try:
         async with db.begin_nested():
             ids = await infra().search.ids(db, payload.q)
-    except Exception:
+    except dependency_errors():
         ids = None
     if ids is not None:
         return statement.where(Spu.id.in_(ids))

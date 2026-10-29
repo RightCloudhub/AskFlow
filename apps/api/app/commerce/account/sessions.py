@@ -3,6 +3,7 @@
 import hmac
 import secrets
 from datetime import UTC, datetime, timedelta
+from http import HTTPStatus
 
 from sqlalchemy import select, update
 
@@ -10,7 +11,12 @@ from app.commerce.account.crypto import digest
 from app.commerce.account.models import AccessRevocation, UserSecurity, UserSession
 from app.commerce.account.repository import identity_by_id, security_for
 from app.commerce.core.audit import audit
-from app.commerce.core.constants import ASSURANCE_AUTHENTICATED, NAME_SIZE, SECONDS_PER_MINUTE, TOKEN_BYTES
+from app.commerce.core.constants import (
+    ASSURANCE_AUTHENTICATED,
+    NAME_SIZE,
+    SECONDS_PER_MINUTE,
+    TOKEN_BYTES,
+)
 from app.commerce.core.errors import MallError
 from app.commerce.core.repository import insert_once, owned
 from app.commerce.core.schemas import utc
@@ -41,12 +47,12 @@ async def issue_session(db, user, *, device: str = "", ip: str = "", user_agent:
 async def rotate(db, raw: str, *, csrf: str | None = None):
     row = await db.scalar(select(UserSession).where(UserSession.refresh_hash == digest("refresh:" + raw)))
     if row is None:
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     if csrf is not None and not hmac.compare_digest(row.csrf_hash, digest("csrf:" + csrf)):
-        raise MallError("csrf_invalid", status=403)
+        raise MallError("csrf_invalid", status=HTTPStatus.FORBIDDEN)
     user = await identity_by_id(db, row.user_id, lock=True)
     if user is None:
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     now = datetime.now(UTC)
     changed = await db.execute(update(UserSession).where(UserSession.id == row.id,
         UserSession.consumed_at.is_(None), UserSession.revoked_at.is_(None), UserSession.expires_at > now)
@@ -54,7 +60,7 @@ async def rotate(db, raw: str, *, csrf: str | None = None):
     if changed.rowcount != 1:
         await db.execute(update(UserSession).where(UserSession.family_id == row.family_id).values(revoked_at=now))
         await audit(db, actor_id=row.user_id, action="refresh_replay", resource_id=row.family_id)
-        raise MallError("invalid_credentials", status=401, persist=True)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED, persist=True)
     return await issue_session(db, user, device=row.device, family_id=row.family_id,
                                parent_id=row.id, method=row.auth_method)
 
@@ -64,21 +70,25 @@ async def validate_access(db, claims: dict):
     if ctx is None or not ctx.enabled("mall_account"):
         return
     if claims.get("type", "access") != "access":
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     from app.commerce.account.session_store import store
 
     revoked = await store().revoked(db, claims)
     security = await db.scalar(select(UserSecurity).where(UserSecurity.user_id == claims.get("sub")))
     if revoked or (security and claims.get("auth_epoch", 0) != security.auth_epoch):
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     sid = claims.get("sid")
     if not sid:
         if security and security.mfa_enabled:
-            raise MallError("invalid_credentials", status=401)
+            raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
         return
     row = await db.scalar(select(UserSession).where(UserSession.id == sid, UserSession.user_id == claims.get("sub")))
+    validate_session(row)
+
+
+def validate_session(row):
     if row is None or row.revoked_at or utc(row.expires_at) <= datetime.now(UTC):
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
 
 
 async def revoke_all(db, user_id: str):

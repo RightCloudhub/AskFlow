@@ -8,6 +8,7 @@ from sqlalchemy import delete, text
 
 from app.commerce.core.leases import claim, release
 from app.commerce.core.models import IdempotencyRecord
+from app.commerce.infra.errors import dependency_errors
 from app.commerce.job_handlers import dispatch
 from app.commerce.job_registry import JOBS, active, pending_ids
 from app.core import database
@@ -59,7 +60,7 @@ async def run_item(job, resource_id: str):
             await release(db, key, owner)
             await db.commit()
             return 1
-    except Exception as exc:
+    except dependency_errors() as exc:
         logger.warning("mall job failed job=%s error_type=%s", job.name, type(exc).__name__)
         return 0
 
@@ -86,7 +87,7 @@ async def periodic_loop():
         try:
             await run_once()
             await streams()
-        except Exception as exc:
+        except dependency_errors() as exc:
             logger.warning("mall jobs failed error_type=%s", type(exc).__name__)
         await asyncio.sleep(get_settings().mall_worker_poll_seconds)
 
@@ -104,10 +105,11 @@ async def streams():
 
 
 async def main():
+    from importlib import import_module
+
     from app.core.background import _legacy_loops
     from app.core.schema import prepare_schema
     from app.plugins.loader import boot_plugins, load_plugins, shutdown_plugins
-    from importlib import import_module
 
     settings = get_settings()
     settings.assert_startup_safe()

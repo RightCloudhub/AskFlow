@@ -1,6 +1,7 @@
 """Redis burst admission plus a durable database queue and conditional allocation."""
 
 from datetime import UTC, datetime, timedelta
+from http import HTTPStatus
 
 from sqlalchemy import select, update
 
@@ -12,6 +13,7 @@ from app.commerce.infra.runtime import infra
 from app.commerce.inventory.models import FlashRequest, FlashSale, FlashSaleSku
 from app.core.config import get_settings
 
+ADMISSION_KEY_COUNT = 3
 ADMIT = """
 if redis.call('exists', KEYS[2]) == 1 then return 1 end
 local stock = tonumber(redis.call('get', KEYS[1]) or '-1')
@@ -31,7 +33,7 @@ async def enqueue(ctx, sale_id: str, *, sku_id: str, request_key: str):
         raise MallError("flash_sale_closed")
     offer = await ctx.db.scalar(select(FlashSaleSku).where(FlashSaleSku.sale_id == sale_id, FlashSaleSku.sku_id == sku_id))
     if offer is None:
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
     existing = await ctx.db.scalar(select(FlashRequest).where(FlashRequest.user_id == ctx.user.id,
         FlashRequest.sale_id == sale_id, FlashRequest.sku_id == sku_id))
     if existing:
@@ -43,7 +45,7 @@ async def enqueue(ctx, sale_id: str, *, sku_id: str, request_key: str):
     if get_settings().flash_sale_backend == "redis":
         client = infra().redis.client()
         key = "mall:flash:" + offer.id
-        admitted = await client.eval(ADMIT, 3, key, key + ":user:" + ctx.user.id, STREAM,
+        admitted = await client.eval(ADMIT, ADMISSION_KEY_COUNT, key, key + ":user:" + ctx.user.id, STREAM,
                                      row.id, get_settings().mall_reservation_seconds)
         if not admitted:
             raise MallError("inventory_insufficient")

@@ -15,16 +15,20 @@ def install(connection):
         connection.execute(text(PG_FUNCTION))
     for table in TABLES:
         for operation in ("UPDATE", "DELETE"):
-            name = "mall_" + table + "_" + operation.lower()
-            if connection.dialect.name == "sqlite":
-                sql = f"CREATE TRIGGER IF NOT EXISTS {name} BEFORE {operation} ON {table} BEGIN SELECT RAISE(ABORT, 'financial entries are append-only'); END"
-            else:
-                present = connection.scalar(text("SELECT 1 FROM pg_trigger WHERE tgname=:name "
-                    "AND tgrelid=CAST(:table AS regclass)"), {"name": name, "table": table})
-                if present:
-                    continue
-                sql = f"CREATE TRIGGER {name} BEFORE {operation} ON {table} FOR EACH ROW EXECUTE FUNCTION mall_reject_financial_mutation()"
-            connection.execute(text(sql))
+            install_trigger(connection, table, operation)
+
+
+def install_trigger(connection, table, operation):
+    name = "mall_" + table + "_" + operation.lower()
+    if connection.dialect.name == "sqlite":
+        sql = f"CREATE TRIGGER IF NOT EXISTS {name} BEFORE {operation} ON {table} BEGIN SELECT RAISE(ABORT, 'financial entries are append-only'); END"
+    else:
+        present = connection.scalar(text("SELECT 1 FROM pg_trigger WHERE tgname=:name "
+            "AND tgrelid=CAST(:table AS regclass)"), {"name": name, "table": table})
+        if present:
+            return
+        sql = f"CREATE TRIGGER {name} BEFORE {operation} ON {table} FOR EACH ROW EXECUTE FUNCTION mall_reject_financial_mutation()"
+    connection.execute(text(sql))
 
 
 def remove(connection):

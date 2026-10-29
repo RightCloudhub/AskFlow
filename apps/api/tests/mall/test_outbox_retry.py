@@ -7,6 +7,7 @@ from sqlalchemy import update
 
 from app.commerce.core.event_retry import EventRetry
 from app.services.outbox.store import emit, pending, record_failure
+
 from .helpers import transaction
 
 

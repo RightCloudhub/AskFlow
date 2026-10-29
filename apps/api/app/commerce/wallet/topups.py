@@ -1,5 +1,7 @@
 """Topups credit only after authoritative payment settlement."""
 
+from http import HTTPStatus
+
 from app.commerce.core.errors import MallError
 from app.commerce.core.repository import cas, owned
 from app.commerce.core.services import service
@@ -10,7 +12,7 @@ from app.core.config import get_settings
 
 async def create(db, user_id: str, *, amount_cents: int, key: str):
     if not get_settings().mall_payment_mock_enabled:
-        raise MallError("payment_gateway_unavailable", status=503)
+        raise MallError("payment_gateway_unavailable", status=HTTPStatus.SERVICE_UNAVAILABLE)
     row = Topup(user_id=user_id, amount_cents=amount_cents,
                 currency=get_settings().mall_currency, request_key=key, status="pending")
     db.add(row)

@@ -5,6 +5,8 @@ from prometheus_client import Counter, Gauge
 ORDER_TOTAL = Counter("askflow_mall_orders_total", "Committed orders", ["status"])
 PAYMENT_TOTAL = Counter("askflow_mall_payments_total", "Payment outcomes", ["status"])
 STOCK_SHORTAGE = Counter("askflow_mall_stock_shortage_total", "Conditional reservation failures")
+STOCK_ATTEMPTS = Counter("askflow_mall_stock_reservations_total", "Conditional reservation attempts")
+CALLBACK_TOTAL = Counter("askflow_mall_callbacks_total", "Callback HTTP outcomes", ["outcome"])
 OVERSOLD = Gauge("askflow_mall_oversold", "Oversold units, expected zero")
 NEGATIVE_STOCK = Gauge("askflow_mall_negative_inventory", "Negative inventory rows")
 CACHE_TOTAL = Counter("askflow_mall_cache_total", "Cache results", ["result"])

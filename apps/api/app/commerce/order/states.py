@@ -3,6 +3,7 @@
 from app.commerce.core.errors import MallError
 from app.commerce.core.events import publish
 from app.commerce.core.repository import cas
+from app.commerce.core.services import enabled, service
 from app.commerce.order.models import OrderHistory
 
 FULFILLMENT = {"PENDING_PAYMENT", "PAID", "SHIPPED", "DELIVERED", "COMPLETED", "CANCELLED"}
@@ -26,10 +27,11 @@ def allowed(before: str, after: str):
 
 async def transition(db, row, *, target: str, actor_id: str | None, reason: str = ""):
     allowed(row.status, target)
-    if row.status == "PARTIALLY_REFUNDED" and target in FULFILLMENT:
-        if FULFILLMENT_NEXT.get(row.fulfillment_status) != target:
-            raise MallError("invalid_order_transition")
+    if (row.status == "PARTIALLY_REFUNDED" and target in FULFILLMENT
+            and FULFILLMENT_NEXT.get(row.fulfillment_status) != target):
+        raise MallError("invalid_order_transition")
     before = row.status
+    await recognize_revenue(db, row, target)
     values = {"status": target}
     if target in FULFILLMENT:
         values["fulfillment_status"] = target
@@ -39,3 +41,11 @@ async def transition(db, row, *, target: str, actor_id: str | None, reason: str 
     await publish(db, row, event_type="mall.order." + target.lower(),
                   payload={"user_id": row.user_id, "order_id": row.id, "status": target,
                            "total_cents": row.total_cents, "currency": row.currency})
+
+
+async def recognize_revenue(db, row, target):
+    if target != "COMPLETED" or row.fulfillment_status == "COMPLETED":
+        return
+    if enabled("wallet"):
+        await service("wallet", db).recognize(row.user_id, order_id=row.id,
+                                              amount_cents=row.total_cents - row.refunded_cents)

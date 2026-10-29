@@ -1,22 +1,22 @@
-"""Read-only operations view; no credentials or connection strings are exposed."""
+"""Secret-free operations matrix, liveness and dependency readiness endpoints."""
 
-import asyncio
+from http import HTTPStatus
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import text
+from fastapi.responses import JSONResponse
 
+from app.commerce.infra.health import port_matrix
 from app.commerce.infra.matrix import capability_matrix
-from app.commerce.infra.runtime import infra
-from app.core import database
 from app.core.config import get_settings
 from app.core.deps import require_agent_or_admin
 
 router = APIRouter()
 health_router = APIRouter()
+ADMIN_USER = Depends(require_agent_or_admin)
 
 
 @router.get("")
-async def infrastructure(_user=Depends(require_agent_or_admin)):
+async def infrastructure(_user=ADMIN_USER):
     return capability_matrix(get_settings())
 
 
@@ -27,29 +27,6 @@ async def live():
 
 @health_router.get("/health/ready")
 async def ready():
-    from fastapi.responses import JSONResponse
-
-    states = {"database": await _database_ready()}
-    settings = get_settings()
-    if "redis" in {settings.lock_backend, settings.rate_limit_backend, settings.flash_sale_backend}:
-        states["coordination"] = await _redis_ready()
-    available = all(states.values())
-    return JSONResponse(status_code=200 if available else 503,
-                         content={"status": "ok" if available else "down", "dependencies": states})
-
-
-async def _database_ready():
-    try:
-        async with database.engine.connect() as connection:
-            await connection.execute(text("SELECT 1 FROM idempotency_records LIMIT 1"))
-        return True
-    except Exception:
-        return False
-
-
-async def _redis_ready():
-    try:
-        return bool(await asyncio.wait_for(infra().redis.client().ping(),
-                                          get_settings().external_timeout_seconds))
-    except Exception:
-        return False
+    matrix = await port_matrix()
+    status = HTTPStatus.OK if matrix["status"] == "ok" else HTTPStatus.SERVICE_UNAVAILABLE
+    return JSONResponse(status_code=status, content=matrix)

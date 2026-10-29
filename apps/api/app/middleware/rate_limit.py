@@ -6,6 +6,7 @@ The test env is skipped so the suite is not flaky.
 
 from __future__ import annotations
 
+from http import HTTPStatus
 import time
 from collections import defaultdict, deque
 
@@ -78,7 +79,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             bucket.popleft()
         if len(bucket) >= limit:
             return JSONResponse(
-                status_code=429,
+                status_code=HTTPStatus.TOO_MANY_REQUESTS,
                 content={"detail": "rate_limit_exceeded", "limit_per_minute": limit},
                 headers={"Retry-After": str(WINDOW_SEC)},
             )

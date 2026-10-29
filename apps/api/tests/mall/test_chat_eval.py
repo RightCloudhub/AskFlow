@@ -9,6 +9,7 @@ from app.models.operation_ledger import OperationLedgerEntry
 from app.schemas.chat import ConversationCreate
 from app.services.chat.session.service import ChatService
 from app.services.chat.session.turn import ChatInput, ChatTurn
+
 from .helpers import place, seed, transaction
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.mall_profile("mall")]

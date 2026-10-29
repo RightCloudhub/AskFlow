@@ -8,6 +8,9 @@ from app.core.config import get_settings
 
 
 async def reconcile(db):
+    from app.commerce.inventory.observability import snapshot
+
+    await snapshot(db)
     if get_settings().flash_sale_backend != "redis":
         return
     offers = await db.scalars(select(FlashSaleSku).join(FlashSale,

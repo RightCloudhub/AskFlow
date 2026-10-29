@@ -1,6 +1,7 @@
 """Authoritative visibility/pricing; order writers lock current catalog rows."""
 
 from datetime import UTC, datetime
+from http import HTTPStatus
 
 from sqlalchemy import or_, select
 
@@ -25,7 +26,7 @@ class CatalogService:
             statement = statement.with_for_update()
         row = await self.db.scalar(statement.execution_options(populate_existing=True))
         if row is None:
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         return row
 
     async def quote(self, sku_id: str, *, lock: bool = False):
@@ -54,7 +55,7 @@ class CatalogService:
     async def detail(self, spu_id: str):
         spu = await self.entity(Spu, spu_id)
         if spu.status != "active":
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         ids = await self.db.scalars(select(Sku.id).where(Sku.spu_id == spu_id, Sku.status == "active"))
         data = view(spu, SPU_FIELDS)
         data["images"] = ["/api/v1/mall/files/" + key for key in spu.images]

@@ -1,5 +1,7 @@
 """Refund quota is reserved at application time and released only on a known outcome."""
 
+from http import HTTPStatus
+
 from sqlalchemy import select
 
 from app.commerce.admin.settings_service import value
@@ -76,7 +78,7 @@ class RefundService:
     async def review(self, refund_id: str, *, approved: bool, actor_id: str, expected_version: int):
         row = await self.db.get(Refund, refund_id)
         if row is None:
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         order = await OrderService(self.db).row(row.user_id, row.order_id, lock=True)
         await self.db.refresh(row)
         if row.status != "requested" or row.version != expected_version:

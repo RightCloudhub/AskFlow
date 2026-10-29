@@ -1,5 +1,6 @@
 """Public storefront reads never return inactive products."""
 
+from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
 
@@ -43,5 +44,5 @@ async def product(spu_id: UUID, db: MallDb):
 
     result = await infra().cache.get("product:" + str(spu_id), load)
     if result is None:
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
     return result

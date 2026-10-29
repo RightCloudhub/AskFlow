@@ -23,11 +23,19 @@ def compare(payment, *, receipts, provider):
         yield difference(payment.id, kind="refund_snapshot", expected=expected_total, actual=payment.refunded_cents)
     expected = {row["provider_ref"]: row["external_cents"] for row in receipts if row["external_cents"]}
     if payment.status == "late_refunded":
-        late = [row for row in provider if row.kind == "late_refund"]
-        if len(late) != 1:
-            yield difference(payment.id, kind="late_refund_receipts", expected=1, actual=len(late))
-        expected.update({row.id: payment.external_cents for row in late})
+        yield from late_receipts(payment, expected=expected, provider=provider)
     actual = {row.id: row.amount_cents for row in provider if row.status == "succeeded"}
+    yield from compare_statements(payment, expected=expected, actual=actual)
+
+
+def late_receipts(payment, *, expected, provider):
+    late = [row for row in provider if row.kind == "late_refund"]
+    if len(late) != 1:
+        yield difference(payment.id, kind="late_refund_receipts", expected=1, actual=len(late))
+    expected.update({row.id: payment.external_cents for row in late})
+
+
+def compare_statements(payment, *, expected, actual):
     for reference in expected.keys() | actual.keys():
         if expected.get(reference) != actual.get(reference):
             yield difference(reference or payment.id, kind="refund_statement",

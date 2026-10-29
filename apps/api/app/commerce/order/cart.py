@@ -2,8 +2,8 @@
 
 from sqlalchemy import delete, func, select
 
-from app.commerce.core.repository import insert_once
 from app.commerce.core.errors import MallError
+from app.commerce.core.repository import insert_once
 from app.commerce.core.services import service
 from app.commerce.order.models import Cart, CartItem
 from app.core.config import get_settings

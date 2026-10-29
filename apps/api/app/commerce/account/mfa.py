@@ -2,12 +2,21 @@
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from http import HTTPStatus
 from urllib.parse import quote
 
 from jose import JWTError, jwt
-from sqlalchemy import select, update
+from sqlalchemy import update
 
-from app.commerce.account.crypto import RECOVERY_CODE_COUNT, RECOVERY_TOKEN_BYTES, decrypt, digest, encrypt, matched_step, new_totp_secret
+from app.commerce.account.crypto import (
+    RECOVERY_CODE_COUNT,
+    RECOVERY_TOKEN_BYTES,
+    decrypt,
+    digest,
+    encrypt,
+    matched_step,
+    new_totp_secret,
+)
 from app.commerce.account.models import RecoveryCode, UserSecurity
 from app.commerce.account.repository import security_for
 from app.commerce.account.verification import consume_proof
@@ -26,14 +35,14 @@ async def verify_factor(db, user_id: str, credentials):
             RecoveryCode.consumed_at.is_(None)).values(consumed_at=datetime.now(UTC)))
         if changed.rowcount == 1:
             return
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     step = matched_step(decrypt(security.totp_cipher), credentials.totp)
     if step is None or step <= security.last_totp_step:
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     changed = await db.execute(update(UserSecurity).where(UserSecurity.id == security.id,
         UserSecurity.last_totp_step < step).values(last_totp_step=step, version=UserSecurity.version + 1))
     if changed.rowcount != 1:
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
 
 
 async def setup(db, user):
@@ -53,7 +62,7 @@ async def enable(db, user, credentials):
         raise MallError("mfa_setup_required")
     step = matched_step(decrypt(security.pending_totp_cipher), credentials.totp)
     if step is None:
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     security.totp_cipher, security.pending_totp_cipher = security.pending_totp_cipher, ""
     security.mfa_enabled, security.last_totp_step = True, step
     codes = [secrets.token_urlsafe(RECOVERY_TOKEN_BYTES) for _ in range(RECOVERY_CODE_COUNT)]
@@ -72,7 +81,7 @@ async def issue_step_up(ctx, payload):
     else:
         _target, proof = await consume_proof(ctx.db, payload, purpose="step-up")
         if proof.user_id != ctx.user.id:
-            raise MallError("invalid_credentials", status=401)
+            raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     settings = get_settings()
     token = jwt.encode({"sub": ctx.user.id, "sid": ctx.claims.get("sid"), "purpose": payload.purpose,
         "type": "step_up", "auth_epoch": security.auth_epoch,
@@ -86,8 +95,8 @@ def require_step_up(ctx, token: str, *, purpose: str):
     try:
         data = jwt.decode(token, get_settings().mall_refresh_secret, algorithms=["HS256"])
     except JWTError as exc:
-        raise MallError("step_up_required", status=403) from exc
+        raise MallError("step_up_required", status=HTTPStatus.FORBIDDEN) from exc
     expected = (ctx.user.id, ctx.claims.get("sid"), purpose, ctx.claims.get("auth_epoch", 0))
     actual = (data.get("sub"), data.get("sid"), data.get("purpose"), data.get("auth_epoch"))
     if data.get("type") != "step_up" or expected != actual:
-        raise MallError("step_up_required", status=403)
+        raise MallError("step_up_required", status=HTTPStatus.FORBIDDEN)

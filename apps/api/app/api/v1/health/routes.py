@@ -22,6 +22,13 @@ HTTP_UNAUTHORIZED = 401
 
 @router.get("/health", response_model=None)
 async def health() -> HealthResponse | JSONResponse:
+    from app.plugins.runtime import get_app_context
+
+    ctx = get_app_context()
+    if ctx is not None and ctx.enabled("mall_core"):
+        from app.commerce.infra.api import ready
+
+        return await ready()
     settings = get_settings()
     deps = [
         await _check_database(settings),

@@ -1,11 +1,12 @@
 """Deterministic mall actions retain Harness, ownership and Gateway confirmation."""
 
 import re
+from http import HTTPStatus
 from types import SimpleNamespace
 from uuid import uuid4
 
-from app.commerce.core.deps import Context
 from app.commerce.core.audit import audit
+from app.commerce.core.deps import Context
 from app.commerce.core.errors import MallError
 from app.commerce.core.services import service
 from app.commerce.order.api import cancel, refund
@@ -24,29 +25,42 @@ CONFIRM = frozenset({"确认", "确认取消", "确认退款", "confirm"})
 
 async def handle(db, conversation, *, text: str, history: list):
     ctx = get_app_context()
-    if ctx is None or not ctx.enabled("mall_support") or not ctx.enabled("agent"):
+    if not available(ctx, conversation):
         return None
-    if conversation.status != "active" or not Harness().prepare(text, history).allowed:
+    if not Harness().prepare(text, history).allowed:
         return None
     pending = (conversation.metadata_json or {}).get("mall_pending")
     if pending and text.strip().lower() in CONFIRM:
         return await _perform(db, conversation, pending=pending, confirmed=True)
     if "钱包" in text and "余额" in text:
         return await _perform(db, conversation, pending={"action": "balance", "key": str(uuid4())}, confirmed=False)
-    matched = ORDER_ID.search(text)
-    order_id = matched.group() if matched else (conversation.metadata_json or {}).get("mall_order_id")
-    if not order_id or (matched is None and not any(word in text for word in ("订单", "退款", "物流", "到哪"))):
+    order_id = referenced_order(conversation, text)
+    if not order_id:
         return None
     action = _intent(text)
     pending = {"order_id": order_id, "action": action, "key": str(uuid4())}
     return await _perform(db, conversation, pending=pending, confirmed=False)
 
 
+def available(ctx, conversation):
+    return bool(ctx and ctx.enabled("mall_support") and ctx.enabled("agent")
+                and conversation.status == "active")
+
+
+def referenced_order(conversation, text):
+    matched = ORDER_ID.search(text)
+    if matched:
+        return matched.group()
+    if any(word in text for word in ("订单", "退款", "物流", "到哪")):
+        return (conversation.metadata_json or {}).get("mall_order_id")
+    return None
+
+
 async def _perform(db, conversation, *, pending, confirmed):
     try:
         user = await db.get(User, conversation.user_id)
         if user is None or not user.is_active:
-            raise MallError("authentication_required", status=401)
+            raise MallError("authentication_required", status=HTTPStatus.UNAUTHORIZED)
         assurance = conversation_assurance(conversation, await user_assurance(db, user.id))
         request = SimpleNamespace(headers={"idempotency-key": pending["key"]})
         ctx = Context(db, user, request, {"assurance": assurance})

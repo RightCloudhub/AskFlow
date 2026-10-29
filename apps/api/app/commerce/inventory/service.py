@@ -1,10 +1,13 @@
 """Conditional inventory mutations are the source of truth on SQLite and PG."""
 
+from http import HTTPStatus
+
 from sqlalchemy import select, update
 
 from app.commerce.core.errors import MallError
 from app.commerce.core.repository import cas, insert_once
 from app.commerce.core.schemas import view
+from app.commerce.infra.metrics import STOCK_ATTEMPTS, STOCK_SHORTAGE
 from app.commerce.inventory.models import Inventory, InventoryMovement, InventoryReservation
 
 STOCK_FIELDS = ("sku_id", "available", "reserved", "sold", "version")
@@ -17,7 +20,7 @@ class InventoryService:
     async def get(self, sku_id: str):
         row = await self.db.scalar(select(Inventory).where(Inventory.sku_id == sku_id))
         if row is None:
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         return view(row, STOCK_FIELDS)
 
     async def reserve(self, order_id: str, items, *, expires_at):
@@ -27,11 +30,13 @@ class InventoryService:
     async def _reserve_one(self, order_id: str, item, *, expires_at):
         qty, sku_id = item["qty"], item["sku_id"]
         if type(qty) is not int or qty <= 0:
-            raise MallError("invalid_quantity", status=422)
+            raise MallError("invalid_quantity", status=HTTPStatus.UNPROCESSABLE_ENTITY)
+        STOCK_ATTEMPTS.inc()
         result = await self.db.execute(update(Inventory).where(Inventory.sku_id == sku_id,
             Inventory.available >= qty).values(available=Inventory.available - qty,
             reserved=Inventory.reserved + qty, version=Inventory.version + 1))
         if result.rowcount != 1:
+            STOCK_SHORTAGE.inc()
             raise MallError("inventory_insufficient")
         self.db.add(InventoryReservation(order_id=order_id, sku_id=sku_id, qty=qty,
                                           expires_at=expires_at))

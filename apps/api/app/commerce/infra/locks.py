@@ -3,11 +3,13 @@
 import asyncio
 import hashlib
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 from uuid import uuid4
 
 from sqlalchemy import text
 
 from app.commerce.core.errors import MallError
+from app.commerce.infra.errors import dependency_errors
 from app.core import database
 
 MILLISECONDS = 1000
@@ -49,7 +51,7 @@ class RedisLocks:
         name = "mall:lock:" + key
         fence = await client.eval(ACQUIRE, 2, name, name + ":fence", owner, self.ttl * MILLISECONDS)
         if not fence:
-            raise MallError("resource_busy", status=429)
+            raise MallError("resource_busy", status=HTTPStatus.TOO_MANY_REQUESTS)
         lost = asyncio.Event()
         renewer = asyncio.create_task(self._renew(name, owner, lost))
         try:
@@ -70,7 +72,7 @@ class RedisLocks:
             try:
                 result = await self.connection.client().eval(
                     RENEW, 1, name, owner, self.ttl * MILLISECONDS)
-            except Exception:
+            except dependency_errors():
                 lost.set()
                 return
             if not result:
@@ -86,7 +88,7 @@ class PostgresLocks:
         async with database.engine.connect() as connection:
             acquired = await connection.scalar(text("SELECT pg_try_advisory_lock(:key)"), {"key": value})
             if not acquired:
-                raise MallError("resource_busy", status=429)
+                raise MallError("resource_busy", status=HTTPStatus.TOO_MANY_REQUESTS)
             try:
                 yield 0
             finally:

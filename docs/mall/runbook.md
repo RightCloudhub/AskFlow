@@ -1,6 +1,6 @@
 # 商城部署与运维
 
-状态：设计/待运行材料。本轮没有启动或部署；配置文件存在不代表从零全流程验收成功。运行清单见validation.md。
+状态：部署演练仍待执行；本地 Python 3.12 的部分测试、eval、SQLite 升级和前端构建已经运行，结果见 [fix-validation.md](./fix-validation.md)。配置文件存在不代表从零全流程验收成功。
 
 ## 两档部署
 
@@ -48,4 +48,4 @@ Streams积压需先恢复pending reclaim/DBreceipt，ACK在commit后；不要删
 
 客户/shop：注册验证→登录/MFA→浏览/购物车/quote→下单→mock支付→订单/退款；钱包充值/流水、邀请、消息、账号设置。联系支持携带order/refund/journal引用，经service校验后进入既有AskFlow会话/工单/人工。
 
-后台/admin/mall：运营维护商品/库存/订单，财务查看wallet/reconcile并双人调账，客服仅授权订单快照，审计角色只读。所有写操作有before/after与actor；前端菜单权限隐藏不替代后端检查。
+后台/admin/mall：运营维护商品/库存/订单，财务查看wallet/reconcile并双人调账，客服仅授权订单快照，审计角色只读。经 `core.commands.command` 执行的数据库写操作记录 actor，以及 `detail.changes` 中逐行的真实 before/after；新增行 before=null，删除行 after=null，敏感字段沿用遮罩。对象存储上传仅记录摘要、类型和返回键，不具有数据库行快照。角色授予/撤销、库存条件更新已有运行验证；逐后台接口完整审计矩阵尚未补齐。前端菜单权限隐藏不替代后端检查。

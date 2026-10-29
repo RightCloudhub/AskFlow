@@ -1,5 +1,7 @@
 """Shared enforcement for legacy REST, OIDC and long-lived websocket sessions."""
 
+from http import HTTPStatus
+
 from fastapi import HTTPException
 
 from app.commerce.core.errors import MallError
@@ -19,7 +21,7 @@ async def validate_legacy_access(db, claims):
     try:
         await validate_access(db, claims)
     except MallError as exc:
-        raise HTTPException(status_code=401, detail="Invalid credentials") from exc
+        raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="Invalid credentials") from exc
 
 
 async def websocket_valid(websocket, db, user):

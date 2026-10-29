@@ -1,5 +1,7 @@
 """Append compensating evidence; never rewrite a journal or a reconciliation finding."""
 
+from http import HTTPStatus
+
 from sqlalchemy import select
 
 from app.commerce.core.errors import MallError
@@ -16,7 +18,7 @@ FIELDS = ("id", "original_id", "requested_by", "approved_by", "journal_id",
 
 async def request_reversal(ctx, payload):
     if await ctx.db.get(JournalEntry, payload.journal_id) is None:
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
     row = ReversalRequest(original_id=payload.journal_id, requested_by=ctx.user.id,
                           reason=payload.reason)
     ctx.db.add(row)
@@ -28,9 +30,9 @@ async def approve_reversal(ctx, request_id: str, payload):
     row = await ctx.db.scalar(select(ReversalRequest).where(ReversalRequest.id == request_id)
                               .with_for_update().execution_options(populate_existing=True))
     if row is None:
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
     if row.requested_by == ctx.user.id:
-        raise MallError("dual_control_required", status=403)
+        raise MallError("dual_control_required", status=HTTPStatus.FORBIDDEN)
     if row.status != "pending" or row.version != payload.expected_version:
         raise MallError("version_conflict")
     journal = None
@@ -47,7 +49,7 @@ async def resolve_difference(ctx, difference_id: str, payload):
     row = await ctx.db.scalar(select(ReconciliationDiff).where(
         ReconciliationDiff.id == difference_id).with_for_update())
     if row is None:
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
     if row.version != payload.expected_version or row.status != "open":
         raise MallError("version_conflict")
     before = view(row, ("status", "resolution_ref", "version"))

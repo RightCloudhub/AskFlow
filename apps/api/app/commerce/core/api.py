@@ -1,5 +1,7 @@
 """Public minimal mall discovery and validated object reads."""
 
+from http import HTTPStatus
+
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, RedirectResponse
 
@@ -27,5 +29,5 @@ async def object_file(key: str):
         return RedirectResponse(await store.url(key))
     path = store.path(key)
     if not path.is_file():
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
     return FileResponse(path, headers={"X-Content-Type-Options": "nosniff"})

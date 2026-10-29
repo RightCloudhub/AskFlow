@@ -7,6 +7,7 @@ import time
 from collections import OrderedDict
 
 from app.commerce.core.errors import MallError
+from app.commerce.infra.errors import dependency_errors
 from app.commerce.infra.locks import RedisLocks
 from app.commerce.infra.metrics import CACHE_TOTAL
 
@@ -79,7 +80,7 @@ class CachedReads:
         if isinstance(self.backend, RedisCache):
             try:
                 key += ":generation:" + str(await self.backend.version(key))
-            except Exception:
+            except dependency_errors():
                 CACHE_TOTAL.labels(result="degraded").inc()
                 return await loader()
         hit, value = await self.l1.get(key)
@@ -123,7 +124,7 @@ class CachedReads:
         await self.l1.put(key, value, ttl=ttl)
         try:
             await self.backend.put(key, value, ttl=ttl)
-        except Exception:
+        except dependency_errors():
             CACHE_TOTAL.labels(result="degraded").inc()
         CACHE_TOTAL.labels(result="miss").inc()
         return value
@@ -134,7 +135,7 @@ class CachedReads:
             return hit, value
         try:
             hit, value = await self.backend.get(key)
-        except Exception:
+        except dependency_errors():
             return False, None
         if hit:
             await self.l1.put(key, value, ttl=self.settings.cache_null_ttl_seconds)

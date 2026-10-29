@@ -1,5 +1,6 @@
 """Authenticated offline reads share Gateway policy and immutable evidence."""
 
+from http import HTTPStatus
 from uuid import uuid4
 
 from app.commerce.core.errors import MallError
@@ -22,7 +23,7 @@ async def read(ctx, name: str, *, order_id: str = ""):
     if not decision.allow:
         await gateway.record_decision(capability=spec, args=args, ctx=execution,
                                       decision=decision, status="DENIED", db=ctx.db)
-        raise MallError("step_up_required", status=403, persist=True)
+        raise MallError("step_up_required", status=HTTPStatus.FORBIDDEN, persist=True)
     try:
         data = await _load(ctx, name, order_id=order_id)
     except MallError as exc:

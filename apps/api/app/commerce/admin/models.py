@@ -1,6 +1,6 @@
 """admin/models persistent entities (amounts are integer minor units)."""
 
-from sqlalchemy import Boolean, ForeignKey, JSON, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.commerce.core.constants import ID_SIZE, NAME_SIZE

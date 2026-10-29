@@ -1,6 +1,7 @@
 """Profile settings, attachments, two-target bindings and privacy requests."""
 
 from hashlib import sha256
+from http import HTTPStatus
 
 from fastapi import APIRouter, UploadFile
 
@@ -75,7 +76,7 @@ async def _bind(ctx, payload):
     row, security = await profile_for(ctx.db, ctx.user.id), await security_for(ctx.db, ctx.user.id)
     old_channel, current = _binding_origin(ctx, row=row, security=security, channel=payload.channel)
     if old != current or old_proof.user_id != ctx.user.id or old_proof.channel != old_channel or new_proof.channel != payload.channel:
-        raise MallError("verification_invalid", status=401)
+        raise MallError("verification_invalid", status=HTTPStatus.UNAUTHORIZED)
     other = await find_identity(ctx.db, new)
     if other and other.id != ctx.user.id:
         raise MallError("binding_unavailable")
@@ -96,7 +97,7 @@ def _binding_origin(ctx, *, row, security, channel):
     other = "sms" if channel == "email" else "email"
     verified, current = contacts[other]
     if not verified:
-        raise MallError("verified_contact_required", status=403)
+        raise MallError("verified_contact_required", status=HTTPStatus.FORBIDDEN)
     return other, current
 
 

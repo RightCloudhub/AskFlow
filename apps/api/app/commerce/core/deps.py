@@ -1,6 +1,7 @@
 """Mall sessions start SQLite writes before authentication reads."""
 
 from dataclasses import dataclass
+from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -22,11 +23,18 @@ async def mall_db(request: Request):
             yield db
             await db.commit()
         except MallError as exc:
-            await (db.commit() if exc.persist else db.rollback())
+            await finish_error(db, exc)
             raise
         except Exception:
             await db.rollback()
             raise
+
+
+async def finish_error(db, error):
+    if error.persist:
+        await db.commit()
+        return
+    await db.rollback()
 
 
 MallDb = Annotated[database.AsyncSession, Depends(mall_db)]
@@ -47,19 +55,19 @@ class Context:
 async def context(request: Request, db: MallDb) -> Context:
     header = request.headers.get("authorization", "")
     if not header.startswith("Bearer "):
-        raise MallError("authentication_required", status=401)
+        raise MallError("authentication_required", status=HTTPStatus.UNAUTHORIZED)
     try:
         claims = decode_access_token(header.removeprefix("Bearer "))
     except ValueError as exc:
-        raise MallError("invalid_credentials", status=401) from exc
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED) from exc
     if _invalid_scope(claims):
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     statement = select(User).where(User.id == claims.get("sub"), User.is_active)
     if request.method in WRITE_METHODS:
         statement = statement.with_for_update(key_share=True)
     user = await db.scalar(statement.execution_options(populate_existing=True))
     if user is None:
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     from app.commerce.account.sessions import validate_access
 
     await validate_access(db, claims)

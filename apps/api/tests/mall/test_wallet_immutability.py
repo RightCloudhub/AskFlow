@@ -6,6 +6,7 @@ from sqlalchemy.exc import DBAPIError
 
 from app.commerce.wallet.models import JournalEntry, Posting
 from app.commerce.wallet.service import WalletService
+
 from .helpers import seed, transaction
 
 

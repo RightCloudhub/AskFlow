@@ -1,6 +1,6 @@
 """support/models persistent entities (amounts are integer minor units)."""
 
-from sqlalchemy import ForeignKey, JSON, String
+from sqlalchemy import JSON, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.commerce.core.constants import ID_SIZE

@@ -9,6 +9,8 @@ from app.commerce.core.schemas import view
 from app.commerce.wallet.models import WalletAccount
 from app.commerce.wallet.operations_models import WalletAdjustment
 
+WALLET_READ = require("wallet:read")
+
 router = APIRouter()
 
 
@@ -20,13 +22,13 @@ async def page(db, model, *, cursor: str, fields: tuple):
 
 
 @router.get("/accounts")
-async def accounts(cursor: str = "", ctx=require("wallet:read")):
+async def accounts(cursor: str = "", ctx=WALLET_READ):
     return await page(ctx.db, WalletAccount, cursor=cursor,
         fields=("id", "user_id", "code", "currency", "balance_cents", "version"))
 
 
 @router.get("/adjustments")
-async def adjustments(cursor: str = "", ctx=require("wallet:read")):
+async def adjustments(cursor: str = "", ctx=WALLET_READ):
     return await page(ctx.db, WalletAdjustment, cursor=cursor,
         fields=("id", "user_id", "amount_cents", "reason", "requested_by", "approved_by",
                 "journal_id", "status", "version"))

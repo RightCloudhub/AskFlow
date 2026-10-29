@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+from http import HTTPStatus
 
 from app.commerce.account.crypto import digest, encrypt
 from app.commerce.account.hooks import password_policy
@@ -26,14 +27,16 @@ class AccountService:
 
     async def register(self, payload, *, ip: str = ""):
         if not get_settings().mall_register_allowed():
-            raise MallError("registration_disabled", status=403)
+            raise MallError("registration_disabled", status=HTTPStatus.FORBIDDEN)
         await password_policy(payload.password)
         target, proof = await consume_proof(self.db, payload, purpose="register")
         existing = await find_identity(self.db, payload.username) or await find_identity(self.db, target)
         hashed = await asyncio.to_thread(hash_password, payload.password)
         if existing:
             return {"status": "accepted"}
-        email = target if proof.channel == "email" else digest("target:" + target) + "@phone.invalid"
+        # Non-delivery identity marker keeps the legacy non-null unique column intact.
+        # Actual SMS delivery always resolves the verified profile phone.
+        email = target if proof.channel == "email" else "phone:" + digest("target:" + target)
         user_id = new_uuid()
         created = await insert_once(self.db, User, values={"id": user_id,
             "username": payload.username.strip().lower(), "email": email, "hashed_password": hashed, "role": "user"})
@@ -92,7 +95,7 @@ class AccountService:
         target, proof = await consume_proof(self.db, payload, purpose="password-reset")
         user = await find_identity(self.db, target)
         if user is None or user.id != proof.user_id:
-            raise MallError("invalid_credentials", status=401)
+            raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
         user.hashed_password = await asyncio.to_thread(hash_password, payload.new_password)
         await revoke_all(self.db, user.id)
         await audit(self.db, actor_id=user.id, action="password_reset")

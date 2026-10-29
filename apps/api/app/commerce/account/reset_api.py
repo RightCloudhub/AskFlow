@@ -1,5 +1,7 @@
 """Two distinct authorized operators must request and approve an MFA reset."""
 
+from http import HTTPStatus
+
 from fastapi import APIRouter
 from pydantic import Field
 from sqlalchemy import delete, select
@@ -16,6 +18,8 @@ from app.commerce.core.events import publish
 from app.commerce.core.repository import cas
 from app.commerce.core.schemas import Schema, Versioned, view
 
+USER_MANAGE = require("user:manage")
+
 router = APIRouter()
 FIELDS = ("id", "user_id", "requested_by", "approved_by", "reason", "status", "version")
 
@@ -31,17 +35,17 @@ class ResetApproval(Versioned):
 
 
 @router.get("/mfa-resets")
-async def requests(cursor: str = "", ctx=require("user:manage")):
+async def requests(cursor: str = "", ctx=USER_MANAGE):
     rows = await ctx.db.scalars(select(SecurityReset).where(SecurityReset.id > cursor)
                                .order_by(SecurityReset.id).limit(PAGE_SIZE))
     return {"items": [view(row, FIELDS) for row in rows]}
 
 
 @router.post("/{user_id}/mfa-reset")
-async def request(user_id: str, payload: ResetRequest, ctx=require("user:manage")):
+async def request(user_id: str, payload: ResetRequest, ctx=USER_MANAGE):
     require_step_up(ctx, payload.step_up_token, purpose="mfa_reset_request")
     if await identity_by_id(ctx.db, user_id) is None:
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
 
     async def perform():
         row = SecurityReset(user_id=user_id, requested_by=ctx.user.id, reason=payload.reason)
@@ -53,15 +57,15 @@ async def request(user_id: str, payload: ResetRequest, ctx=require("user:manage"
 
 
 @router.post("/mfa-resets/{request_id}/approve")
-async def approve(request_id: str, payload: ResetApproval, ctx=require("user:manage")):
+async def approve(request_id: str, payload: ResetApproval, ctx=USER_MANAGE):
     require_step_up(ctx, payload.step_up_token, purpose="mfa_reset_approve")
 
     async def perform():
         row = await ctx.db.scalar(select(SecurityReset).where(SecurityReset.id == request_id).with_for_update())
         if row is None:
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         if row.requested_by == ctx.user.id or row.user_id == ctx.user.id:
-            raise MallError("mfa_reset_dual_control", status=403)
+            raise MallError("mfa_reset_dual_control", status=HTTPStatus.FORBIDDEN)
         if row.status != "pending" or row.version != payload.expected_version:
             raise MallError("version_conflict")
         if payload.approved:

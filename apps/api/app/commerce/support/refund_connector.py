@@ -1,5 +1,7 @@
 """Connect the existing refund operation runtime to the transactional mock provider."""
 
+from http import HTTPStatus
+
 from sqlalchemy import text
 
 from app.commerce.core.errors import MallError
@@ -8,8 +10,8 @@ from app.commerce.order.refunds import RefundService
 from app.commerce.order.schemas import RefundRequest
 from app.services.agent.gateway.capabilities import CapabilitySpec
 from app.services.agent.gateway.gateway import ActionGateway
-from app.services.agent.gateway.ledger import LedgerStore
 from app.services.agent.gateway.idempotency import args_hash
+from app.services.agent.gateway.ledger import LedgerStore
 
 
 class MallRefundConnector:
@@ -49,6 +51,6 @@ class MallRefundConnector:
             capability=CapabilitySpec(name="refund.submit"), args=call.arguments)
         entry = await LedgerStore().current(key, db=db)
         if self.task.assurance_level < 2 or entry is None:
-            raise MallError("refund_intent_required", status=403)
+            raise MallError("refund_intent_required", status=HTTPStatus.FORBIDDEN)
         if entry.customer_id != self.task.scope.customer_id or entry.status != "INTENT":
-            raise MallError("refund_intent_required", status=403)
+            raise MallError("refund_intent_required", status=HTTPStatus.FORBIDDEN)

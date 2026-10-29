@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+from http import HTTPStatus
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,7 +18,7 @@ WEBP_TAG_END = 12
 
 def image_key(data: bytes, *, content_type: str, maximum: int) -> str:
     if not data or len(data) > maximum:
-        raise MallError("upload_size_invalid", status=422)
+        raise MallError("upload_size_invalid", status=HTTPStatus.UNPROCESSABLE_ENTITY)
     valid = {
         "image/png": data.startswith(PNG_HEADER),
         "image/jpeg": data.startswith(JPEG_HEADER),
@@ -25,7 +26,7 @@ def image_key(data: bytes, *, content_type: str, maximum: int) -> str:
         "image/webp": data.startswith(b"RIFF") and data[WEBP_TAG_START:WEBP_TAG_END] == b"WEBP",
     }
     if not valid.get(content_type):
-        raise MallError("upload_type_invalid", status=422)
+        raise MallError("upload_type_invalid", status=HTTPStatus.UNPROCESSABLE_ENTITY)
     return str(uuid4()) + IMAGE_TYPES[content_type]
 
 
@@ -35,10 +36,10 @@ class LocalObjects:
 
     def path(self, key: str) -> Path:
         if not OBJECT_KEY.fullmatch(key):
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         path = (self.root / key).resolve()
         if path.parent != self.root:
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         return path
 
     async def put(self, data: bytes, *, content_type: str):
@@ -76,7 +77,7 @@ class S3Objects:
 
     async def url(self, key: str):
         if not OBJECT_KEY.fullmatch(key):
-            raise MallError("resource_not_found", status=404)
+            raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
         return await asyncio.to_thread(self._client(public=True).generate_presigned_url, "get_object",
                                         Params={"Bucket": self.settings.s3_bucket, "Key": key},
                                         ExpiresIn=self.settings.cache_ttl_seconds)

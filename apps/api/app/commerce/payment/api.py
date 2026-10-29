@@ -1,6 +1,7 @@
 """Payment creation, durable mock outcomes and HMAC callback ingress."""
 
 import time
+from http import HTTPStatus
 
 from fastapi import APIRouter, Request
 
@@ -49,7 +50,7 @@ async def callback(request: Request, db: MallDb):
 @router.post("/{payment_id}/mock")
 async def mock(payment_id: str, payload: schemas.MockOutcome, ctx: MallContext):
     if not get_settings().mall_payment_mock_enabled:
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
 
     async def perform():
         row = await owned(ctx.db, Payment, owner_id=ctx.user.id, resource_id=payment_id)

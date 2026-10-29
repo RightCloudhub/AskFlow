@@ -1,6 +1,7 @@
 """Create bounded sale offers; Redis counters are a disposable admission hint."""
 
 from datetime import datetime
+from http import HTTPStatus
 
 from fastapi import APIRouter
 from pydantic import Field
@@ -16,6 +17,8 @@ from app.commerce.inventory.models import FlashSale, FlashSaleSku
 from app.core.config import get_settings
 
 MAX_FLASH_STOCK = 1000000
+INVENTORY_WRITE = require("inventory:write")
+
 router = APIRouter()
 
 
@@ -29,10 +32,10 @@ class Sale(Schema):
 
 
 @router.post("/flash-sales")
-async def create(payload: Sale, ctx=require("inventory:write")):
+async def create(payload: Sale, ctx=INVENTORY_WRITE):
     async def perform():
         if utc(payload.ends_at) <= utc(payload.starts_at):
-            raise MallError("sale_dates_invalid", status=422)
+            raise MallError("sale_dates_invalid", status=HTTPStatus.UNPROCESSABLE_ENTITY)
         await service("catalog", ctx.db).quote(payload.sku_id)
         sale = FlashSale(name=payload.name, starts_at=utc(payload.starts_at), ends_at=utc(payload.ends_at))
         ctx.db.add(sale)

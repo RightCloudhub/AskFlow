@@ -11,6 +11,7 @@ from app.commerce.wallet.journal import Line, balanced
 from app.commerce.wallet.models import Posting, WalletAccount
 from app.commerce.wallet.reconcile import reconcile
 from app.commerce.wallet.service import WalletService
+
 from .helpers import seed, transaction
 
 

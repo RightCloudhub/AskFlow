@@ -3,6 +3,7 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
+from http import HTTPStatus
 
 from sqlalchemy import select, update
 
@@ -20,7 +21,7 @@ from app.services.agent.gateway.idempotency import args_hash
 def item_arguments(payload):
     items = sorted([item.model_dump() for item in payload.items], key=lambda item: item["sku_id"])
     if len({item["sku_id"] for item in items}) != len(items):
-        raise MallError("duplicate_sku", status=422)
+        raise MallError("duplicate_sku", status=HTTPStatus.UNPROCESSABLE_ENTITY)
     return {"items": items, "address_id": payload.address_id}
 
 
@@ -56,13 +57,14 @@ async def place(db, user_id: str, payload):
     if token is None or token.items_hash != args_hash(args):
         raise MallError("checkout_invalid")
     result = await db.execute(update(CheckoutToken).where(CheckoutToken.id == token.id,
-        CheckoutToken.consumed_at.is_(None), CheckoutToken.expires_at > now).values(consumed_at=now))
+        CheckoutToken.consumed_at.is_(None), CheckoutToken.expires_at > now)
+        .values(consumed_at=now).execution_options(synchronize_session=False))
     if result.rowcount != 1:
         raise MallError("checkout_expired_or_used")
     items = await price_items(db, args["items"])
     total = sum(item["total_cents"] for item in items) + await value(db, "mall_shipping_cents")
     if not 0 < total <= MAX_SAFE_CENTS:
-        raise MallError("invalid_order_total", status=422)
+        raise MallError("invalid_order_total", status=HTTPStatus.UNPROCESSABLE_ENTITY)
     row = Order(user_id=user_id, total_cents=total, currency=settings.mall_currency,
         expires_at=now + timedelta(seconds=settings.mall_reservation_seconds),
         address_snapshot=await AddressService(db).snapshot(user_id, payload.address_id))

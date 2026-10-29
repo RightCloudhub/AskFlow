@@ -1,12 +1,13 @@
 """Balanced immutable entries; a currency chain head serializes all appenders."""
 
 from dataclasses import dataclass
+from http import HTTPStatus
 from typing import Literal
 
 from sqlalchemy import select
 
-from app.commerce.core.errors import MallError
 from app.commerce.core.constants import MAX_SAFE_CENTS
+from app.commerce.core.errors import MallError
 from app.commerce.core.events import publish
 from app.commerce.core.repository import cas, insert_once
 from app.commerce.wallet.models import JournalEntry, Posting, WalletAccount, WalletChainHead
@@ -31,14 +32,18 @@ class Journal:
 
 
 def balanced(lines) -> int:
-    if not lines or any(type(line.amount_cents) is not int or line.amount_cents <= 0
-                        or line.side not in {"debit", "credit"} for line in lines):
-        raise MallError("invalid_postings", status=422)
+    if not lines or any(invalid_line(line) for line in lines):
+        raise MallError("invalid_postings", status=HTTPStatus.UNPROCESSABLE_ENTITY)
     debit = sum(line.amount_cents for line in lines if line.side == "debit")
     credit = sum(line.amount_cents for line in lines if line.side == "credit")
     if debit != credit:
-        raise MallError("journal_unbalanced", status=422)
+        raise MallError("journal_unbalanced", status=HTTPStatus.UNPROCESSABLE_ENTITY)
     return debit
+
+
+def invalid_line(line):
+    return (type(line.amount_cents) is not int or line.amount_cents <= 0
+            or line.side not in {"debit", "credit"})
 
 
 def material(row, lines):
@@ -108,7 +113,7 @@ async def update_balance(db, account, request):
 async def reverse(db, journal_id: str, *, business_key: str, actor_id: str):
     row = await db.get(JournalEntry, journal_id)
     if row is None:
-        raise MallError("resource_not_found", status=404)
+        raise MallError("resource_not_found", status=HTTPStatus.NOT_FOUND)
     await chain_head(db, row.currency)
     prior = await db.scalar(select(JournalEntry).where(JournalEntry.reversal_of == row.id))
     if prior is not None:

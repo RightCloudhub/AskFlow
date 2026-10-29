@@ -7,6 +7,7 @@ def instrument(application, settings):
     from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
     from app.core import database
 
     FastAPIInstrumentor.instrument_app(application, excluded_urls="health.*,metrics")

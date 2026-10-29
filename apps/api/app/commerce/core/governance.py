@@ -1,5 +1,8 @@
 """Local writes share the existing confirmation and append-only Gateway ledger."""
 
+from http import HTTPStatus
+from uuid import NAMESPACE_URL, uuid5
+
 from app.commerce.core.errors import MallError
 from app.commerce.core.idempotency import execute
 from app.core import database
@@ -10,7 +13,6 @@ from app.services.agent.gateway.gateway import ActionGateway
 from app.services.agent.gateway.ledger import LedgerStore
 from app.services.agent.gateway.policy import PolicyDecision, PolicyEngine
 from app.services.agent.service.contracts import Scope
-from uuid import NAMESPACE_URL, uuid5
 
 MALL_WRITES = frozenset({"mall.order.cancel", "mall.refund.submit", "refund.submit"})
 
@@ -46,7 +48,7 @@ async def governed(ctx, name: str, *, arguments: dict, confirmation: str, action
     if not decision.allow:
         await gateway.record_decision(capability=spec, args=arguments, ctx=execution,
                                       decision=decision, status="DENIED", db=ctx.db)
-        raise MallError("step_up_required", status=403, persist=True)
+        raise MallError("step_up_required", status=HTTPStatus.FORBIDDEN, persist=True)
     if not confirmation:
         return await _confirmation(ctx, gateway, spec=spec, arguments=arguments,
                                    execution=execution, decision=decision)
@@ -55,7 +57,7 @@ async def governed(ctx, name: str, *, arguments: dict, confirmation: str, action
         valid = await validate_confirmation(ctx.db, confirmation, scope_id=ctx.user.id,
             step=name + ":" + ctx.key, args=arguments)
         if not valid:
-            raise MallError("confirmation_invalid", status=403)
+            raise MallError("confirmation_invalid", status=HTTPStatus.FORBIDDEN)
         entry = await gateway.record_intent(capability=spec, args=arguments, ctx=execution,
                                             decision=decision, db=ctx.db)
         result = await action(decision.requires_human_approval)
@@ -69,7 +71,7 @@ async def governed(ctx, name: str, *, arguments: dict, confirmation: str, action
 
 async def _confirmation(ctx, gateway, *, spec, arguments, execution, decision):
     if not ctx.key:
-        raise MallError("idempotency_key_required", status=400)
+        raise MallError("idempotency_key_required", status=HTTPStatus.BAD_REQUEST)
     token = await issue_confirmation(ctx.db, scope_id=ctx.user.id,
                                      step=spec.name + ":" + ctx.key, args=arguments)
     await gateway.record_decision(capability=spec, args=arguments, ctx=execution,

@@ -5,6 +5,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from app.commerce.core.constants import SECONDS_PER_MINUTE
+from app.commerce.infra.errors import dependency_errors
 from app.commerce.infra.metrics import LIMIT_TOTAL
 from app.commerce.infra.runtime import infra
 from app.core.config import get_settings
@@ -27,7 +28,7 @@ class MallLimitMiddleware(BaseHTTPMiddleware):
                 if not allowed:
                     LIMIT_TOTAL.labels(scope=scope).inc()
                     return self._rejected(status.HTTP_429_TOO_MANY_REQUESTS, "rate_limit_exceeded")
-        except Exception:
+        except dependency_errors():
             return self._rejected(status.HTTP_503_SERVICE_UNAVAILABLE, "rate_limiter_unavailable")
         return await call_next(request)
 

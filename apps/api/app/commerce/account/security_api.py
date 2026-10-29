@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import UTC, datetime
+from http import HTTPStatus
 
 from fastapi import APIRouter, Response
 from sqlalchemy import delete
@@ -87,7 +88,7 @@ async def change_password(payload: schemas.ChangePassword, ctx: MallContext):
     mfa.require_step_up(ctx, payload.step_up_token, purpose="password_change")
     valid = await asyncio.to_thread(verify_password, payload.old_password, ctx.user.hashed_password)
     if not valid:
-        raise MallError("invalid_credentials", status=401)
+        raise MallError("invalid_credentials", status=HTTPStatus.UNAUTHORIZED)
     await password_policy(payload.new_password)
     ctx.user.hashed_password = await asyncio.to_thread(hash_password, payload.new_password)
     await revoke_all(ctx.db, ctx.user.id)
@@ -98,4 +99,4 @@ async def change_password(payload: schemas.ChangePassword, ctx: MallContext):
 def _recent_login(ctx):
     elapsed = datetime.now(UTC).timestamp() - ctx.claims.get("iat", 0)
     if elapsed > get_settings().mall_step_up_seconds:
-        raise MallError("recent_login_required", status=403)
+        raise MallError("recent_login_required", status=HTTPStatus.FORBIDDEN)

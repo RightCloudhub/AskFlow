@@ -3,7 +3,6 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from app.commerce.core.schemas import utc
 from app.commerce.infra.runtime import infra
 from app.commerce.inventory.models import FlashRequest
 from app.commerce.job_registry import JOBS
