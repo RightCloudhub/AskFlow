@@ -1,131 +1,52 @@
 import { useState } from "react";
-import { Alert, Button, Card, Form, Select, Space, Table, Tag } from "antd";
-import { SaveOutlined } from "@ant-design/icons";
-import { PageHeader } from "../../components/admin";
+import { Button, Select } from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { PageHeader, StatusBadge } from "../../components/admin";
+import { INTENT_LABELS, intentLabel } from "../../components/admin/labels";
+import { DataTable, RefreshButton, SettingsSection, WorkspacePanel } from "../../components/admin/workspace";
+import { ActionFeedback, useActionFeedback } from "../../components/common/action-feedback";
 import { useIntents, useUpsertIntent } from "../../hooks/use-ops";
+import type { IntentRow } from "../../api/types";
 
-const INTENTS = [
-  "faq",
-  "product",
-  "order_query",
-  "fault_report",
-  "complaint",
-  "handoff",
+const DEFAULT_ROUTES: Record<string, string> = {
+  faq: "rag", product: "rag", order_query: "tool", fault_report: "ticket", complaint: "ticket", handoff: "handoff",
+};
+const ROUTE_LABELS: Record<string, string> = { rag: "知识问答", tool: "工具调用", ticket: "创建工单", handoff: "转人工", clarify: "澄清问题" };
+const COLUMNS: ColumnsType<IntentRow> = [
+  { title: "客户意图", dataIndex: "intent", render: (value) => intentLabel(value) },
+  { title: "处理方式", dataIndex: "route", render: (value) => ROUTE_LABELS[value] ?? value },
+  { title: "状态", dataIndex: "enabled", render: (value) => <StatusBadge value={value ? "enabled" : "disabled"} /> },
+  { title: "说明", dataIndex: "description" },
 ];
-const ROUTES = ["rag", "tool", "ticket", "handoff", "clarify"];
-
-const INTENT_LABELS: Record<string, string> = {
-  faq: "常见问题",
-  product: "产品咨询",
-  order_query: "订单查询",
-  fault_report: "故障报修",
-  complaint: "投诉",
-  handoff: "转人工",
-};
-
-const ROUTE_LABELS: Record<string, string> = {
-  rag: "知识问答",
-  tool: "工具调用",
-  ticket: "建单",
-  handoff: "转人工",
-  clarify: "澄清",
-};
 
 export function IntentsPage() {
+  const query = useIntents();
+  const mutation = useUpsertIntent();
+  const feedback = useActionFeedback();
   const [intent, setIntent] = useState("faq");
-  const [route, setRoute] = useState("rag");
-  const [msg, setMsg] = useState<string | null>(null);
-  const intentsQ = useIntents();
-  const upsert = useUpsertIntent();
-
+  const [override, setOverride] = useState<string>();
+  const current = query.data?.find((row) => row.intent === intent);
+  const route = override ?? current?.route ?? DEFAULT_ROUTES[intent];
   async function save() {
-    await upsert.mutateAsync({ intent, route });
-    setMsg(
-      `已更新 ${INTENT_LABELS[intent] ?? intent} → ${ROUTE_LABELS[route] ?? route}`,
-    );
+    await feedback.run(() => mutation.mutateAsync({ intent, route }),
+      "已保存：" + intentLabel(intent) + " → " + ROUTE_LABELS[route] + "。");
   }
-
-  return (
-    <div className="af-page">
-      <PageHeader
-        eyebrow="智能配置"
-        title="意图路由"
-        subtitle="调整意图与处理路由的映射，保存后即时生效"
-      />
-      {msg ? (
-        <Alert
-          type="success"
-          showIcon
-          title={msg}
-          style={{ marginBottom: 16 }}
-        />
-      ) : null}
-
-      <Card title="更新映射" style={{ marginBottom: 16 }}>
-        <Space wrap>
-          <Form.Item label="意图" style={{ marginBottom: 0 }}>
-            <Select
-              style={{ width: 180 }}
-              value={intent}
-              onChange={setIntent}
-              options={INTENTS.map((i) => ({
-                value: i,
-                label: INTENT_LABELS[i] ?? i,
-              }))}
-            />
-          </Form.Item>
-          <Form.Item label="路由" style={{ marginBottom: 0 }}>
-            <Select
-              style={{ width: 180 }}
-              value={route}
-              onChange={setRoute}
-              options={ROUTES.map((r) => ({
-                value: r,
-                label: ROUTE_LABELS[r] ?? r,
-              }))}
-            />
-          </Form.Item>
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            loading={upsert.isPending}
-            onClick={() => void save()}
-          >
-            保存
-          </Button>
-        </Space>
-      </Card>
-
-      <Card title="当前映射">
-        <Table
-          loading={intentsQ.isLoading}
-          rowKey="id"
-          dataSource={intentsQ.data ?? []}
-          pagination={false}
-          columns={[
-            {
-              title: "意图",
-              dataIndex: "intent",
-              render: (i: string) => INTENT_LABELS[i] ?? i,
-            },
-            {
-              title: "路由",
-              dataIndex: "route",
-              render: (r: string) => (
-                <Tag color="blue">{ROUTE_LABELS[r] ?? r}</Tag>
-              ),
-            },
-            {
-              title: "状态",
-              dataIndex: "enabled",
-              render: (e: boolean) =>
-                e ? <Tag color="success">启用</Tag> : <Tag>禁用</Tag>,
-            },
-            { title: "说明", dataIndex: "description" },
-          ]}
-          locale={{ emptyText: "暂无意图配置" }}
-        />
-      </Card>
-    </div>
-  );
+  return <div className="af-page"><PageHeader title="意图路由" subtitle="决定不同客户问题进入知识问答、工具、工单或人工处理。"
+    actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
+    <div className="af-work-stack"><SettingsSection title="调整处理方式" description="选择意图后显示已有映射；保存后即时生效。">
+      <div className="af-work-stack"><div className="af-work-inline">
+        <label className="af-field"><span>客户意图</span><Select aria-label="客户意图" value={intent} disabled={feedback.busy}
+          onChange={(value) => { setIntent(value); setOverride(undefined); feedback.clear(); }}
+          options={Object.keys(DEFAULT_ROUTES).map((value) => ({ value, label: INTENT_LABELS[value] }))} /></label>
+        <label className="af-field"><span>处理方式</span><Select aria-label="处理方式" value={route} disabled={feedback.busy}
+          onChange={(value) => { setOverride(value); feedback.clear(); }} options={Object.entries(ROUTE_LABELS).map(([value, label]) => ({ value, label }))} /></label>
+        <Button type="primary" loading={feedback.busy} disabled={query.isLoading || query.isError}
+          onClick={() => void save()}>保存映射</Button></div>
+        <p className="af-work-help">当前映射：{current ? ROUTE_LABELS[current.route] ?? current.route : query.isLoading ? "正在读取…" : "尚未配置，显示默认处理方式"}</p>
+      </div>
+    </SettingsSection><WorkspacePanel title="当前意图映射">
+      <DataTable query={query} columns={COLUMNS} dataSource={query.data ?? []} pagination={false}
+        emptyTitle="尚未配置运营映射" emptyDescription="选择意图并保存处理方式，即可建立映射记录。" />
+    </WorkspacePanel></div>
+  </div>;
 }

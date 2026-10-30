@@ -1,90 +1,40 @@
 import { useState } from "react";
-import { Alert, Button, Card, Space } from "antd";
-import { ReloadOutlined } from "@ant-design/icons";
 import { PageHeader } from "../../components/admin";
+import { FilterBar, RefreshButton, WorkspacePanel } from "../../components/admin/workspace";
+import { useRecordFilter } from "../../components/admin/use-record-filter";
+import { ActionFeedback, useActionFeedback } from "../../components/common/action-feedback";
 import { HandoffInbox } from "../../components/handoff/Inbox";
 import { SessionDetail } from "../../components/handoff/SessionDetail";
-import {
-  useClaimHandoff,
-  useHandoffs,
-  useReturnHandoff,
-} from "../../hooks/use-ops";
+import { useClaimHandoff, useHandoffs, useReturnHandoff } from "../../hooks/use-ops";
 import { useMe } from "../../hooks/use-auth";
 import type { Handoff } from "../../api/types";
 
 export function HandoffsPage() {
-  const [selected, setSelected] = useState<Handoff | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const handoffsQ = useHandoffs();
+  const query = useHandoffs();
   const me = useMe();
   const claim = useClaimHandoff();
   const ret = useReturnHandoff();
-
+  const feedback = useActionFeedback();
+  const [selected, setSelected] = useState<Handoff | null>(null);
+  const filter = useRecordFilter({ rows: query.data ?? [], fields: ["user_name", "summary", "conversation_id"], statusField: "status" });
+  const current = query.data?.find((row) => row.id === selected?.id) ?? selected;
   async function onClaim(id: string) {
-    setError(null);
-    try {
-      const row = await claim.mutateAsync(id);
-      setSelected(row);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "认领失败");
-    }
+    await feedback.run(async () => setSelected(await claim.mutateAsync(id)), "会话已认领，可以开始回复客户。");
   }
-
   async function onReturn(id: string) {
-    setError(null);
-    try {
-      await ret.mutateAsync(id);
-      if (selected?.id === id) setSelected(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "交还失败");
-    }
+    const done = await feedback.run(() => ret.mutateAsync(id), "会话已交还智能助手。");
+    if (done && selected?.id === id) setSelected(null);
   }
-
-  return (
-    <div className="af-page">
-      <PageHeader
-        eyebrow="客服运营"
-        title="人工接管"
-        subtitle="转人工收件箱：认领会话或交还智能助手，每 15 秒自动刷新"
-        actions={
-          <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              loading={handoffsQ.isFetching}
-              onClick={() => void handoffsQ.refetch()}
-            >
-              刷新
-            </Button>
-          </Space>
-        }
-      />
-      {error ? (
-        <Alert
-          type="error"
-          showIcon
-          title={error}
-          style={{ marginBottom: 16 }}
-          closable
-          onClose={() => setError(null)}
-        />
-      ) : null}
-      <Card>
-        <HandoffInbox
-          rows={handoffsQ.data ?? []}
-          loading={handoffsQ.isLoading}
-          currentUserId={me.data?.id ?? null}
-          claimingId={claim.isPending ? (claim.variables ?? null) : null}
-          returningId={ret.isPending ? (ret.variables ?? null) : null}
-          onClaim={(id) => void onClaim(id)}
-          onReturn={(id) => void onReturn(id)}
-          onSelect={setSelected}
-        />
-      </Card>
-      <SessionDetail
-        open={Boolean(selected)}
-        session={selected}
-        onClose={() => setSelected(null)}
-      />
-    </div>
-  );
+  return <div className="af-page"><PageHeader title="人工接管" subtitle="先认领，再回复。会话列表每 15 秒自动更新。"
+    actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
+    <WorkspacePanel title="人工服务队列" description="查看客户问题摘要，认领后可展开历史消息。">
+      <FilterBar {...filter} placeholder="搜索客户、问题摘要或会话编号" count={query.data ? filter.rows.length : undefined}
+        options={[{ value: "all", label: "全部状态" }, { value: "queued", label: "等待认领" },
+          { value: "claimed", label: "已认领" }, { value: "returned", label: "已交还" }, { value: "timed_out", label: "已超时" }]} />
+      <HandoffInbox rows={filter.rows} query={query} currentUserId={me.data?.id ?? null}
+        claimingId={claim.isPending ? claim.variables : null} returningId={ret.isPending ? ret.variables : null}
+        onClaim={(id) => void onClaim(id)} onReturn={(id) => void onReturn(id)} onSelect={setSelected} />
+    </WorkspacePanel>
+    <SessionDetail open={Boolean(selected)} session={current} onClose={() => setSelected(null)} />
+  </div>;
 }

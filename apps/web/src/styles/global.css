@@ -1,2 +1,4 @@
 @import "./foundation.css";
 @import "./auth.css";
+@import "./workspaces.css";
+@import "./plugin-workspace.css";

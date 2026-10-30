@@ -1,206 +1,87 @@
-import { useMemo, useState } from "react";
-import {
-  Alert,
-  Button,
-  Descriptions,
-  Drawer,
-  Empty,
-  List,
-  Select,
-  Space,
-  Tag,
-  Typography,
-} from "antd";
-import { DiffOutlined, RollbackOutlined } from "@ant-design/icons";
-import {
-  useDocumentDiff,
-  useDocumentGenerations,
-  useRollbackDocument,
-} from "../../hooks/use-documents";
-import type { DocumentRow } from "../../api/types";
+import { useState } from "react";
+import { Button, Descriptions, Drawer, List, Popconfirm, Select } from "antd";
+import { useDocumentDiff, useDocumentGenerations, useRollbackDocument } from "../../hooks/use-documents";
+import { StatusBadge } from "./StatusBadge";
+import { EmptyState, QueryFeedback, WorkspacePanel } from "./workspace";
+import { ActionFeedback, useActionFeedback } from "../common/action-feedback";
+import type { DocumentRow, GenerationDiff } from "../../api/types";
 
-const { Text, Paragraph } = Typography;
+type Props = { doc: DocumentRow | null; open: boolean; onClose: () => void };
+const CHUNK_PREVIEW_LENGTH = 120;
 
-type Props = {
-  doc: DocumentRow | null;
-  open: boolean;
-  onClose: () => void;
-};
+function DiffChunks({ title, chunks }: { title: string; chunks: string[] }) {
+  return <section className="af-work-stack"><h3 className="af-staff-heading">{title} · {chunks.length} 段</h3>
+    {chunks.length ? chunks.map((chunk, index) => <details className="af-diff-chunk" key={index}>
+      <summary>{chunk.slice(0, CHUNK_PREVIEW_LENGTH)}{chunk.length > CHUNK_PREVIEW_LENGTH ? "…" : ""}</summary>
+      <p className="af-work-preview">{chunk}</p>
+    </details>) : <p className="af-work-help">没有{title}。</p>}
+  </section>;
+}
+
+function RevisionDiff({ data }: { data: GenerationDiff }) {
+  return <WorkspacePanel title={"版本 " + data.from_generation + " → 版本 " + data.to_generation}
+    description={"保持不变的知识分块：" + data.unchanged_count}>
+    <div className="af-work-stack"><DiffChunks title="新增分块" chunks={data.added} /><DiffChunks title="删除分块" chunks={data.removed} /></div>
+  </WorkspacePanel>;
+}
+
+type GenerationQuery = ReturnType<typeof useDocumentGenerations>;
+
+function RevisionComparison({ docId, generations }: { docId: string; generations: number[] }) {
+  const [from, setFrom] = useState<number>();
+  const [to, setTo] = useState<number>();
+  const start = from ?? generations[generations.length - 2] ?? null;
+  const end = to ?? generations[generations.length - 1] ?? null;
+  const query = useDocumentDiff(docId, start, end);
+  const options = generations.map((value) => ({ value, label: "版本 " + value }));
+  return <section className="af-work-stack"><div className="af-work-inline">
+    <label className="af-field"><span>对比起始版本</span><Select aria-label="对比起始版本"
+      value={start ?? undefined} options={options} onChange={setFrom} /></label>
+    <label className="af-field"><span>对比目标版本</span><Select aria-label="对比目标版本"
+      value={end ?? undefined} options={options} onChange={setTo} /></label>
+  </div><QueryFeedback query={query} />
+    {start === end ? <p className="af-work-help">请选择两个不同版本进行对比。</p> :
+      query.isLoading ? <p className="af-work-help">正在对比知识分块…</p> : query.data && <RevisionDiff data={query.data} />}
+  </section>;
+}
+
+function RevisionHistory({ docId, generations, query, current }: {
+  docId: string; generations: number[]; query: GenerationQuery; current: number | undefined;
+}) {
+  const rollback = useRollbackDocument();
+  const feedback = useActionFeedback();
+  return <WorkspacePanel title="历史版本"><ActionFeedback state={feedback} />
+    <List dataSource={[...generations].reverse()}
+      locale={{ emptyText: query.isLoading ? "正在读取版本…" : query.isError ? "版本尚未加载，请重试。" : "尚无修订快照" }}
+      renderItem={(generation) => <List.Item><span>版本 {generation}{generation === current ? " · 当前生效" : ""}</span>
+        <Popconfirm title={"切换到版本 " + generation + "？"} description="该版本的知识分块将替换当前生效内容。"
+          okText="确认回滚" cancelText="保留当前版本" onConfirm={() => feedback.run(async () => {
+            await rollback.mutateAsync({ id: docId, generation }); await query.refetch();
+          }, "文档已回滚到所选版本。") }>
+          <Button size="small" disabled={generation === current || feedback.busy}>回滚到此版本</Button>
+        </Popconfirm>
+      </List.Item>} />
+  </WorkspacePanel>;
+}
+
+function RevisionWorkspace({ doc }: { doc: DocumentRow }) {
+  const query = useDocumentGenerations(doc.id);
+  const generations = [...(query.data?.generations ?? [])].sort((a, b) => a - b);
+  const current = query.data?.current_generation ?? doc.generation;
+  return <div className="af-work-stack"><QueryFeedback query={query} /><Descriptions column={1} items={[
+    { key: "current", label: "当前版本", children: current ?? "—" },
+    { key: "count", label: "知识分块", children: doc.chunk_count },
+    { key: "status", label: "索引状态", children: <StatusBadge value={doc.status} /> },
+  ]} /><RevisionHistory docId={doc.id} generations={generations} query={query} current={current} />
+    {generations.length > 1 ? <RevisionComparison docId={doc.id} generations={generations} /> :
+      !query.isLoading && !query.isError && <EmptyState title="两个版本之间可以对比分块差异"
+        description="文档产生下一份修订快照后，可查看新增与删除的内容。" />}
+  </div>;
+}
 
 export function DocumentRevisionDrawer({ doc, open, onClose }: Props) {
-  const id = doc?.id ?? null;
-  const gensQ = useDocumentGenerations(open ? id : null);
-  const gens = gensQ.data?.generations ?? [];
-  const current = gensQ.data?.current_generation;
-
-  const pair = useMemo(() => {
-    if (gens.length < 2)
-      return { from: null as number | null, to: null as number | null };
-    const sorted = [...gens].sort((a, b) => a - b);
-    return {
-      from: sorted[sorted.length - 2],
-      to: sorted[sorted.length - 1],
-    };
-  }, [gens]);
-
-  const [from, setFrom] = useState<number | null>(null);
-  const [to, setTo] = useState<number | null>(null);
-  const effFrom = from ?? pair.from;
-  const effTo = to ?? pair.to;
-
-  const diffQ = useDocumentDiff(open ? id : null, effFrom, effTo);
-  const rollback = useRollbackDocument();
-
-  async function onRollback(generation: number) {
-    if (!id) return;
-    await rollback.mutateAsync({ id, generation });
-  }
-
-  return (
-    <Drawer
-      title={doc ? `版本 · ${doc.title || doc.filename}` : "版本"}
-      open={open}
-      onClose={onClose}
-      size="min(480px, 100vw)"
-      destroyOnHidden
-    >
-      {!doc ? null : (
-        <>
-          <Descriptions
-            size="small"
-            column={1}
-            bordered
-            style={{ marginBottom: 16 }}
-          >
-            <Descriptions.Item label="当前 generation">
-              <Tag color="blue">{current ?? doc.generation ?? "—"}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="分块数">
-              {doc.chunk_count}
-            </Descriptions.Item>
-            <Descriptions.Item label="状态">{doc.status}</Descriptions.Item>
-          </Descriptions>
-
-          <Text type="secondary">历史版本</Text>
-          {gensQ.isLoading ? (
-            <Paragraph type="secondary">加载中…</Paragraph>
-          ) : gens.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="尚无修订快照"
-              style={{ margin: "16px 0" }}
-            />
-          ) : (
-            <List
-              size="small"
-              style={{ marginTop: 8, marginBottom: 16 }}
-              dataSource={[...gens].sort((a, b) => b - a)}
-              renderItem={(g) => (
-                <List.Item
-                  actions={[
-                    <Button
-                      key="rb"
-                      size="small"
-                      icon={<RollbackOutlined />}
-                      disabled={g === current}
-                      loading={
-                        rollback.isPending &&
-                        rollback.variables?.generation === g
-                      }
-                      onClick={() => void onRollback(g)}
-                    >
-                      回滚
-                    </Button>,
-                  ]}
-                >
-                  <Tag color={g === current ? "processing" : "default"}>
-                    g{g}
-                    {g === current ? " · 当前" : ""}
-                  </Tag>
-                </List.Item>
-              )}
-            />
-          )}
-
-          <Space wrap style={{ marginBottom: 12 }}>
-            <Select
-              placeholder="from"
-              style={{ width: 100 }}
-              value={effFrom ?? undefined}
-              options={gens.map((g) => ({ value: g, label: `g${g}` }))}
-              onChange={setFrom}
-            />
-            <Select
-              placeholder="to"
-              style={{ width: 100 }}
-              value={effTo ?? undefined}
-              options={gens.map((g) => ({ value: g, label: `g${g}` }))}
-              onChange={setTo}
-            />
-            <Button icon={<DiffOutlined />} loading={diffQ.isFetching} disabled>
-              差异
-            </Button>
-          </Space>
-
-          {diffQ.isError ? (
-            <Alert
-              type="error"
-              showIcon
-              title={
-                diffQ.error instanceof Error
-                  ? diffQ.error.message
-                  : "差异加载失败"
-              }
-            />
-          ) : null}
-
-          {diffQ.data ? (
-            <div className="af-diff-panel">
-              <Text strong>
-                g{diffQ.data.from_generation} → g{diffQ.data.to_generation}
-              </Text>
-              <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-                未变 {diffQ.data.unchanged_count} · 新增{" "}
-                {diffQ.data.added.length} · 删除 {diffQ.data.removed.length}
-              </Paragraph>
-              <Text type="success">新增分块</Text>
-              <List
-                size="small"
-                dataSource={diffQ.data.added}
-                locale={{ emptyText: "无" }}
-                renderItem={(t, i) => (
-                  <List.Item>
-                    <Paragraph
-                      ellipsis={{ rows: 3 }}
-                      style={{ margin: 0, color: "var(--success)" }}
-                    >
-                      [{i + 1}] {t}
-                    </Paragraph>
-                  </List.Item>
-                )}
-              />
-              <Text type="danger">删除分块</Text>
-              <List
-                size="small"
-                dataSource={diffQ.data.removed}
-                locale={{ emptyText: "无" }}
-                renderItem={(t, i) => (
-                  <List.Item>
-                    <Paragraph
-                      ellipsis={{ rows: 3 }}
-                      style={{ margin: 0, color: "var(--danger)" }}
-                    >
-                      [{i + 1}] {t}
-                    </Paragraph>
-                  </List.Item>
-                )}
-              />
-            </div>
-          ) : gens.length < 2 ? (
-            <Alert type="info" showIcon title="至少两个版本后可对比分块差异" />
-          ) : null}
-        </>
-      )}
-    </Drawer>
-  );
+  return <Drawer title={doc ? "版本 · " + (doc.title || doc.filename) : "文档版本"} open={open} onClose={onClose}
+    size="min(600px, 100vw)" destroyOnHidden>
+    {open && doc && <RevisionWorkspace key={doc.id} doc={doc} />}
+  </Drawer>;
 }

@@ -1,62 +1,41 @@
-import { useCallback, useState } from "react";
-import { Alert, Button, List, Statistic } from "antd";
+import { useCallback } from "react";
+import { List } from "antd";
 import { Link } from "react-router-dom";
-import { mall, money, write } from "./client";
-import { ActionForm, Feedback, useLoad, type Page, type Row } from "./shared";
+import { mall, money } from "./client";
+import { useLoad, type Page, type Row } from "./shared";
 import { useFeatures } from "../plugins/features";
-import { MallPage, MallPanel } from "./presentation";
+import { MallPage, MallPanel, formatDate } from "./presentation";
+import { CursorNav, MallQuery, QueryRefresh, useCursor } from "./query-view";
+import { TopUp, WalletBalances, type Balance } from "./wallet-parts";
+import { FilterBar } from "../components/admin/workspace";
+import { useRecordFilter } from "../components/admin/use-record-filter";
 
-type Balance = { available_cents: number; frozen_cents: number; currency: string };
-
-function WalletBalances({ balance }: { balance?: Balance }) {
-  return <div className="af-wallet-balance">
-    <Statistic title="可用余额" value={balance ? money(balance.available_cents, balance.currency) : "—"} />
-    <Statistic title="冻结金额" value={balance ? money(balance.frozen_cents, balance.currency) : "—"} />
-  </div>;
-}
-
-function TopUp({ reload }: { reload: () => Promise<void> }) {
-  const [payment, setPayment] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  async function settle() {
-    setBusy(true); setError("");
-    try { await write(`/payment/${payment}/mock`, { status: "succeeded" }); await reload(); setPayment(""); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "充值失败"); }
-    finally { setBusy(false); }
-  }
-  return <MallPanel title="钱包充值">
-    <Alert type="info" title="当前使用模拟支付网关，充值不会扣取真实银行卡资金。" showIcon />
-    <ActionForm label="创建充值单" fields={[{ name: "amount_cents", label: "充值金额（分）", kind: "number" }]}
-      submit={async (values) => { const data = await write<{ payment: { id: string } }>("/wallet/topups", values); setPayment(data.payment.id); }} />
-    {payment && <div className="af-mall-pagination"><Button loading={busy} onClick={() => void settle()}>模拟完成充值</Button></div>}
-    <Feedback error={error} />
-  </MallPanel>;
-}
+const ENTRY_LABELS: Record<string, string> = { topup: "钱包充值", refund: "订单退款", payment: "订单支付", revenue: "订单结算", referral: "邀请奖励", adjustment: "资金调整", reverse: "资金冲正" };
 
 export function Wallet() {
   const { enabled } = useFeatures();
-  const [cursor, setCursor] = useState("");
-  const loader = useCallback(() => Promise.all([mall<Balance>("/wallet"), mall<Page<Row>>(
-    `/wallet/entries?cursor=${encodeURIComponent(cursor)}`
-  )]), [cursor]);
-  const query = useLoad(loader);
-  const balance = query.data?.[0];
-  return <MallPage title="我的钱包" description="查看可用余额、冻结金额与每一笔资金变动。">
-    <Feedback {...query} /><WalletBalances balance={balance} />
-    <div className={enabled("mall_payment") ? "af-mall-columns" : undefined}>
-      <MallPanel title="资金流水">
-        <List className="af-mall-feed" dataSource={query.data?.[1].items} locale={{ emptyText: "暂无资金流水。" }}
+  const paging = useCursor();
+  const balance = useLoad(useCallback(() => mall<Balance>("/wallet"), []));
+  const entries = useLoad(useCallback(() => mall<Page<Row>>(`/wallet/entries?cursor=${encodeURIComponent(paging.cursor)}`), [paging.cursor]));
+  const filter = useRecordFilter({ rows: entries.data?.items ?? [], fields: ["id", "description", "business_key"] });
+  const reload = async () => { await Promise.all([balance.reload(), entries.reload()]); };
+  const currency = balance.data?.currency ?? "CNY";
+  return <MallPage title="我的钱包" description="可用余额、冻结资金与每笔资金流水都有记录。" actions={<QueryRefresh query={balance} />}>
+    <MallPanel title="钱包概况" className="af-wallet-summary"><MallQuery query={balance}><WalletBalances balance={balance.data} /></MallQuery></MallPanel>
+    <div className={enabled("mall_payment") ? "af-mall-columns af-wallet-workspace" : "af-wallet-workspace"}>
+      <MallPanel title="资金流水" actions={<QueryRefresh query={entries} />}>
+        <FilterBar {...filter} count={entries.data ? filter.rows.length : undefined} placeholder="搜索本页流水说明或编号" />
+        <MallQuery query={entries}><List className="af-mall-feed" dataSource={filter.rows}
+          locale={{ emptyText: filter.filtered ? "没有匹配的资金流水，请调整关键词。" : "暂无资金流水，充值或订单支付后会显示在这里。" }}
           renderItem={(row) => <List.Item><div className="af-wallet-journal">
-            <div className="af-wallet-journal-identity"><span>{String(row.description ?? "钱包变动")}</span>
-              {enabled("mall_support") && <Link to={`/shop/messages?wallet_journal_id=${row.id}`}>联系流水客服</Link>}
-            </div><strong className="af-order-amount">{money(Number(row.total_cents), String(row.currency ?? balance?.currency ?? "CNY"))}</strong>
-          </div></List.Item>} />
-        {query.data?.[1].next_cursor && <div className="af-mall-pagination">
-          <Button onClick={() => setCursor(query.data![1].next_cursor!)}>下一页流水</Button>
-        </div>}
+            <div className="af-wallet-journal-identity"><strong>{ENTRY_LABELS[String(row.description)] ?? String(row.description || "资金变动")}</strong>
+              <span>{formatDate(row.created_at)}</span>
+              {enabled("mall_support") && <Link to={`/shop/messages?wallet_journal_id=${encodeURIComponent(String(row.id))}`}>联系流水客服</Link>}
+            </div><strong className="af-order-amount">{money(Number(row.total_cents), String(row.currency ?? currency))}</strong>
+          </div></List.Item>} /></MallQuery>
+        <CursorNav paging={paging} nextCursor={entries.data?.next_cursor} loading={entries.loading} />
       </MallPanel>
-      {enabled("mall_payment") && <TopUp reload={query.reload} />}
+      {enabled("mall_payment") && balance.data && <TopUp reload={reload} currency={currency} />}
     </div>
   </MallPage>;
 }

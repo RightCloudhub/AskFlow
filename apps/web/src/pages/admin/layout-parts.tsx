@@ -34,7 +34,7 @@ function UserChip({ compact }: { compact: boolean }) {
     { key: "logout", icon: <LogoutOutlined />, label: "退出登录", danger: true }],
     onClick: ({ key }: { key: string }) => { if (key === "chat") nav("/"); else void logout(); } };
   return <Dropdown menu={menu} trigger={["click"]} placement="bottomRight">
-    <button type="button" className="af-user-chip"><Avatar size={AVATAR_SIZE} className="af-avatar">
+    <button type="button" className="af-user-chip" aria-label={`${username}的账号菜单`}><Avatar size={AVATAR_SIZE} className="af-avatar">
       {username.slice(0, 1).toUpperCase()}</Avatar>
       {!compact && <Typography.Text className="af-user-chip-name">{username}</Typography.Text>}
       <DownOutlined className="af-user-chip-caret" /></button>
@@ -45,14 +45,15 @@ type SidebarProps = { mobile: boolean; collapsed: boolean; drawer: boolean; menu
   setCollapsed: (value: boolean) => void; setDrawer: (value: boolean) => void };
 
 export function Sidebar(props: SidebarProps) {
-  if (props.mobile) return <Drawer placement="left" open={props.drawer} size={DRAWER_WIDTH}
-    onClose={() => props.setDrawer(false)} closable={false} styles={{ body: { padding: 0 } }} className="af-pro-drawer">
+  if (props.mobile) return <Drawer title="管理导航" placement="left" open={props.drawer} size={DRAWER_WIDTH}
+    onClose={() => props.setDrawer(false)} styles={{ body: { padding: 0 } }} className="af-pro-drawer">
     <Brand collapsed={false} />{props.menu}</Drawer>;
   return <Layout.Sider collapsed={props.collapsed} trigger={null} width={SIDEBAR_WIDTH}
     collapsedWidth={SIDEBAR_COLLAPSED} theme="light" className="af-pro-sider">
     <Brand collapsed={props.collapsed} /><div className="af-pro-menu-wrap">{props.menu}</div>
     <div className="af-pro-sider-foot"><Button type="text" block
       icon={props.collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+      aria-label={props.collapsed ? "展开侧栏" : "收起侧栏"}
       onClick={() => props.setCollapsed(!props.collapsed)}>{props.collapsed ? null : "收起侧栏"}</Button></div>
   </Layout.Sider>;
 }

@@ -34,8 +34,8 @@ export function AppShell(props: AppShellProps) {
     creating={props.creating ?? false} onNewChat={() => { props.onNewChat(); setDrawer(false); }}
     onSelect={(id) => { props.onSelectConversation(id); setDrawer(false); }} />;
   return <Layout className="af-app-shell">
-    {mobile ? <Drawer placement="left" open={drawer} onClose={() => setDrawer(false)} size={DRAWER_WIDTH}
-      closable={false} styles={{ body: { padding: 0 } }}>{sidebar}</Drawer> :
+    {mobile ? <Drawer title="会话列表" placement="left" open={drawer} onClose={() => setDrawer(false)} size={DRAWER_WIDTH}
+      styles={{ body: { padding: 0 } }}>{sidebar}</Drawer> :
       <Layout.Sider width={SIDEBAR_WIDTH} theme="light" className="af-app-sider">{sidebar}</Layout.Sider>}
     <Layout className="af-app-main"><ChatHeader {...props} mobile={mobile} openDrawer={() => setDrawer(true)} />
       <Layout.Content className="af-app-content">{props.children}</Layout.Content></Layout></Layout>;

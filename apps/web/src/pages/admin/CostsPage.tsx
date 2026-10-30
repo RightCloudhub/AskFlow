@@ -1,178 +1,54 @@
-import { useMemo } from "react";
-import { Card, Col, Empty, Row, Spin, Table } from "antd";
-import {
-  ApiOutlined,
-  DollarOutlined,
-  ExportOutlined,
-  ImportOutlined,
-} from "@ant-design/icons";
-import {
-  DonutChart,
-  HBarChart,
-  PageHeader,
-  StatCard,
-  formatNumber,
-  formatUsd,
-  purposeLabel,
-  type ChartDatum,
-} from "../../components/admin";
+import { PageHeader, StatCard, DonutChart, HBarChart, formatNumber, formatUsd, purposeLabel } from "../../components/admin";
+import type { ChartDatum } from "../../components/admin";
+import type { ColumnsType } from "antd/es/table";
+import { DataTable, QueryFeedback, RefreshButton, WorkspacePanel } from "../../components/admin/workspace";
 import { useCostSummary } from "../../hooks/use-governance";
 import type { CostBucket } from "../../api/types";
 
-function totals(rows: CostBucket[]) {
-  return rows.reduce(
-    (acc, r) => {
-      acc.usd += r.estimated_usd || 0;
-      acc.calls += r.calls || 0;
-      acc.prompt += r.prompt_tokens || 0;
-      acc.completion += r.completion_tokens || 0;
-      return acc;
-    },
-    { usd: 0, calls: 0, prompt: 0, completion: 0 },
-  );
+type CostKey = "estimated_usd" | "calls" | "prompt_tokens" | "completion_tokens";
+function sum(rows: CostBucket[], key: CostKey) {
+  if (rows.some((row) => row[key] == null || !Number.isFinite(row[key]))) return null;
+  return rows.reduce((total, row) => total + Number(row[key]), 0);
 }
+function chart(rows: CostBucket[], field: "purpose" | "model"): ChartDatum[] {
+  return rows.map((row, index) => ({ key: String(row[field] ?? index),
+    label: field === "purpose" ? purposeLabel(row.purpose ?? "其他") : row.model || "未知模型", value: row.estimated_usd }));
+}
+function CostMetrics({ rows, loaded }: { rows: CostBucket[]; loaded: boolean }) {
+  return <div className="af-dashboard-metrics">
+    <StatCard label="预估总费用" value={loaded ? sum(rows, "estimated_usd") : null} format="usd" hint="USD · 以调用记录估算" />
+    <StatCard label="模型调用次数" value={loaded ? sum(rows, "calls") : null} />
+    <StatCard label="输入 Token" value={loaded ? sum(rows, "prompt_tokens") : null} />
+    <StatCard label="输出 Token" value={loaded ? sum(rows, "completion_tokens") : null} />
+  </div>;
+}
+const COLUMNS: ColumnsType<CostBucket> = [
+  { title: "用途", dataIndex: "purpose", render: (value) => purposeLabel(value ?? "其他") },
+  { title: "调用次数", dataIndex: "calls", align: "right", render: (value) => value == null ? "—" : formatNumber(value) },
+  { title: "输入 Token", dataIndex: "prompt_tokens", align: "right", render: (value) => value == null ? "—" : formatNumber(value) },
+  { title: "输出 Token", dataIndex: "completion_tokens", align: "right", render: (value) => value == null ? "—" : formatNumber(value) },
+  { title: "预估费用（USD）", dataIndex: "estimated_usd", align: "right", render: (value) => value == null ? "—" : formatUsd(value) },
+];
 
 export function CostsPage() {
-  const costQ = useCostSummary();
-  const data = costQ.data;
-  const purposeRows = data?.by_purpose ?? [];
-  const modelRows = data?.by_model ?? [];
-  const agg = useMemo(
-    () => totals(purposeRows.length ? purposeRows : modelRows),
-    [purposeRows, modelRows],
-  );
-
-  const purposeChart: ChartDatum[] = purposeRows.map((r, i) => ({
-    key: r.purpose ?? `p${i}`,
-    label: purposeLabel(r.purpose ?? "其他"),
-    value: r.estimated_usd,
-  }));
-  const modelChart: ChartDatum[] = modelRows.map((r, i) => ({
-    key: r.model ?? `m${i}`,
-    label: r.model || "未知模型",
-    value: r.estimated_usd,
-  }));
-  const callChart: ChartDatum[] = purposeRows.map((r, i) => ({
-    key: `c-${r.purpose ?? i}`,
-    label: purposeLabel(r.purpose ?? "其他"),
-    value: r.calls,
-  }));
-
-  const columns = [
-    {
-      title: "用途",
-      dataIndex: "purpose",
-      render: (p: string) => purposeLabel(p ?? "—"),
-    },
-    {
-      title: "调用",
-      dataIndex: "calls",
-      render: (v: number) => formatNumber(v),
-    },
-    {
-      title: "输入 Token",
-      dataIndex: "prompt_tokens",
-      render: (v: number) => formatNumber(v),
-    },
-    {
-      title: "输出 Token",
-      dataIndex: "completion_tokens",
-      render: (v: number) => formatNumber(v),
-    },
-    {
-      title: "费用",
-      dataIndex: "estimated_usd",
-      render: (v: number) => formatUsd(v),
-    },
-  ];
-
-  return (
-    <div className="af-page">
-      <PageHeader
-        eyebrow="运营总览"
-        title="成本分析"
-        subtitle="按用途与模型拆分 Token 与预估费用"
-      />
-      <Spin spinning={costQ.isLoading}>
-        {!data && !costQ.isLoading ? (
-          <Empty description="暂无成本数据" />
-        ) : (
-          <>
-            <Row gutter={[16, 16]}>
-              <Col xs={12} lg={6}>
-                <StatCard
-                  label="预估总费用"
-                  value={agg.usd}
-                  format="usd"
-                  tone="brand"
-                  icon={<DollarOutlined />}
-                />
-              </Col>
-              <Col xs={12} lg={6}>
-                <StatCard
-                  label="调用次数"
-                  value={agg.calls}
-                  tone="info"
-                  icon={<ApiOutlined />}
-                />
-              </Col>
-              <Col xs={12} lg={6}>
-                <StatCard
-                  label="输入 Token"
-                  value={agg.prompt}
-                  icon={<ImportOutlined />}
-                />
-              </Col>
-              <Col xs={12} lg={6}>
-                <StatCard
-                  label="输出 Token"
-                  value={agg.completion}
-                  icon={<ExportOutlined />}
-                />
-              </Col>
-            </Row>
-
-            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-              <Col xs={24} lg={12}>
-                <Card title="费用占比 · 用途" extra={formatUsd(agg.usd)}>
-                  <DonutChart
-                    data={purposeChart}
-                    centerLabel="USD"
-                    centerValue={formatUsd(agg.usd).replace("$", "")}
-                  />
-                </Card>
-              </Col>
-              <Col xs={24} lg={12}>
-                <Card title="费用 · 按模型">
-                  <HBarChart data={modelChart} format="usd" />
-                </Card>
-              </Col>
-            </Row>
-
-            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-              <Col xs={24} lg={10}>
-                <Card title="调用次数 · 用途">
-                  <HBarChart data={callChart} />
-                </Card>
-              </Col>
-              <Col xs={24} lg={14}>
-                <Card title="明细表">
-                  <Table
-                    size="middle"
-                    rowKey={(r) =>
-                      r.purpose ?? r.model ?? String(Math.random())
-                    }
-                    dataSource={purposeRows}
-                    columns={columns}
-                    pagination={false}
-                    locale={{ emptyText: "暂无成本记录" }}
-                  />
-                </Card>
-              </Col>
-            </Row>
-          </>
-        )}
-      </Spin>
+  const query = useCostSummary();
+  const purposes = query.data?.by_purpose ?? [];
+  const models = query.data?.by_model ?? [];
+  const rows = purposes.length ? purposes : models;
+  const total = query.data ? sum(rows, "estimated_usd") : null;
+  const calls = purposes.map((row, index) => ({ key: row.purpose ?? String(index), label: purposeLabel(row.purpose ?? "其他"), value: row.calls }));
+  return <div className="af-page"><PageHeader title="成本分析" subtitle="定位主要费用来源，按用途核对调用次数与 Token 消耗。"
+    actions={<RefreshButton query={query} />} /><QueryFeedback query={query} /><CostMetrics rows={rows} loaded={Boolean(query.data)} />
+    <div className="af-work-stack">
+      <div className="af-dashboard-grid"><WorkspacePanel title="费用按模型分布" description="优先查看费用最高的模型。">
+        {query.isLoading ? <p className="af-work-help">正在读取费用记录…</p> : <HBarChart data={chart(models, "model")} format="usd" />}
+      </WorkspacePanel><WorkspacePanel title="费用按用途分布">
+        <DonutChart data={chart(purposes, "purpose")} centerLabel="预估费用 · USD" centerValue={total == null ? "—" : formatUsd(total)} />
+      </WorkspacePanel></div>
+      <WorkspacePanel title="用途与调用明细"><DataTable dataSource={purposes} columns={COLUMNS} loading={query.isLoading} pagination={false}
+        rowKey={(row, index) => row.purpose ?? row.model ?? String(index)} emptyTitle={query.isError ? "费用记录未加载" : "尚无费用记录"}
+        emptyDescription="产生模型调用后，可在这里查看估算费用。" /></WorkspacePanel>
+      <WorkspacePanel title="调用次数按用途分布"><HBarChart data={calls} /></WorkspacePanel>
     </div>
-  );
+  </div>;
 }

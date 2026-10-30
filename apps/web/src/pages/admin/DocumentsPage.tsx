@@ -1,249 +1,56 @@
-import { DragEvent, FormEvent, useRef, useState } from "react";
-import {
-  Alert,
-  Button,
-  Card,
-  Input,
-  Popconfirm,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from "antd";
-import {
-  DeleteOutlined,
-  HistoryOutlined,
-  InboxOutlined,
-  ReloadOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+import { useState } from "react";
+import { Button, Popconfirm, Space } from "antd";
+import { Link } from "react-router-dom";
+import type { ColumnsType } from "antd/es/table";
 import { DocumentRevisionDrawer } from "../../components/admin/DocumentRevisionDrawer";
 import { PageHeader, StatusBadge } from "../../components/admin";
-import { QueryState } from "../../components/common/QueryState";
-import {
-  useDeleteDocument,
-  useDocuments,
-  useUploadDocument,
-} from "../../hooks/use-documents";
+import { DataTable, FilterBar, RefreshButton, WorkspacePanel } from "../../components/admin/workspace";
+import { useRecordFilter } from "../../components/admin/use-record-filter";
+import { ActionFeedback, useActionFeedback } from "../../components/common/action-feedback";
+import { useDeleteDocument, useDocuments } from "../../hooks/use-documents";
 import type { DocumentRow } from "../../api/types";
+import { DocumentUpload } from "./document-upload";
 
-const { Text } = Typography;
+const STATUSES = [{ value: "all", label: "全部状态" }, { value: "indexed", label: "已索引" },
+  { value: "indexing", label: "索引中" }, { value: "failed", label: "索引失败" }];
+type DocumentActions = { busy: boolean; open: (doc: DocumentRow) => void; remove: (id: string) => Promise<unknown> };
+
+function documentColumns(actions: DocumentActions): ColumnsType<DocumentRow> {
+  return [
+    { title: "文档", dataIndex: "title", render: (title: string, row) => <div className="af-record-title">
+      <strong>{title || row.filename}</strong><small>{row.filename}</small>
+      {row.error_message && <small className="af-score--danger">{row.error_message}</small>}
+    </div> },
+    { title: "索引状态", dataIndex: "status", render: (value) => <StatusBadge value={value} /> },
+    { title: "知识分块", dataIndex: "chunk_count", align: "right", render: (value) => value ?? "—" },
+    { title: "当前版本", dataIndex: "generation", align: "right", render: (value) => value ?? "—" },
+    { title: "操作", key: "actions", render: (_, row) => <Space>
+      <Button size="small" onClick={() => actions.open(row)}>查看版本</Button>
+      <Popconfirm title="删除这篇知识文档？" description="文档及其检索索引会一起删除。" okText="删除文档" cancelText="保留"
+        okButtonProps={{ danger: true }} onConfirm={() => actions.remove(row.id)}>
+        <Button size="small" danger disabled={actions.busy}>删除</Button>
+      </Popconfirm>
+    </Space> },
+  ];
+}
 
 export function DocumentsPage() {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [title, setTitle] = useState("");
-  const [dragOver, setDragOver] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const query = useDocuments();
+  const remove = useDeleteDocument();
+  const feedback = useActionFeedback();
   const [selected, setSelected] = useState<DocumentRow | null>(null);
-
-  const docsQ = useDocuments();
-  const uploadM = useUploadDocument();
-  const deleteM = useDeleteDocument();
-
-  async function uploadFile(file: File) {
-    setLocalError(null);
-    const fd = new FormData();
-    if (title.trim()) fd.set("title", title.trim());
-    fd.set("file", file);
-    try {
-      await uploadM.mutateAsync(fd);
-      setTitle("");
-      if (fileRef.current) fileRef.current.value = "";
-    } catch (e) {
-      setLocalError(e instanceof Error ? e.message : "上传失败");
-    }
-  }
-
-  function onFormSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const file = fileRef.current?.files?.[0];
-    if (!file) {
-      setLocalError("请选择文件");
-      return;
-    }
-    void uploadFile(file);
-  }
-
-  function onDrop(e: DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) void uploadFile(file);
-  }
-
-  async function onDelete(id: string) {
-    try {
-      await deleteM.mutateAsync(id);
-    } catch (e) {
-      setLocalError(e instanceof Error ? e.message : "删除失败");
-    }
-  }
-
-  const errorMsg =
-    localError ||
-    (docsQ.isError && docsQ.error instanceof Error
-      ? docsQ.error.message
-      : null);
-
-  return (
-    <div className="af-page">
-      <PageHeader
-        eyebrow="知识中心"
-        title="知识文档"
-        subtitle="上传与索引知识文档，支持版本对比与回滚"
-        actions={
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => void docsQ.refetch()}
-            loading={docsQ.isFetching}
-          >
-            刷新
-          </Button>
-        }
-      />
-
-      {errorMsg ? (
-        <Alert
-          type="error"
-          showIcon
-          title={errorMsg}
-          style={{ marginBottom: 16 }}
-          closable
-          onClose={() => setLocalError(null)}
-        />
-      ) : null}
-
-      <Card title="上传并索引" style={{ marginBottom: 16 }}>
-        <form onSubmit={onFormSubmit}>
-          <Space orientation="vertical" style={{ width: "100%" }} size="middle">
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="标题（可选）"
-              style={{ maxWidth: 360 }}
-            />
-            <div
-              className={`af-upload-zone ${dragOver ? "dragover" : ""}`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={onDrop}
-              onClick={() => fileRef.current?.click()}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ")
-                  fileRef.current?.click();
-              }}
-            >
-              <InboxOutlined style={{ fontSize: 32, color: "var(--brand)" }} />
-              <p>拖拽文件到此处，或点击选择</p>
-              <Text type="secondary">支持常见文档格式；上传后自动分块索引</Text>
-              <input
-                ref={fileRef}
-                name="file"
-                type="file"
-                required
-                hidden
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void uploadFile(f);
-                }}
-              />
-            </div>
-            <Button
-              type="primary"
-              htmlType="submit"
-              icon={<UploadOutlined />}
-              loading={uploadM.isPending}
-            >
-              上传并索引
-            </Button>
-          </Space>
-        </form>
-      </Card>
-
-      <Card title="文档列表" extra={<Tag>{docsQ.data?.length ?? 0} 篇</Tag>}>
-        <QueryState isLoading={docsQ.isLoading} isError={false}>
-          <Table<DocumentRow>
-            rowKey="id"
-            dataSource={docsQ.data ?? []}
-            loading={docsQ.isFetching && !docsQ.isLoading}
-            pagination={{ pageSize: 10 }}
-            columns={[
-              {
-                title: "标题",
-                dataIndex: "title",
-                render: (t: string) => t || "—",
-              },
-              { title: "文件名", dataIndex: "filename" },
-              {
-                title: "状态",
-                dataIndex: "status",
-                render: (s: string) => <StatusBadge value={s} />,
-              },
-              {
-                title: "分块",
-                dataIndex: "chunk_count",
-                width: 80,
-                render: (n: number) => (
-                  <Tag color={n > 0 ? "blue" : "default"}>{n}</Tag>
-                ),
-              },
-              {
-                title: "Gen",
-                dataIndex: "generation",
-                width: 70,
-                render: (g: number | undefined) => g ?? "—",
-              },
-              {
-                title: "操作",
-                key: "actions",
-                width: 200,
-                render: (_: unknown, d: DocumentRow) => (
-                  <Space>
-                    <Button
-                      size="small"
-                      icon={<HistoryOutlined />}
-                      onClick={() => setSelected(d)}
-                    >
-                      版本
-                    </Button>
-                    <Popconfirm
-                      title="删除文档"
-                      description="删除后该文档的索引将一并移除，确定继续？"
-                      okText="删除"
-                      okButtonProps={{ danger: true }}
-                      cancelText="取消"
-                      onConfirm={() => onDelete(d.id)}
-                    >
-                      <Button
-                        danger
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        loading={
-                          deleteM.isPending && deleteM.variables === d.id
-                        }
-                      >
-                        删除
-                      </Button>
-                    </Popconfirm>
-                  </Space>
-                ),
-              },
-            ]}
-            locale={{ emptyText: "暂无文档 — 上传后将出现在此列表" }}
-          />
-        </QueryState>
-      </Card>
-
-      <DocumentRevisionDrawer
-        doc={selected}
-        open={Boolean(selected)}
-        onClose={() => setSelected(null)}
-      />
-    </div>
-  );
+  const filter = useRecordFilter({ rows: query.data ?? [], fields: ["title", "filename"], statusField: "status" });
+  const columns = documentColumns({ busy: feedback.busy, open: setSelected,
+    remove: (id) => feedback.run(() => remove.mutateAsync(id), "文档及索引已删除。") });
+  return <div className="af-page">
+    <PageHeader title="知识文档" subtitle="维护客服回答的依据，查看索引状态与历史版本。" actions={<RefreshButton query={query} />} />
+    <ActionFeedback state={feedback} />
+    <div className="af-work-stack"><DocumentUpload />
+      <WorkspacePanel title="知识库文档" description="已索引的内容可用于知识检索。" actions={<Link to="/admin/gaps">查看知识缺口</Link>}>
+        <FilterBar {...filter} placeholder="搜索标题或文件名" options={STATUSES} count={query.data ? filter.rows.length : undefined} />
+        <DataTable query={query} dataSource={filter.rows} columns={columns} emptyTitle={filter.filtered ? "没有匹配的文档" : "知识库还没有文档"}
+          emptyDescription={filter.filtered ? "调整关键词或状态后重试。" : "上传一份文字资料，建立客服回答的依据。"} />
+      </WorkspacePanel>
+    </div><DocumentRevisionDrawer doc={selected} open={Boolean(selected)} onClose={() => setSelected(null)} />
+  </div>;
 }

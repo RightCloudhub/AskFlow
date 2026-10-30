@@ -1,120 +1,45 @@
-import { Button, Space, Table, Tag, Typography } from "antd";
-import { RollbackOutlined, UserSwitchOutlined } from "@ant-design/icons";
+import { Button, Popconfirm, Space } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import { StatusBadge, formatWaiting, intentLabel } from "../../admin";
+import { DataTable, type QueryPresentation } from "../../admin/workspace";
 import type { Handoff } from "../../../api/types";
 import { handoffActions } from "../actions";
 
 type HandoffInboxProps = {
-  rows: Handoff[];
-  loading?: boolean;
-  /** The signed-in agent; only they can return a session they claimed. */
-  currentUserId?: string | null;
-  claimingId?: string | null;
-  returningId?: string | null;
-  onClaim: (id: string) => void;
-  onReturn: (id: string) => void;
-  onSelect?: (row: Handoff) => void;
+  rows: Handoff[]; loading?: boolean; query?: QueryPresentation; currentUserId?: string | null;
+  claimingId?: string | null; returningId?: string | null;
+  onClaim: (id: string) => void; onReturn: (id: string) => void; onSelect?: (row: Handoff) => void;
 };
 
-export function HandoffInbox({
-  rows,
-  loading,
-  currentUserId,
-  claimingId,
-  returningId,
-  onClaim,
-  onReturn,
-  onSelect,
-}: HandoffInboxProps) {
-  return (
-    <Table
-      loading={loading}
-      rowKey="id"
-      dataSource={rows}
-      pagination={{ pageSize: 10 }}
-      onRow={(record) => ({
-        onClick: () => onSelect?.(record),
-        style: { cursor: onSelect ? "pointer" : undefined },
-      })}
-      columns={[
-        {
-          title: "状态",
-          dataIndex: "status",
-          width: 100,
-          render: (s: string) => <StatusBadge value={s} />,
-        },
-        {
-          title: "客户",
-          dataIndex: "user_name",
-          width: 120,
-          render: (v: string | null | undefined, h: Handoff) => (
-            <Typography.Text strong title={h.conversation_id}>
-              {v || "访客"}
-            </Typography.Text>
-          ),
-        },
-        {
-          title: "意图",
-          dataIndex: "intent",
-          width: 100,
-          render: (v: string | undefined) => intentLabel(v || "handoff"),
-        },
-        { title: "摘要", dataIndex: "summary" },
-        {
-          title: "等待",
-          dataIndex: "created_at",
-          width: 120,
-          render: (v: string | undefined, h: Handoff) =>
-            h.status === "queued" ? formatWaiting(v) : "—",
-        },
-        {
-          title: "认领人",
-          dataIndex: "claimed_by_name",
-          width: 110,
-          render: (v: string | null | undefined, h: Handoff) => {
-            if (!h.claimed_by) return "—";
-            if (h.claimed_by === currentUserId) return <Tag color="blue">我</Tag>;
-            return <Tag>{v || "其他坐席"}</Tag>;
-          },
-        },
-        {
-          title: "操作",
-          key: "actions",
-          width: 150,
-          render: (_: unknown, h: Handoff) => {
-            const can = handoffActions(h, currentUserId);
-            return (
-              <Space onClick={(e) => e.stopPropagation()}>
-                {can.claim ? (
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<UserSwitchOutlined />}
-                    loading={claimingId === h.id}
-                    onClick={() => onClaim(h.id)}
-                  >
-                    认领
-                  </Button>
-                ) : null}
-                {can.ret ? (
-                  <Button
-                    size="small"
-                    icon={<RollbackOutlined />}
-                    loading={returningId === h.id}
-                    onClick={() => onReturn(h.id)}
-                  >
-                    交还 AI
-                  </Button>
-                ) : null}
-                {can.claimedByOther ? (
-                  <Typography.Text type="secondary">已被认领</Typography.Text>
-                ) : null}
-              </Space>
-            );
-          },
-        },
-      ]}
-      locale={{ emptyText: "暂无接管会话" }}
-    />
-  );
+function HandoffActions({ row, props }: { row: Handoff; props: HandoffInboxProps }) {
+  const can = handoffActions(row, props.currentUserId);
+  const busy = Boolean(props.claimingId || props.returningId);
+  return <Space>
+    {props.onSelect && <Button size="small" onClick={() => props.onSelect?.(row)}>查看会话</Button>}
+    {can.claim && <Button size="small" disabled={busy} loading={props.claimingId === row.id}
+      onClick={() => props.onClaim(row.id)}>认领</Button>}
+    {can.ret && <Popconfirm title="交还智能助手继续服务？" description="交还后，您将不再以认领座席身份回复这个会话。"
+      okText="交还智能助手" cancelText="继续服务" onConfirm={() => props.onReturn(row.id)}>
+      <Button size="small" disabled={busy} loading={props.returningId === row.id}>交还助手</Button></Popconfirm>}
+    {can.claimedByOther && <span className="af-record-secondary">其他座席处理中</span>}
+  </Space>;
+}
+
+function inboxColumns(props: HandoffInboxProps): ColumnsType<Handoff> {
+  return [
+    { title: "客户与问题", key: "customer", render: (_, row) => <div className="af-record-title">
+      <strong>{row.user_name || "访客"} · {intentLabel(row.intent || "handoff")}</strong>
+      <small>{row.summary || "暂未生成问题摘要"}</small></div> },
+    { title: "状态", dataIndex: "status", render: (value) => <StatusBadge value={value} /> },
+    { title: "已等待", dataIndex: "created_at", render: (value, row) => row.status === "queued" ? formatWaiting(value) : "—" },
+    { title: "认领座席", key: "owner", render: (_, row) => row.claimed_by ?
+      row.claimed_by === props.currentUserId ? "我" : row.claimed_by_name || "其他座席" : "未认领" },
+    { title: "服务操作", key: "actions", render: (_, row) => <HandoffActions row={row} props={props} /> },
+  ];
+}
+
+export function HandoffInbox(props: HandoffInboxProps) {
+  return <DataTable query={props.query} loading={props.loading ?? props.query?.isLoading} dataSource={props.rows}
+    columns={inboxColumns(props)} emptyTitle="没有符合条件的接管会话"
+    emptyDescription="客户转人工后，会在这里等待座席认领。" />;
 }

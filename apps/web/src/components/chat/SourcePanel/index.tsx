@@ -4,6 +4,8 @@ import type { CitationSource } from "../../../api/types";
 import { useSourcePanel } from "../../../stores/ui-store";
 
 const { Text, Paragraph } = Typography;
+const SNIPPET_ROWS = 5;
+const RELEVANCE_DECIMALS = 3;
 
 function SourceCard({
   source,
@@ -24,14 +26,14 @@ function SourceCard({
         </Text>
         {source.score != null ? (
           <Text type="secondary" className="af-source-score">
-            {Number(source.score).toFixed(3)}
+            相关度 {Number(source.score).toFixed(RELEVANCE_DECIMALS)}
           </Text>
         ) : null}
       </header>
       <Paragraph
         type="secondary"
         className="af-source-snippet"
-        ellipsis={{ rows: 5 }}
+        ellipsis={{ rows: SNIPPET_ROWS, expandable: "collapsible", symbol: (expanded) => expanded ? "收起原文" : "展开原文" }}
       >
         {snippet || "（无摘要）"}
       </Paragraph>

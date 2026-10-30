@@ -23,14 +23,16 @@ function renderCell(key: string, value: unknown, row: Row) {
   if (key.endsWith("_cents")) return money(Number(value), String(row.currency ?? "CNY"));
   if (typeof value === "boolean") return value ? "是" : "否";
   if (typeof value === "number") return value.toLocaleString("zh-CN");
-  if (typeof value === "object") return <pre>{JSON.stringify(value, null, 2)}</pre>;
+  if (typeof value === "object") return <span className="af-record-secondary">
+    {Array.isArray(value) ? `${value.length} 项，详情可展开` : "结构化数据，详情可展开"}</span>;
   return String(value);
 }
 
 export function recordColumns(rows: Row[]): ColumnsType<Row> {
-  return Object.keys(rows[0] ?? {}).map((key) => ({
+  const fields = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  return fields.map((key) => ({
     title: LABELS[key] ?? key, key, dataIndex: key,
-    className: typeof rows[0]?.[key] === "number" ? "af-numeric-cell" : IDENTITIES.has(key) ? "af-record-identity" : undefined,
+    className: key.endsWith("_cents") || rows.some((row) => typeof row[key] === "number") ? "af-numeric-cell" : IDENTITIES.has(key) ? "af-record-identity" : undefined,
     render: (value: unknown, row: Row) => renderCell(key, value, row),
   }));
 }

@@ -1,76 +1,47 @@
-import { Button, Card, Popconfirm, Table, Tag } from "antd";
-import { CheckOutlined, StopOutlined } from "@ant-design/icons";
-import { PageHeader, labelStatus } from "../../components/admin";
+import { Button, Popconfirm } from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { PageHeader, StatusBadge, labelStatus } from "../../components/admin";
+import { DataTable, FilterBar, RefreshButton, WorkspacePanel } from "../../components/admin/workspace";
+import { useRecordFilter } from "../../components/admin/use-record-filter";
+import { ActionFeedback, useActionFeedback } from "../../components/common/action-feedback";
 import { useToggleUser, useUsers } from "../../hooks/use-governance";
 import type { User } from "../../api/types";
 
-export function UsersPage() {
-  const usersQ = useUsers();
-  const toggle = useToggleUser();
+type UserActions = { busy: boolean; toggle: (user: User) => Promise<unknown> };
 
-  return (
-    <div className="af-page">
-      <PageHeader
-        eyebrow="系统治理"
-        title="用户管理"
-        subtitle="查看账号角色，启用或禁用账号"
-      />
-      <Card>
-        <Table
-          loading={usersQ.isLoading}
-          rowKey="id"
-          dataSource={usersQ.data ?? []}
-          pagination={{ pageSize: 10 }}
-          columns={[
-            { title: "用户名", dataIndex: "username" },
-            { title: "邮箱", dataIndex: "email" },
-            {
-              title: "角色",
-              dataIndex: "role",
-              render: (r: string) => <Tag color="blue">{labelStatus(r)}</Tag>,
-            },
-            {
-              title: "状态",
-              dataIndex: "is_active",
-              render: (a: boolean) =>
-                a ? (
-                  <Tag color="success">启用</Tag>
-                ) : (
-                  <Tag color="error">禁用</Tag>
-                ),
-            },
-            {
-              title: "操作",
-              key: "actions",
-              render: (_: unknown, u: User) => (
-                <Popconfirm
-                  title={u.is_active ? "禁用该用户？" : "启用该用户？"}
-                  description={
-                    u.is_active
-                      ? "禁用后该用户将无法登录。"
-                      : "启用后该用户可重新登录。"
-                  }
-                  okText={u.is_active ? "禁用" : "启用"}
-                  okButtonProps={{ danger: Boolean(u.is_active) }}
-                  cancelText="取消"
-                  onConfirm={() => toggle.mutateAsync(u)}
-                >
-                  <Button
-                    size="small"
-                    danger={Boolean(u.is_active)}
-                    type={u.is_active ? "default" : "primary"}
-                    icon={u.is_active ? <StopOutlined /> : <CheckOutlined />}
-                    loading={toggle.isPending && toggle.variables?.id === u.id}
-                  >
-                    {u.is_active ? "禁用" : "启用"}
-                  </Button>
-                </Popconfirm>
-              ),
-            },
-          ]}
-          locale={{ emptyText: "暂无用户" }}
-        />
-      </Card>
-    </div>
-  );
+function userColumns(actions: UserActions): ColumnsType<User> {
+  return [
+    { title: "账号", dataIndex: "username", render: (name, row) => <div className="af-record-title">
+      <strong>{name}</strong><small>{row.email || "未填写邮箱"}</small></div> },
+    { title: "角色", dataIndex: "role", render: (value) => labelStatus(value) },
+    { title: "登录状态", dataIndex: "is_active", render: (value) =>
+      <StatusBadge value={value == null ? undefined : value ? "enabled" : "disabled"} /> },
+    { title: "操作", key: "action", render: (_, user) => <Popconfirm
+      title={user.is_active ? "禁用 " + user.username + "？" : "启用 " + user.username + "？"}
+      description={user.is_active ? "禁用后该账号将无法登录，已有业务记录会保留。" : "启用后该账号可以重新登录。"}
+      okText={user.is_active ? "确认禁用" : "确认启用"} cancelText="取消"
+      okButtonProps={{ danger: Boolean(user.is_active) }} onConfirm={() => actions.toggle(user)}>
+      <Button size="small" danger={Boolean(user.is_active)} disabled={actions.busy || user.is_active == null}>
+        {user.is_active ? "禁用账号" : "启用账号"}</Button>
+    </Popconfirm> },
+  ];
+}
+
+export function UsersPage() {
+  const query = useUsers();
+  const toggle = useToggleUser();
+  const feedback = useActionFeedback();
+  const filter = useRecordFilter({ rows: query.data ?? [], fields: ["username", "email"], statusField: "role" });
+  const columns = userColumns({ busy: feedback.busy, toggle: (user) => feedback.run(
+    () => toggle.mutateAsync(user), user.username + (user.is_active ? " 已禁用。" : " 已启用。")) });
+  return <div className="af-page"><PageHeader title="用户管理" subtitle="查看账号角色和登录状态，保留每次启停操作的业务记录。"
+    actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
+    <WorkspacePanel title="用户账号">
+      <FilterBar {...filter} placeholder="搜索用户名或邮箱" count={query.data ? filter.rows.length : undefined}
+        options={[{ value: "all", label: "全部角色" }, { value: "admin", label: "管理员" },
+          { value: "agent", label: "座席" }, { value: "user", label: "用户" }]} />
+      <DataTable query={query} dataSource={filter.rows} columns={columns} emptyTitle={filter.filtered ? "没有匹配的用户" : "暂无用户账号"}
+        emptyDescription={filter.filtered ? "尝试其他用户名、邮箱或角色。" : "账号创建后会出现在这里。"} />
+    </WorkspacePanel>
+  </div>;
 }

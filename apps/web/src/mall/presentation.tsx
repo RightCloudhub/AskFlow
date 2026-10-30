@@ -42,3 +42,11 @@ export function MallStatus({ value }: { value: unknown }) {
 export function MallEmpty({ title, children }: { title: string; children?: ReactNode }) {
   return <div className="af-mall-empty"><p>{title}</p>{children}</div>;
 }
+
+export function formatDate(value: unknown) {
+  if (!value) return "—";
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("zh-CN", {
+    month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  });
+}

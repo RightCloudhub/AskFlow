@@ -1,28 +1,40 @@
 import { useCallback, useState } from "react";
-import { Button, Input, Space, Table, Tabs } from "antd";
+import { Drawer, Input, Space, Table, Tabs } from "antd";
 import { mall } from "./client";
-import { Feedback, useLoad, type Page, type Row } from "./shared";
+import { useLoad, type Page, type Row } from "./shared";
 import { recordColumns } from "./record-columns";
+import { CursorNav, MallQuery, QueryRefresh, useCursor } from "./query-view";
+import { FilterBar } from "../components/admin/workspace";
+import { useRecordFilter } from "../components/admin/use-record-filter";
+import { JsonView } from "../components/common/json";
 
 export function Records({ path }: { path: string }) {
-  const [cursor, setCursor] = useState("");
+  const paging = useCursor();
+  const [selected, setSelected] = useState<Row>();
   const loader = useCallback(() => mall<Page<Row>>(
-    "/api/v1/admin/mall" + path + "?cursor=" + encodeURIComponent(cursor)), [path, cursor]);
+    "/api/v1/admin/mall" + path + "?cursor=" + encodeURIComponent(paging.cursor)), [path, paging.cursor]);
   const query = useLoad(loader);
-  const columns = recordColumns(query.data?.items ?? []);
-  return <div className="af-mall-admin-records"><Feedback {...query} />
-    <Table rowKey={(row: Row) => String(row.id ?? row.key)} columns={columns}
-      dataSource={query.data?.items} pagination={false} scroll={{ x: true }} locale={{ emptyText: "暂无业务记录" }} />
-    <div className="af-mall-pagination"><Button loading={query.loading} onClick={() => { setCursor(""); void query.reload(); }}>刷新</Button>
-    {query.data?.next_cursor && <Button onClick={() => setCursor(query.data!.next_cursor!)}>下一页</Button>}
-    </div></div>;
+  const filter = useRecordFilter({ rows: query.data?.items ?? [], fields: Object.keys(query.data?.items[0] ?? {}) });
+  return <div className="af-mall-admin-records"><QueryRefresh query={query} />
+    <FilterBar {...filter} count={query.data ? filter.rows.length : undefined} placeholder="搜索本页业务记录" />
+    <MallQuery query={query}><Table rowKey={(row: Row) => String(row.id ?? row.key)}
+      columns={[...recordColumns(query.data?.items ?? []), { title: "详情", key: "detail", render: (_, row) =>
+        <button className="af-record-detail-button" type="button" onClick={() => setSelected(row)}>查看详情</button> }]}
+      dataSource={filter.rows} pagination={false} scroll={{ x: "max-content" }}
+      locale={{ emptyText: filter.filtered ? "没有匹配的业务记录，请调整关键词。" : "暂无业务记录。" }} /></MallQuery>
+    <CursorNav paging={paging} nextCursor={query.data?.next_cursor} loading={query.loading} />
+    <Drawer title="业务记录详情" open={Boolean(selected)} onClose={() => setSelected(undefined)} destroyOnHidden>
+      {selected && <JsonView data={selected} title="完整记录" />}
+    </Drawer>
+  </div>;
 }
 
 function Differences() {
   const [runId, setRunId] = useState("");
   return <Space direction="vertical" style={{ width: "100%" }}>
-    <Input.Search aria-label="对账批次编号" placeholder="输入对账批次编号" onSearch={setRunId} />
-    {runId && <Records key={runId} path={`/wallet/reconciliation/${encodeURIComponent(runId)}/diffs`} />}
+    <Input.Search aria-label="对账批次编号" placeholder="输入对账批次编号" onSearch={(value) => setRunId(value.trim())} />
+    {runId ? <Records key={runId} path={`/wallet/reconciliation/${encodeURIComponent(runId)}/diffs`} /> :
+      <p className="af-mall-note">输入对账批次编号后，查看该批次需要复核的差异。</p>}
   </Space>;
 }
 
