@@ -1,7 +1,8 @@
 import type { GlobalToken } from "antd";
 import { BRAND, DESIGN } from "./tokens";
 
-const px = (value: number) => `${value}px`;
+const px = (value: number | string) =>
+  typeof value === "number" ? `${value}px` : value;
 
 export function designVariables(token: GlobalToken): Record<string, string> {
   return {
