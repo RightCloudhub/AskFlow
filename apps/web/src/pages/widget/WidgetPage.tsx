@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Alert, Button } from "antd";
 import { BrandMark } from "../../components/layout/BrandMark";
+import { SourcePanel } from "../../components/chat/SourcePanel";
 import { useWidget } from "./use-widget";
 import { WidgetBubble, WidgetComposer, WidgetWelcome } from "./widget-parts";
 
@@ -21,5 +22,7 @@ export function WidgetPage() {
     {state.busy && <p className="af-w-pending" role="status">正在回复…</p>}<div ref={bottomRef} />
   </div>{state.error && <div className="af-w-error"><Alert type="error" showIcon title={state.error}
     action={<Button loading={state.connecting} disabled={state.busy} onClick={() => void state.connect()}>重新连接</Button>} /></div>}
-  <WidgetComposer state={state} /><footer className="af-w-foot">AskFlow · 订单与售后支持</footer></div></div>;
+  <div className="af-w-service-actions"><span>需要继续处理？</span><Button size="small"
+    disabled={!state.ready || state.busy} onClick={() => void state.sendText("转人工客服")}>转人工客服</Button></div>
+  <WidgetComposer state={state} /><footer className="af-w-foot">AskFlow · 订单与售后支持</footer></div><SourcePanel /></div>;
 }

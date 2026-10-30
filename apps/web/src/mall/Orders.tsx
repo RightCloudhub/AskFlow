@@ -21,7 +21,7 @@ export function Orders() {
   const query = useLoad(loader);
   const filter = useRecordFilter({ rows: query.data?.items ?? [], fields: ["id"], statusField: "status" });
   return <MallPage title="我的订单" description="付款、配送和售后进度，都从这笔订单继续。" actions={<Link to="/shop">继续选购</Link>}>
-    <MallPanel title="订单记录" actions={<QueryRefresh query={query} />}>
+    <MallPanel title="订单记录" actions={<QueryRefresh query={query} />} className="af-order-records">
       <FilterBar {...filter} count={query.data ? filter.rows.length : undefined} placeholder="搜索本页订单号" options={ORDER_STATES} />
       <MallQuery query={query}><List className="af-order-list" dataSource={filter.rows}
         locale={{ emptyText: filter.filtered ? "没有匹配的订单，请调整筛选。" : "还没有订单，选好商品后从购物车下单。" }} renderItem={(order) => <List.Item>

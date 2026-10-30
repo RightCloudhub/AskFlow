@@ -7,6 +7,7 @@ import { CursorNav, MallQuery, QueryRefresh, useCursor } from "./query-view";
 import { FilterBar } from "../components/admin/workspace";
 import { useRecordFilter } from "../components/admin/use-record-filter";
 import { JsonView } from "../components/common/json";
+import { DESIGN } from "../design/tokens";
 
 export function Records({ path }: { path: string }) {
   const paging = useCursor();
@@ -20,7 +21,7 @@ export function Records({ path }: { path: string }) {
     <MallQuery query={query}><Table rowKey={(row: Row) => String(row.id ?? row.key)}
       columns={[...recordColumns(query.data?.items ?? []), { title: "详情", key: "detail", render: (_, row) =>
         <button className="af-record-detail-button" type="button" onClick={() => setSelected(row)}>查看详情</button> }]}
-      dataSource={filter.rows} pagination={false} scroll={{ x: "max-content" }}
+      dataSource={filter.rows} pagination={false} scroll={{ x: "max-content" }} sticky={{ offsetHeader: DESIGN.header }}
       locale={{ emptyText: filter.filtered ? "没有匹配的业务记录，请调整关键词。" : "暂无业务记录。" }} /></MallQuery>
     <CursorNav paging={paging} nextCursor={query.data?.next_cursor} loading={query.loading} />
     <Drawer title="业务记录详情" open={Boolean(selected)} onClose={() => setSelected(undefined)} destroyOnHidden>

@@ -3,6 +3,7 @@ import type { TableProps } from "antd";
 import { ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import type { ReactNode } from "react";
 import { readableError } from "../common/action-feedback";
+import { DESIGN } from "../../design/tokens";
 
 export const RECORD_PAGE_SIZE = 10;
 export type QueryPresentation = {
@@ -49,7 +50,8 @@ export function DataTable<T extends object>({ query, emptyTitle, emptyDescriptio
   return <div className="af-work-table">{query && <QueryFeedback query={query} />}
     <Table<T> rowKey="id" size="middle" pagination={{ defaultPageSize: RECORD_PAGE_SIZE, showSizeChanger: false,
       hideOnSinglePage: true, showTotal: (total) => `共 ${total} 条` }} scroll={{ x: "max-content" }}
-      {...props} loading={props.loading ?? query?.isLoading} locale={{ ...props.locale, emptyText: empty }} />
+      {...props} sticky={props.sticky ?? { offsetHeader: DESIGN.header }}
+      loading={props.loading ?? query?.isLoading} locale={{ ...props.locale, emptyText: empty }} />
   </div>;
 }
 

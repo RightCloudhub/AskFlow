@@ -1,87 +1,30 @@
-/* ---------- User sub-pages (tickets) ---------- */
-.af-user-page {
-  min-height: 100dvh;
-  background: var(--bg);
+.af-user-page { min-height: 100dvh; background: var(--bg); }
+.af-user-topbar { display: flex; align-items: center; gap: var(--space-xxl); min-height: var(--header-height); padding: var(--space-md) var(--space-xxl); background: var(--panel); border-bottom: 1px solid var(--line); }
+.af-user-topbar-brand { display: flex; align-items: center; gap: var(--space-md); color: var(--ink); font-size: 21px; letter-spacing: -0.04em; }
+.af-user-workspace-switch { width: 216px; margin-left: auto; }
+.af-user-topbar-back .ant-btn { color: var(--ink-2); }
+.af-user-body { max-width: 1280px; margin-inline: auto; padding: var(--space-xxl); }
+.af-user-card.ant-card { border-color: var(--line); border-radius: var(--radius); box-shadow: none; }
+.af-ticket-list-tools { display: flex; justify-content: flex-end; margin-bottom: var(--space-lg); }
+.af-ticket-title-link.ant-btn { height: auto; padding: 0; color: var(--brand); text-align: left; white-space: normal; }
+.af-ticket-title-link > span { white-space: normal; overflow-wrap: anywhere; }
+.af-ticket-create-intro { margin: 0 0 var(--space-xl); font-size: var(--fs-body); color: var(--ink-2); line-height: 1.8; }
+.af-ticket-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-lg); }
+.af-ticket-col { min-width: 0; padding: var(--space-lg); border-radius: var(--radius-sm); background: var(--panel-2); }
+.af-ticket-col > header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); margin-bottom: var(--space-lg); }
+.af-ticket-col h3 { margin: 0; font-size: var(--fs-body); font-weight: 500; }
+.af-ticket-col > header > span { color: var(--muted); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+.af-ticket-column-items { display: grid; gap: var(--space-md); }
+.af-ticket-card { width: 100%; display: grid; gap: var(--space-lg); padding: var(--space-lg); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); text-align: left; color: var(--ink); cursor: pointer; }
+.af-ticket-card strong { font-size: var(--fs-body); font-weight: 500; }
+.af-ticket-card:hover { border-color: var(--line-strong); }
+.af-ticket-card-tags { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+.af-ticket-board-empty { margin: 0; font-size: var(--fs-meta); color: var(--muted); line-height: 1.7; }
+@media (max-width: 1100px) { .af-ticket-board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) {
+  .af-user-topbar { padding-inline: var(--space-lg); gap: var(--space-md); flex-wrap: wrap; }
+  .af-user-workspace-switch { display: none; }
+  .af-user-topbar-back { margin-left: auto; }
+  .af-user-body { padding: var(--space-xl) var(--space-lg); }
+  .af-ticket-board { grid-template-columns: minmax(0, 1fr); }
 }
-
-.af-user-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  height: 56px;
-  padding: 0 16px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--line);
-}
-
-.af-user-topbar-back,
-.af-user-topbar-spacer {
-  flex: 1;
-}
-
-.af-user-topbar-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink);
-}
-
-.af-user-body {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 28px 24px 48px;
-}
-
-.af-user-card.ant-card {
-  border: 1px solid var(--line);
-  box-shadow: none;
-}
-
-.af-ticket-error { margin-bottom: 24px; }
-.af-user-card .ant-card-head { border-bottom: 0; }
-.af-user-card .ant-card-head-title { font-size: 16px; font-weight: 600; }
-
-.af-ticket-form {
-  display: grid;
-  gap: 16px;
-}
-
-.af-ticket-form .af-field {
-  color: var(--ink-2);
-  font-weight: 500;
-}
-
-.af-ticket-card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.af-ticket-card-tags .ant-tag {
-  margin: 0;
-}
-
-.af-count-pill {
-  display: inline-block;
-  min-width: 20px;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--active);
-  color: var(--ink-2);
-  font-size: 12px;
-  text-align: center;
-  font-weight: 500;
-}
-
-@media (max-width: 768px) {
-  .af-user-body {
-    padding: 24px 20px 32px;
-  }
-  .af-user-topbar .ant-btn { min-height: 44px; }
-}
-.af-ticket-list-tools { display: flex; justify-content: flex-end; margin-bottom: 16px; }
-.af-ticket-title-link.ant-btn { height: auto; padding: 0; justify-content: flex-start; text-align: left; white-space: normal; font-weight: 500; }
-.af-ticket-form .af-action-notice { margin: 0; }

@@ -1,14 +1,18 @@
-.af-composer-wrap { padding: 12px 24px 16px; background: var(--panel); }
-.af-composer { max-width: 820px; margin: 0 auto; padding: 16px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--panel); }
-.af-composer:focus-within { border-color: var(--brand); outline: 2px solid var(--brand-soft); outline-offset: 2px; }
-.af-composer-input.ant-input, .af-composer-input.ant-input:focus, .af-w-form .ant-input:focus { border-color: transparent !important; box-shadow: none !important; }
-.af-composer-input.ant-input { padding: 4px 0 !important; font-size: 16px; resize: none; box-shadow: none !important; }
-.af-composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
-.af-composer-hint { font-size: 12px; color: var(--muted); }
-.af-composer-send.ant-btn { width: 36px; height: 36px; margin-left: auto; }
-.af-composer-foot { max-width: 820px; margin: 12px auto 0; text-align: center; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.af-composer-wrap { width: 100%; max-width: 864px; margin: 0 auto; padding: var(--space-lg) var(--space-xxl); flex-shrink: 0; }
+.af-composer { border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--panel); padding: var(--space-lg); }
+.af-composer:focus-within { border-color: var(--brand); box-shadow: var(--ring); }
+.af-composer.is-disabled { background: var(--panel-2); }
+.af-composer-input.ant-input { padding: 0; font-size: var(--fs-reading); line-height: 1.7; color: var(--ink); resize: none; }
+.af-composer-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); margin-top: var(--space-md); }
+.af-composer-hint, .af-composer-foot { color: var(--muted); font-size: var(--fs-meta); }
+.af-composer-send.ant-btn { width: 38px; height: 38px; }
+.af-composer-foot { margin: var(--space-md) 0 0; text-align: center; line-height: 1.5; }
 @media (max-width: 767px) {
-  .af-composer-wrap { padding: 8px 16px 16px; }
+  .af-composer-wrap { padding: var(--space-md) var(--space-lg); }
+  .af-composer { padding: var(--space-md); }
+  .af-composer-input.ant-input { font-size: var(--fs-body); }
   .af-composer-send.ant-btn { width: 44px; height: 44px; }
   .af-composer-hint { display: none; }
+  .af-composer-bar { justify-content: flex-end; margin-top: var(--space-sm); }
+  .af-composer-foot { font-size: var(--fs-meta); }
 }

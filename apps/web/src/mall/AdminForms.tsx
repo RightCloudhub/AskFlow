@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Space, Tabs } from "antd";
+import { Select, Space } from "antd";
 import { ActionForm, type Field, type Row } from "./shared";
 import { write } from "./client";
 import { StepUp } from "./Verification";
@@ -78,9 +78,15 @@ function OperationForm({ operation, reload }: { operation: Operation; reload: ()
 }
 
 export function AdminForms({ module, permissions, reload }: { module: string; permissions: string[]; reload: () => Promise<void> }) {
-  return <Tabs items={(OPERATIONS[module] ?? []).filter((operation) => permissions.includes(operation.permission)).map((operation) => ({
-    key: operation.title, label: operation.title, children: <OperationForm operation={operation} reload={reload} />,
-  }))} />;
+  const [selected, setSelected] = useState("");
+  const operations = (OPERATIONS[module] ?? []).filter((operation) => permissions.includes(operation.permission));
+  const operation = operations.find((item) => item.title === selected) ?? operations[0];
+  if (!operation) return null;
+  return <div className="af-mall-admin-operation-groups"><label className="af-field"><span>选择管理操作</span>
+    <Select aria-label="选择管理操作" value={operation.title} onChange={setSelected}
+      options={operations.map((item) => ({ value: item.title, label: item.title }))} /></label>
+    <OperationForm key={operation.title} operation={operation} reload={reload} />
+  </div>;
 }
 
 export function hasAdminOperations(module: string, permissions: string[]) {

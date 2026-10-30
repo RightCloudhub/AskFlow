@@ -1,3 +1,4 @@
+import { RecordWorkspace } from "../../components/admin/record-workspace";
 import { useState } from "react";
 import { PageHeader } from "../../components/admin";
 import { FilterBar, RefreshButton, WorkspacePanel } from "../../components/admin/workspace";
@@ -27,7 +28,9 @@ export function HandoffsPage() {
   }
   return <div className="af-page"><PageHeader title="人工接管" subtitle="先认领，再回复。会话列表每 15 秒自动更新。"
     actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
-    <WorkspacePanel title="人工服务队列" description="查看客户问题摘要，认领后可展开历史消息。">
+    <RecordWorkspace rows={query.data} field="status" states={[{ value: "queued", label: "等待认领" }, { value: "claimed", label: "已认领" }, { value: "timed_out", label: "已超时" }]}
+      selected={filter.status} onSelect={filter.onStatus}>
+      <WorkspacePanel title="人工服务队列" description="查看客户问题摘要，认领后可展开历史消息。">
       <FilterBar {...filter} placeholder="搜索客户、问题摘要或会话编号" count={query.data ? filter.rows.length : undefined}
         options={[{ value: "all", label: "全部状态" }, { value: "queued", label: "等待认领" },
           { value: "claimed", label: "已认领" }, { value: "returned", label: "已交还" }, { value: "timed_out", label: "已超时" }]} />
@@ -35,6 +38,7 @@ export function HandoffsPage() {
         claimingId={claim.isPending ? claim.variables : null} returningId={ret.isPending ? ret.variables : null}
         onClaim={(id) => void onClaim(id)} onReturn={(id) => void onReturn(id)} onSelect={setSelected} />
     </WorkspacePanel>
+    </RecordWorkspace>
     <SessionDetail open={Boolean(selected)} session={current} onClose={() => setSelected(null)} />
   </div>;
 }

@@ -1,3 +1,4 @@
+import { ConfigurationWorkspace } from "../../components/admin/record-workspace";
 import { useState } from "react";
 import { Button } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -33,17 +34,17 @@ export function ConnectorsPage() {
     await feedback.run(async () => {
       const data = await invoke.mutateAsync(name);
       setResult({ name, data });
-    }, "调用已完成，响应内容显示在下方。");
+    }, "调用已完成，请在调用响应中查看内容。");
   }
   return <div className="af-page"><PageHeader title="业务连接器" subtitle="查看外部服务配置，按连接器核对试调用响应。"
     actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
-    <div className="af-work-stack"><WorkspacePanel title="已配置的连接器" description="试调用使用空参数；调用行为由连接器实现决定。">
+    <ConfigurationWorkspace editor={<WorkspacePanel title={result ? result.name + " · 调用响应" : "调用响应"}>
+      {result ? <JsonView data={result.data} title="服务响应" /> : <EmptyState title={feedback.busy ? "正在等待服务响应…" : "选择一个连接器试调用"}
+        description="响应会保留在这里，便于核对返回字段。" />}
+    </WorkspacePanel>}><WorkspacePanel title="已配置的连接器" description="试调用使用空参数；调用行为由连接器实现决定。">
       <FilterBar {...filter} placeholder="搜索名称、地址或说明" count={query.data ? filter.rows.length : undefined} />
       <DataTable query={query} dataSource={filter.rows} columns={connectorColumns({ busy: feedback.busy, invoke: call })}
         emptyTitle={filter.filtered ? "没有匹配的连接器" : "尚未配置业务连接器"} emptyDescription="配置外部服务后，可在这里检查状态与响应。" />
-    </WorkspacePanel><WorkspacePanel title={result ? result.name + " · 调用响应" : "调用响应"}>
-      {result ? <JsonView data={result.data} title="服务响应" /> : <EmptyState title={feedback.busy ? "正在等待服务响应…" : "选择一个连接器试调用"}
-        description="响应会保留在这里，便于核对返回字段。" />}
-    </WorkspacePanel></div>
+    </WorkspacePanel></ConfigurationWorkspace>
   </div>;
 }

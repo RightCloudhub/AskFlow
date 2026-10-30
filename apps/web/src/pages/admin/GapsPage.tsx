@@ -1,3 +1,4 @@
+import { RecordWorkspace } from "../../components/admin/record-workspace";
 import { Button, Popconfirm, Space } from "antd";
 import { Link } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
@@ -38,11 +39,14 @@ export function GapsPage() {
     dismiss: (id) => feedback.run(() => dismiss.mutateAsync(id), "知识缺口已标记为忽略。") });
   return <div className="af-page"><PageHeader title="知识缺口" subtitle="从客户未得到回答的问题中，确定下一份知识资料。"
     actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
-    <WorkspacePanel title="待补充的知识" actions={<Link to="/admin/drafts">审核知识草稿</Link>}>
+    <RecordWorkspace rows={query.data} field="status" states={[{ value: "open", label: "开放问题" }, { value: "dismissed", label: "已忽略" }]}
+      selected={filter.status} onSelect={filter.onStatus}>
+      <WorkspacePanel title="待补充的知识" actions={<Link to="/admin/drafts">审核知识草稿</Link>}>
       <FilterBar {...filter} placeholder="搜索客户问题或原因" count={query.data ? filter.rows.length : undefined}
         options={[{ value: "all", label: "全部状态" }, { value: "open", label: "开放" }, { value: "dismissed", label: "已忽略" }]} />
       <DataTable query={query} dataSource={filter.rows} columns={columns} emptyTitle={filter.filtered ? "没有匹配的问题" : "暂无知识缺口"}
         emptyDescription={filter.filtered ? "尝试调整关键词或清除筛选。" : "未覆盖的问题会在客服对话后沉淀到这里。"} />
     </WorkspacePanel>
+    </RecordWorkspace>
   </div>;
 }

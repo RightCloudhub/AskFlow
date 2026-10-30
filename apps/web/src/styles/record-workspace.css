@@ -1,0 +1,37 @@
+.af-record-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 264px; grid-template-areas: "records summary"; align-items: start; gap: var(--space-xl); }
+.af-record-main { grid-area: records; min-width: 0; }
+.af-record-sidebar { grid-area: summary; min-width: 0; }
+.af-record-summary { display: grid; gap: var(--space-xs); }
+.af-record-summary > * { display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg); width: 100%; padding: var(--space-md); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink-2); font-size: var(--fs-body); text-align: left; }
+.af-record-summary > button { cursor: pointer; }
+.af-record-summary > button:hover, .af-record-summary > button[aria-pressed="true"] { color: var(--ink); background: var(--active); }
+.af-record-summary strong { font-size: var(--fs-section); font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.af-config-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-xl); align-items: start; }
+.af-config-workspace--wide { grid-template-columns: minmax(0, 1fr) minmax(400px, 1.2fr); }
+.af-config-records, .af-config-editor { min-width: 0; display: grid; gap: var(--space-xl); }
+.af-config-editor .af-work-settings { display: block; padding: var(--space-xl); }
+.af-config-editor .af-work-settings > div:first-child { padding: 0; background: transparent; margin-bottom: var(--space-xl); }
+.af-config-editor .af-work-inline { flex-direction: column; align-items: stretch; }
+.af-config-editor .af-work-inline .af-field { min-width: 0; }
+.af-config-editor .af-work-panel { padding: var(--space-xl); }
+.af-config-editor .af-work-stack { gap: var(--space-lg); }
+.af-config-editor .af-upload-picker { padding: var(--space-lg); }
+.af-config-editor .af-work-settings-body .af-work-panel { border: 0; padding: var(--space-lg); background: var(--panel-2); }
+.af-run-lookup { display: flex; gap: var(--space-lg); align-items: flex-end; margin-bottom: var(--space-xl); }
+.af-run-lookup .af-field { flex: 1; }
+.af-plugin-tabs .ant-tabs-content-holder { min-width: 0; }
+@media (max-width: 1100px) {
+  .af-record-workspace { grid-template-columns: minmax(0, 1fr); grid-template-areas: "summary" "records"; }
+  .af-config-workspace, .af-config-workspace--wide { grid-template-columns: minmax(0, 1fr); }
+  .af-record-sidebar .af-work-panel-head { margin-bottom: var(--space-md); }
+  .af-record-sidebar .af-work-panel-head p { display: none; }
+  .af-record-summary { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+  .af-record-summary > * { width: auto; gap: var(--space-md); }
+  .af-record-summary strong { font-size: var(--fs-reading); }
+}
+@media (max-width: 767px) {
+  .af-record-summary { display: flex; flex-wrap: nowrap; overflow-x: auto; }
+  .af-record-summary > * { flex-shrink: 0; white-space: nowrap; padding: var(--space-sm); }
+  .af-run-lookup { flex-wrap: wrap; }
+  .af-config-editor .af-work-settings { padding: var(--space-lg); }
+}

@@ -1,24 +1,6 @@
-/* Shared interaction states. App screens have no entrance choreography. */
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 3px;
-}
-h1, h2, h3 { color: var(--ink); letter-spacing: -0.02em; }
-button, a, .ant-btn {
-  transition: color var(--dur) var(--ease), background var(--dur) var(--ease), transform var(--dur) var(--ease);
-}
-button:active:not(:disabled), .ant-btn:active:not(:disabled) { transform: translateY(1px); }
-button:disabled { cursor: not-allowed; }
-.ant-btn-primary { box-shadow: none; }
-.ant-input::placeholder, .ant-input-number-input::placeholder { color: var(--muted); }
-.ant-btn:disabled { color: var(--muted); }
-.ant-card { box-shadow: none; }
-.ant-table-cell { font-variant-numeric: tabular-nums; }
-.ant-empty-description { color: var(--muted); }
-pre { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; tab-size: 2; white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; }
-pre.panel, .code-block { padding: 16px; color: var(--ink-2); background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); }
-* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
-@keyframes af-fade-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-}
+/* Interaction feedback only; working screens never hide content on entrance. */
+.ant-btn:not(:disabled):hover { transform: translateY(-1px); }
+.ant-btn:not(:disabled):active { transform: translateY(0); }
+.ant-input-affix-wrapper:focus-within, .ant-select-focused .ant-select-selector { box-shadow: var(--ring); }
+.ant-skeleton.ant-skeleton-active .ant-skeleton-title,
+.ant-skeleton.ant-skeleton-active .ant-skeleton-paragraph > li { animation: none; background: var(--active); }

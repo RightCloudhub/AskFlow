@@ -6,23 +6,28 @@ import { write } from "./client";
 import { ActionForm, type Row } from "./shared";
 import { AccountSettings } from "./AccountSettings";
 import { Verification, type Proof } from "./Verification";
-import { MallPage } from "./presentation";
+import { AuthFrame } from "../pages/auth/auth-frame";
 import { PASSWORD_HINT, PASSWORD_RULES } from "./form-fields";
+
+const AUTH_COPY: Record<string, { title: string; description: string }> = {
+  login: { title: "登录商城账号", description: "管理订单、钱包与售后服务。" },
+  register: { title: "创建商城账号", description: "验证联系方式，建立您的购买与服务记录。" },
+  "code-login": { title: "使用验证码登录", description: "通过已绑定的邮箱或手机号验证身份。" },
+  reset: { title: "找回账号密码", description: "验证身份后，为账号设置新的密码。" },
+};
 
 export function Account() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const [tab, setTab] = useState(params.get("invite") ? "register" : "login");
+  const copy = AUTH_COPY[tab] ?? AUTH_COPY.login;
   async function login(values: Row) {
     const data = await write<{ access_token: string }>("/account/login", { ...values, device: deviceId() });
     setToken(data.access_token); navigate("/shop");
   }
   if (getToken()) return <AccountSettings />;
-  return <MallPage title="商城账号" description="登录后管理订单、收货地址与售后服务。">
-    <div className="af-mall-account-layout"><aside className="af-mall-account-intro">
-      <h2>每一次购买，都有记录</h2><p>商品、订单与客服相连，购买后的问题也有处可寻。</p>
-      <dl className="af-mall-account-benefits"><div><dt>订单与售后</dt><dd>查看配送和退款进度，按订单联系商城客服。</dd></div>
-        <div><dt>账号与安全</dt><dd>维护收货地址、联系方式和登录设备。</dd></div></dl>
-    </aside><div className="af-mall-account-panel"><Tabs defaultActiveKey={params.get("invite") ? "register" : "login"} items={[
+  return <AuthFrame title={copy.title} description={copy.description} variant="commerce">
+    <Tabs activeKey={tab} onChange={setTab} destroyOnHidden items={[
     { key: "login", label: "登录", children: <ActionForm label="登录" submit={login} fields={[
       { name: "identifier", label: "用户名 / 邮箱 / 手机号", autoComplete: "username" },
       { name: "password", label: "密码", kind: "password", autoComplete: "current-password" },
@@ -32,7 +37,8 @@ export function Account() {
     { key: "register", label: "注册", children: <Registration /> },
     { key: "code-login", label: "验证码登录", children: <CodeLogin login={login} /> },
     { key: "reset", label: "找回密码", children: <PasswordReset /> },
-  ]} /></div></div></MallPage>;
+  ]} />
+  </AuthFrame>;
 }
 
 function CodeLogin({ login }: { login: (values: Row) => Promise<void> }) {

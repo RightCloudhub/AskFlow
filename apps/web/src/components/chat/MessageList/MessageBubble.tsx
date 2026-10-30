@@ -7,6 +7,7 @@ import { ConfidenceBadge } from "../ConfidenceBadge";
 import { MarkdownBody } from "../MarkdownBody";
 import { StaffBubble } from "../StaffBubble";
 import { parseApiDate } from "../../../utils";
+import { CitationTag } from "../CitationText";
 
 const AVATAR_SIZE = 32;
 
@@ -35,7 +36,9 @@ function AssistantBubble({ message }: { message: Message }) {
   const time = formatTime(message.created_at);
   return <div className="af-msg af-msg--bot"><BotAvatar /><div className="af-msg-col">
     <div className="af-msg-name">智能助手{time && <span className="af-msg-time">{time}</span>}</div>
-    <article className="af-bubble af-bubble--bot"><MarkdownBody content={message.content} /></article>
+    <article className="af-bubble af-bubble--bot"><MarkdownBody content={message.content} sources={sources} /></article>
+    {sources.length > 0 && <div className="af-answer-citations"><span>回答依据</span>{sources.map((source, index) =>
+      <CitationTag key={`${source.source}-${index}`} source={source} index={source.index ?? index + 1} sources={sources} />)}</div>}
     <div className="af-bubble-meta"><ConfidenceBadge confidence={confidence} route={route} refused={Boolean(message.meta?.refused)} />
       {sources.length > 0 && <button type="button" className="af-cite-btn" onClick={() => openSources(sources, "回答引用")}>
         <FileTextOutlined /> {sources.length} 条引用

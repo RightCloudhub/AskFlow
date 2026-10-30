@@ -28,7 +28,7 @@ export function AfterSales() {
   const query = useLoad(useCallback(() => mall<Page<Row>>(`/order/refunds?cursor=${encodeURIComponent(paging.cursor)}`), [paging.cursor]));
   const filter = useRecordFilter({ rows: query.data?.items ?? [], fields: ["id", "order_id"] });
   return <MallPage title="我的售后" description="跟进退款申请，查看每次处理的结果。" actions={<Link to="/shop/orders">查看订单</Link>}>
-    <MallPanel title="售后记录" actions={<QueryRefresh query={query} />}>
+    <MallPanel title="售后记录" actions={<QueryRefresh query={query} />} className="af-order-records">
       <FilterBar {...filter} count={query.data ? filter.rows.length : undefined} placeholder="搜索本页申请编号或订单号" />
       <MallQuery query={query}><List className="af-order-list" dataSource={filter.rows}
         locale={{ emptyText: filter.filtered ? "没有匹配的售后申请，请调整关键词。" : "暂无售后申请，需要退款时可从订单详情发起。" }}

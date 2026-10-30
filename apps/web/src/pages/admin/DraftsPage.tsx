@@ -1,3 +1,4 @@
+import { ConfigurationWorkspace } from "../../components/admin/record-workspace";
 import { useState } from "react";
 import { Button, Drawer, Input, Popconfirm, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -14,7 +15,7 @@ const EDITOR_ROWS = { minRows: 6, maxRows: 14 };
 type DraftActions = { busy: boolean; open: (row: Draft) => void; approve: (id: string) => Promise<unknown>; reject: (id: string) => Promise<unknown> };
 
 function DraftButtons({ row, actions }: { row: Draft; actions: DraftActions }) {
-  if (row.status !== "draft") return <StatusBadge value={row.status} />;
+  if (row.status !== "draft") return <span className="af-record-secondary">已完成审核</span>;
   return <Space><Popconfirm title="审核通过并发布到知识库？" description="请先核对完整答案。发布内容将用于客服回答。"
     okText="通过并发布" cancelText="继续审核" onConfirm={() => actions.approve(row.id)}>
     <Button size="small" disabled={actions.busy}>通过并发布</Button></Popconfirm>
@@ -66,13 +67,13 @@ export function DraftsPage() {
   const current = query.data?.find((row) => row.id === selected?.id) ?? selected;
   return <div className="af-page"><PageHeader title="知识草稿" subtitle="核对答案再发布，让每一次知识补充有据可查。"
     actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
-    <div className="af-work-split"><CreateDraft /><WorkspacePanel title="草稿审核队列">
+    <ConfigurationWorkspace editor={<CreateDraft />}><WorkspacePanel title="草稿审核队列">
       <FilterBar {...filter} placeholder="搜索问题或答案" count={query.data ? filter.rows.length : undefined}
         options={[{ value: "all", label: "全部状态" }, { value: "draft", label: "待审核" },
           { value: "approved", label: "已通过" }, { value: "rejected", label: "已拒绝" }]} />
       <DataTable query={query} dataSource={filter.rows} columns={draftColumns(actions)} emptyTitle={filter.filtered ? "没有匹配的草稿" : "还没有知识草稿"}
         emptyDescription="手动编写答案，或从知识缺口生成草稿后审核。" />
-    </WorkspacePanel></div>
+    </WorkspacePanel></ConfigurationWorkspace>
     <Drawer title={current?.title ?? "草稿全文"} open={Boolean(selected)} onClose={() => setSelected(null)} size="min(600px, 100vw)">
       {current && <div className="af-work-stack"><StatusBadge value={current.status} /><p className="af-work-preview">{current.content}</p>
         <ActionFeedback state={feedback} /><DraftButtons row={current} actions={actions} /></div>}

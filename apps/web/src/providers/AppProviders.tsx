@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { adminTheme } from "../components/admin";
 import { FeaturesProvider } from "../plugins/features";
 import { SessionBoundary } from "./SessionBoundary";
+import { TokenBridge } from "../design/TokenBridge";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +25,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         button={{ autoInsertSpace: false }}
       >
         <AntApp>
+          <TokenBridge />
           <SessionBoundary><FeaturesProvider>{children}</FeaturesProvider></SessionBoundary>
         </AntApp>
       </ConfigProvider>

@@ -1,3 +1,4 @@
+import { ConfigurationWorkspace } from "../../components/admin/record-workspace";
 import { useState } from "react";
 import { Button, Input, Select } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -58,10 +59,10 @@ export function TeamsPage() {
     add: (teamId, userId) => feedback.run(() => add.mutateAsync({ teamId, userId }), "成员已加入技能组。") });
   return <div className="af-page"><PageHeader title="技能组" subtitle="将业务范围和座席成员放在同一处管理。"
     actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
-    <div className="af-work-stack"><TeamCreate /><WorkspacePanel title="座席技能组">
+    <ConfigurationWorkspace editor={<TeamCreate />}><WorkspacePanel title="座席技能组">
       <QueryFeedback query={users} /><FilterBar {...filter} placeholder="搜索技能组或意图范围" count={query.data ? filter.rows.length : undefined} />
       <DataTable query={query} dataSource={filter.rows} columns={columns} emptyTitle={filter.filtered ? "没有匹配的技能组" : "尚未创建技能组"}
         emptyDescription="创建技能组后，可选择账号添加成员。" />
-    </WorkspacePanel></div>
+    </WorkspacePanel></ConfigurationWorkspace>
   </div>;
 }

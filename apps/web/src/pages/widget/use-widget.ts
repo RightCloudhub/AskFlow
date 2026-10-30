@@ -12,10 +12,10 @@ function useWidgetConnection() {
     setConnecting(true); setError("");
     try {
       const current = await getWidgetSession();
-      const history = await widgetFetch<Array<{ role: string; content: string }>>(`/widget/conversations/${current.conversation_id}/messages`, { token: current.access_token });
+      const history = await widgetFetch<WidgetMessage[]>(`/widget/conversations/${current.conversation_id}/messages`, { token: current.access_token });
       if (request !== generation.current) return;
       setSession(current);
-      setMessages(history.map((message) => ({ ...message, id: crypto.randomUUID() })));
+      setMessages(history);
     } catch (error) {
       if (request !== generation.current) return;
       if (error instanceof WidgetRequestError && WIDGET_AUTH_FAILURES.has(error.status)) clearWidgetSession();
@@ -39,11 +39,11 @@ export function useWidget() {
     setMessages((rows) => rows.some((row) => row.id === message.id)
       ? rows.map((row) => row.id === message.id ? { ...row, failed: false } : row) : [...rows, message]);
     try {
-      const response = await widgetFetch<{ assistant_message: { content: string } }>(`/widget/conversations/${session.conversation_id}/messages`, {
+      const response = await widgetFetch<{ assistant_message: WidgetMessage }>(`/widget/conversations/${session.conversation_id}/messages`, {
         method: "POST", token: session.access_token, body: JSON.stringify({ content: message.content }),
       });
       if (request !== generation.current) return;
-      setMessages((rows) => [...rows, { id: crypto.randomUUID(), role: "assistant", content: response.assistant_message.content }]);
+      setMessages((rows) => [...rows, response.assistant_message]);
     } catch {
       if (request !== generation.current) return;
       setMessages((rows) => rows.map((row) => row.id === message.id ? { ...row, failed: true } : row));

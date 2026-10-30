@@ -1,3 +1,4 @@
+import { ConfigurationWorkspace } from "../../components/admin/record-workspace";
 import { useState } from "react";
 import { Button, Input } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -29,18 +30,18 @@ export function LaunchCardsPage() {
   }
   return <div className="af-page"><PageHeader title="上线卡片" subtitle="将变更目标与实测指标放在一起，跟踪发布后的效果。"
     actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
-    <div className="af-work-stack"><SettingsSection title="登记新变更" description="用明确的标题记录这次准备上线的内容。">
+    <ConfigurationWorkspace editor={<SettingsSection title="登记新变更" description="用明确的标题记录这次准备上线的内容。">
       <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         <label className="af-field"><span>变更标题</span><Input value={title} onChange={(event) => { setTitle(event.target.value); feedback.clear(); }}
           required disabled={feedback.busy} placeholder="例如：补充退换货知识库" /></label>
         <Button type="primary" htmlType="submit" loading={feedback.busy} disabled={!title.trim()}>创建上线卡片</Button>
       </form>
-    </SettingsSection><WorkspacePanel title="变更与效果" description="未填写的指标显示为“尚未记录”，与实际零值区分。">
+    </SettingsSection>}><WorkspacePanel title="变更与效果" description="未填写的指标显示为“尚未记录”，与实际零值区分。">
       <FilterBar {...filter} placeholder="搜索变更标题" count={query.data ? filter.rows.length : undefined}
         options={[{ value: "all", label: "全部阶段" }, { value: "planned", label: "规划中" },
           { value: "measuring", label: "度量中" }, { value: "shipped", label: "已上线" }, { value: "draft", label: "草稿" }]} />
       <DataTable query={query} dataSource={filter.rows} columns={COLUMNS} emptyTitle={filter.filtered ? "没有匹配的变更" : "尚未登记上线变更"}
         emptyDescription="创建第一张上线卡片，开始记录变更目标与结果。" />
-    </WorkspacePanel></div>
+    </WorkspacePanel></ConfigurationWorkspace>
   </div>;
 }

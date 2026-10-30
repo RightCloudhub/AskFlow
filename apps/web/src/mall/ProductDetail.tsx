@@ -11,12 +11,16 @@ type Sku = { id: string; title: string; price_cents: number; currency: string };
 type Product = { title: string; description: string; images: string[]; skus: Sku[] };
 
 function ProductGallery({ product }: { product: Product }) {
-  if (!product.images.length) return <MallPanel title="商品说明" className="af-product-text-preview">
-    <p>{product.description || product.title}</p>
-  </MallPanel>;
-  return <div className="af-product-gallery"><Image.PreviewGroup>
-    {product.images.map((url, index) => <Image key={url} src={url} alt={`${product.title} · 商品图片 ${index + 1}`} />)}
-  </Image.PreviewGroup></div>;
+  const [selected, setSelected] = useState(0);
+  const source = product.images[selected] ?? product.images[0];
+  if (!source) return <div className="af-product-media-empty"><strong>{product.title}</strong><span>暂无商品图片</span></div>;
+  return <div className="af-product-gallery"><Image className="af-product-main-image" src={source} alt={product.title} />
+    {product.images.length > 1 && <div className="af-product-thumbnails" aria-label="商品图片选择">
+      {product.images.map((url, index) => <button key={`${url}-${index}`} type="button" aria-pressed={selected === index}
+        aria-label={`查看商品图片 ${index + 1}`} onClick={() => setSelected(index)}>
+        <img src={url} alt="" loading="lazy" /></button>)}
+    </div>}
+  </div>;
 }
 
 function ProductPurchase({ product }: { product: Product }) {
@@ -37,7 +41,6 @@ function ProductPurchase({ product }: { product: Product }) {
   }
   return <MallPanel title="选择商品规格" className="af-product-purchase">
     <p className="af-product-price">{sku ? money(sku.price_cents, sku.currency) : "暂无可售规格"}</p>
-    <p className="af-product-description">{product.description}</p>
     <label className="af-field"><span>商品规格</span><Select aria-label="商品规格" value={sku?.id} disabled={!sku || busy}
       onChange={(value) => { setSelected(value); setAdded(false); }} options={product.skus.map((row) => ({
         value: row.id, label: `${row.title} · ${money(row.price_cents, row.currency)}`,
@@ -54,7 +57,8 @@ export function ProductDetail() {
   const query = useLoad(loader);
   return <MallPage title={query.data?.title ?? "商品详情"} actions={<Link to="/shop">返回商品目录</Link>}>
     <Feedback {...query} />
-    {query.data && <div className="af-product-detail"><ProductGallery product={query.data} />
+    {query.data && <div className="af-product-detail"><div className="af-product-information"><ProductGallery key={id} product={query.data} />
+      <MallPanel title="商品说明"><p className="af-product-description">{query.data.description || "该商品暂无详细说明，请选择规格查看价格。"}</p></MallPanel></div>
       <ProductPurchase key={id} product={query.data} /></div>}
     {!query.loading && !query.error && !query.data && <MallEmpty title="商品暂时不可用" />}
   </MallPage>;

@@ -39,7 +39,8 @@ export function Shop() {
   const { enabled } = useFeatures();
   const location = useLocation();
   const pages = PAGES.filter((page) => enabled(page.plugin) || (page.also && enabled(page.also)));
-  return <Layout className="af-shop">
+  const auth = location.pathname === "/shop/account" && !getToken();
+  return <Layout className={`af-shop ${auth ? "af-shop--auth" : ""}`}>
     <ShopNavigation pages={pages} pathname={location.pathname} />
     <Layout.Content className="af-shop-content">
       <Suspense fallback={<div className="af-query-state"><Spin description="正在加载商城…" /></div>}><Routes>

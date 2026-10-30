@@ -1,3 +1,4 @@
+import { ConfigurationWorkspace } from "../../components/admin/record-workspace";
 import { useState } from "react";
 import { Button, Input, Popconfirm } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -70,9 +71,9 @@ const COLUMNS: ColumnsType<PromptTemplate> = [
 export function PromptsPage() {
   const query = usePromptTemplates();
   return <div className="af-page"><PageHeader title="提示词模板" subtitle="维护可追溯的模板版本，明确每次发布的目标和内容。"
-    actions={<RefreshButton query={query} />} /><div className="af-work-stack"><PromptEditor />
+    actions={<RefreshButton query={query} />} /><ConfigurationWorkspace wideEditor editor={<PromptEditor />}>
       <WorkspacePanel title="模板目录"><DataTable query={query} columns={COLUMNS} dataSource={query.data ?? []} pagination={false}
         emptyTitle="尚未配置提示词模板" emptyDescription="使用模板键编写并发布第一份正文。" /></WorkspacePanel>
-    </div>
+    </ConfigurationWorkspace>
   </div>;
 }

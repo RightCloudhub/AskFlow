@@ -49,7 +49,7 @@ export function Cart() {
     <Feedback error={actions.error} /><Feedback error={addresses.error} reload={addresses.reload} />
     <MallQuery query={query}>{!items.length ? <MallEmpty title="购物车里还没有商品">
       <Link to="/shop">前往商品目录</Link>
-    </MallEmpty> : <div className="af-mall-columns">
+    </MallEmpty> : <div className="af-cart-workspace">
       <MallPanel title="已选商品" description={`共 ${items.length} 种商品`}><CartItems items={items} actions={actions} /></MallPanel>
       <CheckoutSummary actions={actions} addresses={addresses.data?.items ?? []} count={count} />
     </div>}</MallQuery>

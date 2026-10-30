@@ -1,3 +1,4 @@
+import { RecordWorkspace } from "../../components/admin/record-workspace";
 import { Button, Popconfirm } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageHeader, StatusBadge, labelStatus } from "../../components/admin";
@@ -36,12 +37,15 @@ export function UsersPage() {
     () => toggle.mutateAsync(user), user.username + (user.is_active ? " 已禁用。" : " 已启用。")) });
   return <div className="af-page"><PageHeader title="用户管理" subtitle="查看账号角色和登录状态，保留每次启停操作的业务记录。"
     actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
-    <WorkspacePanel title="用户账号">
+    <RecordWorkspace rows={query.data} field="role" states={[{ value: "admin", label: "管理员" }, { value: "agent", label: "座席" }, { value: "user", label: "用户" }]}
+      selected={filter.status} onSelect={filter.onStatus}>
+      <WorkspacePanel title="用户账号">
       <FilterBar {...filter} placeholder="搜索用户名或邮箱" count={query.data ? filter.rows.length : undefined}
         options={[{ value: "all", label: "全部角色" }, { value: "admin", label: "管理员" },
           { value: "agent", label: "座席" }, { value: "user", label: "用户" }]} />
       <DataTable query={query} dataSource={filter.rows} columns={columns} emptyTitle={filter.filtered ? "没有匹配的用户" : "暂无用户账号"}
         emptyDescription={filter.filtered ? "尝试其他用户名、邮箱或角色。" : "账号创建后会出现在这里。"} />
     </WorkspacePanel>
+    </RecordWorkspace>
   </div>;
 }

@@ -27,13 +27,14 @@ export function Referral() {
   const paging = useCursor();
   const query = useLoad(useCallback(() => mall<Page<Row>>(`/referral/rewards?cursor=${encodeURIComponent(paging.cursor)}`), [paging.cursor]));
   return <MallPage title="邀请有礼" description="邀请好友完成首单，跟进奖励审核与发放。">
-    <div className="af-mall-columns af-referral-workspace"><InvitationCode />
+    <div className="af-mall-columns af-referral-workspace">
       <MallPanel title="奖励记录" actions={<QueryRefresh query={query} />}><MallQuery query={query}>
         <List className="af-mall-feed" dataSource={query.data?.items} locale={{ emptyText: "暂无邀请奖励，好友完成首单后可在这里查看进度。" }}
           renderItem={(row) => <List.Item><div className="af-reward-identity"><strong>邀请奖励</strong><span>可发放时间 {formatDate(row.eligible_at)}</span></div>
             <div className="af-order-result"><MallStatus value={row.status} /><strong className="af-order-amount">{money(Number(row.amount_cents), String(row.currency ?? "CNY"))}</strong></div>
           </List.Item>} />
       </MallQuery><CursorNav paging={paging} nextCursor={query.data?.next_cursor} loading={query.loading} /></MallPanel>
+      <InvitationCode />
     </div>
   </MallPage>;
 }

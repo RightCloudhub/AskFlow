@@ -1,3 +1,4 @@
+import { RecordWorkspace } from "../../components/admin/record-workspace";
 import { Button, Drawer } from "antd";
 import { useState } from "react";
 import type { ColumnsType } from "antd/es/table";
@@ -22,15 +23,17 @@ function auditColumns(open: (row: AuditLog) => void): ColumnsType<AuditLog> {
 export function AuditPage() {
   const query = useAuditLogs();
   const [selected, setSelected] = useState<AuditLog | null>(null);
-  const filter = useRecordFilter({ rows: query.data ?? [], fields: ["action", "resource_type", "resource_id"] });
+  const filter = useRecordFilter({ rows: query.data ?? [], fields: ["action", "resource_type", "resource_id"], statusField: "resource_type" });
+  const resources = [...new Set((query.data ?? []).map((row) => row.resource_type))].map((value) => ({ value, label: value }));
   return <div className="af-page"><PageHeader title="审计日志" subtitle="按操作和关联资源追溯关键变更，展开记录查看原始详情。"
     actions={<RefreshButton query={query} />} />
+    <RecordWorkspace rows={query.data} field="resource_type" states={resources} selected={filter.status} onSelect={filter.onStatus}>
     <WorkspacePanel title="关键操作记录">
       <FilterBar {...filter} placeholder="搜索操作、资源类型或编号" count={query.data ? filter.rows.length : undefined} />
       <DataTable query={query} dataSource={filter.rows} columns={auditColumns(setSelected)}
         emptyTitle={filter.filtered ? "没有匹配的审计记录" : "暂无关键操作记录"}
         emptyDescription={filter.filtered ? "试试更短的操作名称或资源编号。" : "有记录的业务操作发生后，会在这里显示。"} />
-    </WorkspacePanel>
+    </WorkspacePanel></RecordWorkspace>
     <Drawer title="审计记录详情" open={Boolean(selected)} onClose={() => setSelected(null)} size="min(600px, 100vw)">
       {selected && <div className="af-work-stack"><div className="af-record-title"><strong>{selected.action}</strong>
         <small>{formatDateTime(selected.created_at, true)}</small></div><JsonView data={selected.detail} title="操作详情" /></div>}

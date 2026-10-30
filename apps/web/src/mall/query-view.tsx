@@ -22,7 +22,8 @@ export function useCursor() {
   const [history, setHistory] = useState([""]);
   return { cursor: history[history.length - 1], hasPrevious: history.length > 1,
     next: (cursor: string) => setHistory((pages) => [...pages, cursor]),
-    previous: () => setHistory((pages) => pages.length > 1 ? pages.slice(0, -1) : pages) };
+    previous: () => setHistory((pages) => pages.length > 1 ? pages.slice(0, -1) : pages),
+    reset: () => setHistory([""]) };
 }
 
 export function CursorNav({ paging, nextCursor, loading }: {

@@ -1,24 +1,29 @@
-.af-auth { min-height: 100dvh; display: grid; grid-template-columns: minmax(360px, 44%) minmax(0, 1fr); background: var(--panel); }
-.af-auth-hero { display: flex; flex-direction: column; justify-content: space-between; gap: 48px; padding: 48px clamp(32px, 5vw, 72px); background: var(--bg); color: var(--ink); }
-.af-auth-hero-brand { display: flex; align-items: center; gap: 12px; font-size: 22px; letter-spacing: -0.03em; }
-.af-auth-hero-copy h2 { margin: 0 0 24px; font-size: 32px; font-weight: 500; line-height: 1.25; text-wrap: balance; }
-.af-auth-hero-copy > p { margin: 0 0 40px; font-size: 16px; color: var(--ink-2); line-height: 1.75; }
-.af-auth-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
-.af-auth-points li { display: grid; gap: 8px; }
-.af-auth-points strong { font-size: 14px; font-weight: 600; }
-.af-auth-points span { font-size: 14px; color: var(--ink-2); line-height: 1.7; }
-.af-auth-hero-foot { font-size: 12px; color: var(--muted); }
-.af-auth-main { display: grid; place-items: center; padding: 48px 32px; }
-.af-auth-form { width: min(400px, 100%); display: grid; gap: 24px; }
-.af-auth-title { margin: 0; font-size: 28px; line-height: 1.3; font-weight: 600; }
-.af-auth-description { margin: 12px 0 0; color: var(--ink-2); font-size: 14px; }
-.af-auth-form .af-field { color: var(--ink); font-weight: 500; }
-.af-auth-form .ant-input-prefix { color: var(--muted); margin-inline-end: 8px; }
-.af-auth-form .ant-btn-lg { height: 44px; }
-.af-auth-mobile-brand { display: none; align-items: center; gap: 10px; font-size: 20px; }
-@media (max-width: 900px) {
-  .af-auth { grid-template-columns: minmax(0, 1fr); }
+.af-auth { display: grid; place-items: center; min-height: 100dvh; padding: var(--space-section); background: var(--bg); }
+/* 420px brand column + 520px form column = 940px, centred on the available canvas. */
+.af-auth-card { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 520px); width: min(100%, 940px); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+.af-auth-hero { display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-section); padding: var(--space-section); background: var(--bg-tint); color: var(--ink); }
+.af-auth-hero-brand { display: flex; align-items: center; gap: var(--space-md); font-size: 24px; letter-spacing: -0.04em; }
+.af-auth-hero-copy h2 { margin: 0 0 var(--space-xl); font-size: var(--fs-title); font-weight: 500; line-height: 1.5; text-wrap: balance; }
+.af-auth-hero-copy > p { margin: 0; font-size: var(--fs-body); line-height: 1.8; color: var(--ink-2); }
+.af-auth-journey { display: grid; gap: var(--space-xl); list-style: none; padding: 0; margin: var(--space-section) 0 0; }
+.af-auth-journey li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xl); font-size: var(--fs-body); color: var(--ink); }
+.af-auth-journey .anticon { color: var(--muted); font-size: var(--fs-meta); }
+.af-auth-hero-foot { color: var(--muted); font-size: var(--fs-meta); }
+.af-auth-main { display: grid; align-content: center; gap: var(--space-xl); padding: 48px var(--space-section); min-width: 0; }
+.af-auth-title { margin: 0; color: var(--ink); font-size: var(--fs-title); font-weight: 600; line-height: 1.4; }
+.af-auth-description { margin: var(--space-md) 0 0; color: var(--ink-2); font-size: var(--fs-body); line-height: 1.8; }
+.af-auth-form { display: grid; gap: var(--space-xl); }
+.af-auth-form .af-field { gap: var(--space-sm); }
+.af-auth-form .af-field small { font-size: var(--fs-meta); }
+.af-auth-mobile-brand { display: none; }
+.af-auth-back { display: inline-flex; align-items: center; gap: var(--space-sm); justify-self: start; font-size: var(--fs-body); }
+.af-auth-main .ant-tabs-tab { padding-inline: 0; font-size: var(--fs-meta); }
+.af-auth-main .ant-tabs-nav-wrap { overflow: auto; }
+@media (max-width: 767px) {
+  .af-auth { padding: var(--space-xl) var(--space-lg); }
+  .af-auth-card { max-width: 480px; grid-template-columns: minmax(0, 1fr); }
   .af-auth-hero { display: none; }
-  .af-auth-mobile-brand { display: flex; margin-bottom: 12px; }
-  .af-auth-main { place-items: start center; padding: 48px 24px; }
+  .af-auth-main { padding: var(--space-xxl) var(--space-xl); gap: var(--space-xl); }
+  .af-auth-mobile-brand { display: flex; align-items: center; gap: var(--space-md); font-size: var(--fs-section); }
+  .af-auth-title { font-size: 24px; }
 }

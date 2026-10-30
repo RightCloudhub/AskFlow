@@ -31,12 +31,12 @@ function QualityCharts({ summary }: { summary?: QcSummary }) {
   const refused = summary?.refused_runs;
   const responses = total == null || refused == null ? [] : [
     { key: "answered", label: "正常作答", value: Math.max(0, total - refused), color: BRAND.accent },
-    { key: "refused", label: "拒答", value: refused, color: "#8a5a12" },
+    { key: "refused", label: "拒答", value: refused, color: BRAND.warning },
   ];
   const votes = [{ key: "up", label: "好评", value: summary?.thumbs_up, color: BRAND.accent },
-    { key: "down", label: "差评", value: summary?.thumbs_down, color: "#b02a32" }];
+    { key: "down", label: "差评", value: summary?.thumbs_down, color: BRAND.danger }];
   const feedback = votes.flatMap((row) => row.value == null ? [] : [{ ...row, value: row.value }]);
-  return <div className="af-dashboard-grid">
+  return <div className="af-qc-charts">
     <WorkspacePanel title="作答与拒答"><DonutChart data={responses} centerLabel="模型运行" centerValue={total == null ? "—" : String(total)} /></WorkspacePanel>
     <WorkspacePanel title="客户反馈"><DonutChart data={feedback} /></WorkspacePanel>
   </div>;
@@ -53,7 +53,7 @@ export function QcPage() {
       <StatCard label="模型运行次数" value={summary.data?.agent_runs} />
       <StatCard label="拒答率" value={summary.data?.refuse_rate} format="rate" />
       <StatCard label="差评率" value={summary.data?.thumbs_down_rate} format="rate" />
-    </div><div className="af-work-stack"><WorkspacePanel title="需要复核的运行" description="低分记录和拒答记录可作为补充知识、调整配置的依据。"
+    </div><div className="af-qc-workspace"><WorkspacePanel title="需要复核的运行" description="低分记录和拒答记录可作为补充知识、调整配置的依据。"
       actions={<RefreshButton query={runs} />}>
       <DataTable query={runs} rowKey="run_id" dataSource={runs.data ?? []} columns={qualityColumns(enabled("agent"))}
         emptyTitle="暂无需要复核的运行" emptyDescription="低分或拒答运行产生后，会显示在这里。" />

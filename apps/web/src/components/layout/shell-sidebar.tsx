@@ -1,5 +1,5 @@
 import { Avatar, Button, Dropdown, Empty, Typography, type MenuProps } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CustomerServiceOutlined, EllipsisOutlined, FormOutlined, LogoutOutlined, MessageOutlined,
   PlusOutlined, SettingOutlined, ShoppingOutlined } from "@ant-design/icons";
 import { setToken } from "../../api/client";
@@ -7,6 +7,7 @@ import type { Conversation, User } from "../../api/types";
 import { useFeatures } from "../../plugins/features";
 import { logoutMallSession } from "../../mall/session";
 import { BrandMark } from "./BrandMark";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 const AVATAR_SIZE = 32;
 const AVATAR_FONT_SIZE = 13;
@@ -60,11 +61,15 @@ function UserFooter({ me }: { me: User | null | undefined }) {
 }
 
 export function SiderPanel(props: SidebarProps) {
+  const { enabled } = useFeatures();
   return <div className="af-app-sider-inner"><div className="af-app-sider-head">
     <BrandMark /><div className="af-app-sider-brand">
-      <strong>AskFlow</strong><span>智能客服对话台</span></div></div>
+      <strong>AskFlow</strong><span>让服务有迹可循</span></div></div>
+    <WorkspaceSwitcher current="chat" />
     <Button type="primary" block icon={<PlusOutlined />} onClick={props.onNewChat}
       loading={props.creating} className="af-app-new-chat">新建会话</Button>
     <div className="af-conv-heading"><span>最近会话</span><span className="af-conv-count">{props.conversations.length}</span></div>
-    <ConversationList {...props} /><UserFooter me={props.me} /></div>;
+    <ConversationList {...props} />
+    {enabled("ticket") && <Link to="/tickets" className="af-chat-ticket-link"><FormOutlined />我的工单</Link>}
+    <UserFooter me={props.me} /></div>;
 }

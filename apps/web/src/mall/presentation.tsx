@@ -9,7 +9,7 @@ export function MallPage({ title, description, actions, children, className = ""
       <div><h1>{title}</h1>{description && <p>{description}</p>}</div>
       {actions && <div className="af-mall-page-actions">{actions}</div>}
     </header>
-    {children}
+    <div className="af-mall-page-body">{children}</div>
   </div>;
 }
 
@@ -32,10 +32,19 @@ const STATUS_LABELS: Record<string, string> = {
 };
 const ATTENTION = new Set(["PENDING_PAYMENT", "PENDING", "REVIEW"]);
 const NEGATIVE = new Set(["FAILED", "REJECTED"]);
+const POSITIVE = new Set(["COMPLETED", "APPROVED", "SUCCEEDED", "SETTLED", "ISSUED", "DELIVERED"]);
+const PROCESSING = new Set(["PAID", "SHIPPED", "PROCESSING"]);
+
+function statusTone(status: string) {
+  if (NEGATIVE.has(status)) return "danger";
+  if (ATTENTION.has(status)) return "warning";
+  if (POSITIVE.has(status)) return "success";
+  return PROCESSING.has(status) ? "processing" : "neutral";
+}
 
 export function MallStatus({ value }: { value: unknown }) {
   const status = String(value ?? "").toUpperCase();
-  const tone = NEGATIVE.has(status) ? "danger" : ATTENTION.has(status) ? "warning" : "neutral";
+  const tone = statusTone(status);
   return <Tag className={`af-mall-status af-mall-status--${tone}`}>{STATUS_LABELS[status] ?? (status || "—")}</Tag>;
 }
 

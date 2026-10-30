@@ -3,7 +3,9 @@ const STORAGE_KEY = "askflow_widget_session";
 export const WIDGET_AUTH_FAILURES = new Set([401, 403]);
 
 export type WidgetSession = { access_token: string; conversation_id: string; visitor_key: string };
-export type WidgetMessage = { id: string; role: string; content: string; failed?: boolean };
+export type WidgetMessage = {
+  id: string; role: string; content: string; meta?: Record<string, unknown>; failed?: boolean;
+};
 let pendingSession: Promise<WidgetSession> | undefined;
 let memorySession: WidgetSession | undefined;
 

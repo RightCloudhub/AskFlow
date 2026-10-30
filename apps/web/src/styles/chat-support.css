@@ -1,69 +1,12 @@
-/* ---------- Staff chat & tickets ---------- */
-.af-staff-chat {
-  margin-top: 8px;
-  display: grid;
-  gap: 10px;
-}
-
-.af-staff-msgs {
-  max-height: 360px;
-  overflow: auto;
-  display: grid;
-  gap: 10px;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel-2);
-}
-
-.af-staff-msg {
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-}
-
-.af-staff-msg--user {
-  background: var(--brand-soft);
-}
-
-.af-staff-msg--staff {
-  border-color: var(--line-strong);
-}
-
-.af-staff-msg-role {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 4px;
-  font-weight: 600;
-}
-
-.af-ticket-col .ant-card-body {
-  min-height: 160px;
-  display: grid;
-  gap: 8px;
-  align-content: start;
-}
-
-.af-ticket-card {
-  display: grid;
-  gap: 8px;
-  width: 100%;
-  text-align: left;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  border-radius: 10px;
-  padding: 10px;
-  cursor: pointer;
-}
-
-.af-ticket-card:hover {
-  border-color: var(--line-strong);
-  box-shadow: var(--shadow-sm);
-}
-
-.af-ticket-card .meta {
-  font-size: 12px;
-  color: var(--muted);
-}
+.af-staff-chat { margin-top: var(--space-lg); display: grid; gap: var(--space-lg); }
+.af-staff-msgs { max-height: 420px; overflow: auto; display: flex; flex-direction: column; gap: var(--space-lg); padding: var(--space-lg); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel-2); }
+.af-staff-msg { align-self: flex-start; max-width: 90%; padding: var(--space-md) var(--space-lg); border-radius: var(--radius-sm); background: var(--panel); color: var(--ink); border: 1px solid var(--line); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
+.af-staff-msg--user { align-self: flex-end; color: var(--brand-ink); background: var(--primary); border-color: transparent; }
+.af-staff-msg-role { display: block; font-size: var(--fs-meta); color: var(--muted); margin-bottom: var(--space-xs); font-weight: 500; }
+.af-staff-msg--user .af-staff-msg-role { color: inherit; }
+.af-staff-heading { margin: 0; font-size: var(--fs-reading); font-weight: 600; }
+.af-staff-message-label { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-sm); margin-bottom: var(--space-sm); font-size: var(--fs-meta); color: var(--muted); }
+.af-staff-message-label strong { font-weight: 500; }
+.af-staff-msg--user .af-staff-message-label, .af-staff-msg--user .af-record-copy { color: inherit; }
+.af-staff-msg .af-record-copy { min-width: 0; }
+.af-staff-msg .af-md { font-size: var(--fs-body); }

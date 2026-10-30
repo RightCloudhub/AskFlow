@@ -1,3 +1,4 @@
+import { ConfigurationWorkspace } from "../../components/admin/record-workspace";
 import { useState } from "react";
 import { Button, Popconfirm, Space } from "antd";
 import { Link } from "react-router-dom";
@@ -45,12 +46,12 @@ export function DocumentsPage() {
   return <div className="af-page">
     <PageHeader title="知识文档" subtitle="维护客服回答的依据，查看索引状态与历史版本。" actions={<RefreshButton query={query} />} />
     <ActionFeedback state={feedback} />
-    <div className="af-work-stack"><DocumentUpload />
+    <ConfigurationWorkspace editor={<DocumentUpload />}>
       <WorkspacePanel title="知识库文档" description="已索引的内容可用于知识检索。" actions={<Link to="/admin/gaps">查看知识缺口</Link>}>
         <FilterBar {...filter} placeholder="搜索标题或文件名" options={STATUSES} count={query.data ? filter.rows.length : undefined} />
         <DataTable query={query} dataSource={filter.rows} columns={columns} emptyTitle={filter.filtered ? "没有匹配的文档" : "知识库还没有文档"}
           emptyDescription={filter.filtered ? "调整关键词或状态后重试。" : "上传一份文字资料，建立客服回答的依据。"} />
       </WorkspacePanel>
-    </div><DocumentRevisionDrawer doc={selected} open={Boolean(selected)} onClose={() => setSelected(null)} />
+    </ConfigurationWorkspace><DocumentRevisionDrawer doc={selected} open={Boolean(selected)} onClose={() => setSelected(null)} />
   </div>;
 }

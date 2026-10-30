@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button, Descriptions, Input, Timeline } from "antd";
+import { Button, Descriptions, Drawer, Input, Timeline } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageHeader } from "../../components/admin";
 import { intentLabel } from "../../components/admin/labels";
@@ -40,26 +40,34 @@ function RunDetailState({ query }: { query: ReturnType<typeof useAgentRunDetail>
 }
 
 export function AgentRunsPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const initial = params.get("run_id") ?? "";
   const [lookup, setLookup] = useState(initial);
   const [selected, setSelected] = useState<string | null>(initial || null);
   const query = useAgentRuns();
   const detail = useAgentRunDetail(selected);
   const filter = useRecordFilter({ rows: query.data ?? [], fields: ["run_id", "intent", "route"] });
-  function open(id: string) { setSelected(id); setLookup(id); }
-  return <div className="af-page"><PageHeader title="运行回放" subtitle="沿着一次运行的步骤，核对路由、证据和调用费用。"
-    actions={<RefreshButton query={query} />} /><div className="af-work-stack">
-    <WorkspacePanel title="定位一次运行"><form className="af-work-inline" onSubmit={(event) => { event.preventDefault(); if (lookup.trim()) open(lookup.trim()); }}>
-      <label className="af-field"><span>运行编号</span><Input value={lookup} onChange={(event) => setLookup(event.target.value)} placeholder="输入完整的 run_id" /></label>
+  useEffect(() => { setSelected(initial || null); setLookup(initial); }, [initial]);
+  function open(id: string) {
+    setSelected(id); setLookup(id);
+    setParams((current) => { current.set("run_id", id); return current; }, { replace: true });
+  }
+  function close() {
+    setSelected(null);
+    setParams((current) => { current.delete("run_id"); return current; }, { replace: true });
+  }
+  return <div className="af-page"><PageHeader title="运行回放" subtitle="找到一次运行，核对处理步骤、证据与费用。"
+    actions={<RefreshButton query={query} />} />
+    <WorkspacePanel title="最近的运行"><form className="af-run-lookup" onSubmit={(event) => {
+      event.preventDefault(); if (lookup.trim()) open(lookup.trim());
+    }}><label className="af-field"><span>定位运行</span><Input value={lookup}
+      onChange={(event) => setLookup(event.target.value)} placeholder="输入完整的运行编号" /></label>
       <Button type="primary" htmlType="submit" disabled={!lookup.trim()} loading={detail.isFetching && Boolean(selected)}>查询运行</Button>
-    </form></WorkspacePanel>
-    {selected && <WorkspacePanel title="运行详情" actions={<Button onClick={() => setSelected(null)}>关闭详情</Button>}>
-      <QueryFeedback query={detail} /><RunDetailState query={detail} />
-    </WorkspacePanel>}
-    <WorkspacePanel title="最近的运行"><FilterBar {...filter} placeholder="搜索运行编号、意图或路由" count={query.data ? filter.rows.length : undefined} />
+    </form><FilterBar {...filter} placeholder="搜索运行编号、意图或路由" count={query.data ? filter.rows.length : undefined} />
       <DataTable query={query} rowKey="run_id" dataSource={filter.rows} columns={runColumns(open)}
         emptyTitle={filter.filtered ? "没有匹配的运行" : "尚无运行记录"} emptyDescription="客服对话产生运行后，可在这里回放执行过程。" />
-    </WorkspacePanel></div>
+    </WorkspacePanel><Drawer title="运行详情" open={Boolean(selected)} onClose={close} size="min(680px, 100vw)" destroyOnHidden>
+      <QueryFeedback query={detail} /><RunDetailState query={detail} />
+    </Drawer>
   </div>;
 }
