@@ -14,7 +14,7 @@ export function ChatLoading({ label }: { label: string }) {
 
 export function ChatBody({ state }: { state: ChatState }) {
   const bottom = useRef<HTMLDivElement>(null);
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); },
+  useEffect(() => { bottom.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); },
     [state.msgQ.data, state.streamText, state.streaming]);
   const staff = Boolean(state.meQ.data?.role && state.meQ.data.role !== "user");
   return <><div className="af-chat-stage">

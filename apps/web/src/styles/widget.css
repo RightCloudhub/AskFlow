@@ -1,6 +1,6 @@
 /* Standalone guest widget (PRD E7a) — fills its iframe, centred card when standalone. */
 .af-w-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   background: var(--bg);
@@ -9,13 +9,14 @@
 .af-w-shell {
   width: 100%;
   max-width: 420px;
-  height: min(720px, 100vh);
+  height: min(720px, 100dvh);
   display: flex;
   flex-direction: column;
   background: var(--panel);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(29, 36, 51, 0.14);
+  box-shadow: none;
+  border: 1px solid var(--line);
 }
 
 /* Inside a narrow iframe / phone: edge to edge. */
@@ -26,7 +27,7 @@
 
   .af-w-shell {
     max-width: none;
-    height: 100vh;
+    height: 100dvh;
     border-radius: 0;
     box-shadow: none;
   }
@@ -38,9 +39,7 @@
   gap: 12px;
   padding: 14px 16px;
   color: #fff;
-  background:
-    radial-gradient(240px 120px at 100% 0%, rgba(124, 92, 255, 0.55), transparent 70%),
-    linear-gradient(135deg, #2457e8, #2f6bff);
+  background: var(--primary);
   flex-shrink: 0;
 }
 
@@ -76,7 +75,6 @@
 
 .af-w-dot.on {
   background: #4ade80;
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25);
 }
 
 .af-w-messages {
@@ -87,14 +85,13 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  background: #f7f8fb;
+  background: var(--panel-2);
 }
 
 .af-w-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  animation: af-fade-up 200ms var(--ease);
 }
 
 .af-w-row--user {
@@ -103,18 +100,19 @@
 
 .af-w-avatar.ant-avatar {
   flex-shrink: 0;
-  background: linear-gradient(135deg, #2f6bff, #7c5cff);
+  background: var(--brand-soft);
+  color: var(--brand);
 }
 
 .af-w-avatar--staff.ant-avatar {
-  background: #fff3e0;
-  color: #d97f06;
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .af-w-bubble {
   max-width: 82%;
   padding: 9px 12px;
-  border-radius: 14px;
+  border-radius: var(--radius);
   border-top-left-radius: 4px;
   background: #fff;
   border: 1px solid var(--line);
@@ -130,16 +128,16 @@
 
 .af-w-bubble--user {
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--radius);
   border-top-right-radius: 4px;
-  background: var(--brand);
-  color: #fff;
+  background: var(--primary);
+  color: var(--brand-ink);
   white-space: pre-wrap;
 }
 
 .af-w-bubble--staff {
-  background: #fff8ee;
-  border-color: #fde4bf;
+  background: var(--warning-soft);
+  border-color: var(--line-strong);
 }
 
 .af-w-quick {
@@ -151,7 +149,7 @@
 
 .af-w-quick button {
   padding: 5px 12px;
-  border: 1px solid #c9d6ff;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: #fff;
   color: var(--brand);
@@ -171,7 +169,7 @@
 
 .af-w-error {
   padding: 8px 12px 0;
-  background: #f7f8fb;
+  background: var(--panel-2);
 }
 
 .af-w-form {
@@ -181,14 +179,14 @@
   margin: 10px 12px 6px;
   padding: 6px 6px 6px 12px;
   border: 1px solid var(--line-strong);
-  border-radius: 14px;
+  border-radius: var(--radius);
   background: #fff;
   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
 .af-w-form:focus-within {
-  border-color: #9db8ff;
-  box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.12);
+  border-color: var(--line-strong);
+  box-shadow: none;
 }
 
 .af-w-form .ant-input {
@@ -200,6 +198,6 @@
 .af-w-foot {
   padding: 0 0 8px;
   text-align: center;
-  font-size: 11px;
-  color: #b0b7c6;
+  font-size: 12px;
+  color: var(--muted);
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Form, Input, InputNumber, Radio, Space, Spin } from "antd";
+import { Alert, Button, Form, Input, InputNumber, Radio, Spin } from "antd";
 
 export type Row = Record<string, unknown>;
 export type Page<T> = { items: T[]; next_cursor?: string | null };
@@ -36,7 +36,10 @@ export function useLoad<T>(loader: () => Promise<T>) {
 }
 
 export function Feedback({ error, loading }: { error?: string; loading?: boolean }) {
-  return <>{error && <Alert type="error" title={error} showIcon />}{loading && <Spin />}</>;
+  return <div className="af-mall-feedback" aria-live="polite">
+    {error && <Alert type="error" title={error} showIcon />}
+    {loading && <div className="af-mall-loading"><Spin description="正在加载…" /></div>}
+  </div>;
 }
 
 export function ActionForm({ fields, submit, label, initial }: {
@@ -51,12 +54,12 @@ export function ActionForm({ fields, submit, label, initial }: {
     catch (reason) { setError(reason instanceof Error ? reason.message : "操作失败"); }
     finally { setBusy(false); }
   }
-  return <Form layout="vertical" onFinish={finish} initialValues={initial}>
+  return <Form className="af-mall-form" layout="vertical" onFinish={finish} initialValues={initial}>
     {fields.map((field) => <Form.Item key={field.name} name={field.name} label={field.label}
       rules={[{ required: field.required !== false }]}>
       {fieldInput(field)}
     </Form.Item>)}
-    <Space direction="vertical"><Button type="primary" htmlType="submit" loading={busy}>{label}</Button>
-      <Feedback error={error} />{success && <Alert type="success" title="操作已保存" />}</Space>
+    <div className="af-mall-form-actions"><Button type="primary" htmlType="submit" loading={busy}>{label}</Button>
+      <Feedback error={error} />{success && <Alert type="success" title="操作已保存" role="status" />}</div>
   </Form>;
 }

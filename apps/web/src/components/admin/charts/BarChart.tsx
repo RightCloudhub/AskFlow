@@ -1,69 +1,22 @@
-import {
-  Bar,
-  BarChart as RBarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { CHART_COLORS } from "../theme";
+import { Bar, BarChart as RBarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BRAND } from "../theme";
 import { toRecharts, type ChartDatum } from "./types";
+import { CHART } from "./chart-theme";
 
-type BarChartProps = {
-  data: ChartDatum[];
-  height?: number;
-  unit?: string;
-};
+type BarChartProps = { data: ChartDatum[]; height?: number; unit?: string };
 
-export function BarChart({ data, height = 260, unit = "" }: BarChartProps) {
-  const rows = toRecharts(data.filter((d) => d.value >= 0));
-  if (!rows.length) {
-    return <div className="af-chart-empty">暂无数据</div>;
-  }
-
-  return (
-    <div style={{ width: "100%", height }}>
-      <ResponsiveContainer>
-        <RBarChart
-          data={rows}
-          margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-        >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            vertical={false}
-            stroke="#eceff5"
-          />
-          <XAxis
-            dataKey="name"
-            tick={{ fontSize: 12, fill: "#8a93a6" }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 12, fill: "#8a93a6" }}
-            axisLine={false}
-            tickLine={false}
-            width={40}
-          />
-          <Tooltip
-            formatter={(v) => [
-              `${Number(v ?? 0).toLocaleString("zh-CN")}${unit}`,
-              "数值",
-            ]}
-            contentStyle={{ borderRadius: 8, border: "1px solid #eceff5" }}
-          />
-          <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={48}>
-            {rows.map((r, i) => (
-              <Cell
-                key={r.key}
-                fill={r.fill || CHART_COLORS[i % CHART_COLORS.length]}
-              />
-            ))}
-          </Bar>
-        </RBarChart>
-      </ResponsiveContainer>
-    </div>
-  );
+export function BarChart({ data, height = CHART.height, unit = "" }: BarChartProps) {
+  const rows = toRecharts(data.filter((row) => row.value >= 0));
+  if (!rows.length) return <div className="af-chart-empty">暂无工作量数据</div>;
+  return <div className="af-chart-region" style={{ height }} role="img"
+    aria-label={rows.map((row) => `${row.name}：${row.value}${unit}`).join("，")}>
+    <ResponsiveContainer><RBarChart data={rows} margin={CHART.margin}>
+      <CartesianGrid vertical={false} stroke={BRAND.line} />
+      <XAxis dataKey="name" tick={CHART.tick} axisLine={false} tickLine={false} />
+      <YAxis tick={CHART.tick} axisLine={false} tickLine={false} width={CHART.axisWidth} allowDecimals={false} />
+      <Tooltip formatter={(value) => [`${Number(value ?? 0).toLocaleString("zh-CN")}${unit}`, "数量"]}
+        contentStyle={CHART.tooltip} />
+      <Bar dataKey="value" fill={BRAND.accent} maxBarSize={CHART.maxBarSize} isAnimationActive={false} />
+    </RBarChart></ResponsiveContainer>
+  </div>;
 }

@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Alert, Card, Space, Tabs, Typography } from "antd";
+import { Alert, Space, Tabs, Typography } from "antd";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getToken, setToken } from "../api/client";
 import { write } from "./client";
 import { ActionForm, type Row } from "./shared";
 import { AccountSettings } from "./AccountSettings";
 import { Verification, type Proof } from "./Verification";
+import { MallPage } from "./presentation";
 
 export function Account() {
   const navigate = useNavigate();
@@ -14,7 +15,12 @@ export function Account() {
     setToken(data.access_token); navigate("/shop");
   }
   if (getToken()) return <AccountSettings />;
-  return <Card title="商城账号"><Tabs items={[
+  return <MallPage title="商城账号" description="登录后管理订单、收货地址与售后服务。">
+    <div className="af-mall-account-layout"><aside className="af-mall-account-intro">
+      <h2>每一次购买，都有记录</h2><p>商品、订单与客服相连，购买后的问题也有处可寻。</p>
+      <dl className="af-mall-account-benefits"><div><dt>订单与售后</dt><dd>查看配送和退款进度，按订单联系商城客服。</dd></div>
+        <div><dt>账号与安全</dt><dd>维护收货地址、联系方式和登录设备。</dd></div></dl>
+    </aside><div className="af-mall-account-panel"><Tabs items={[
     { key: "login", label: "登录", children: <ActionForm label="登录" submit={login} fields={[
       { name: "identifier", label: "用户名 / 邮箱 / 手机号" },
       { name: "password", label: "密码", kind: "password" },
@@ -24,7 +30,7 @@ export function Account() {
     { key: "register", label: "注册", children: <Registration /> },
     { key: "code-login", label: "验证码登录", children: <CodeLogin login={login} /> },
     { key: "reset", label: "找回密码", children: <PasswordReset /> },
-  ]} /></Card>;
+  ]} /></div></div></MallPage>;
 }
 
 function CodeLogin({ login }: { login: (values: Row) => Promise<void> }) {

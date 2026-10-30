@@ -28,7 +28,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 9px 12px 9px 14px;
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  background: var(--panel-2);
   border-bottom: 1px solid var(--line);
 }
 

@@ -1,57 +1,42 @@
 import { useCallback, useState } from "react";
-import { Button, Card, Col, Image, Input, Row, Select, Space, Typography } from "antd";
-import { Link, useParams } from "react-router-dom";
-import { mall, money, write } from "./client";
+import { Button, Input, Select } from "antd";
+import { Link } from "react-router-dom";
+import { mall, money } from "./client";
 import { Feedback, useLoad, type Page } from "./shared";
+import { MallEmpty, MallPage } from "./presentation";
+export { ProductDetail } from "./ProductDetail";
 
 type Sku = { id: string; spu_id: string; title: string; price_cents: number; currency: string };
-type Product = { id: string; title: string; description: string; images: string[]; skus: Sku[] };
-const COLUMNS = 8;
-const GRID_GUTTER = 16;
-const MOBILE_COLUMNS = 24;
-const CARD_MARGIN = 12;
-const SELECT_WIDTH = 240;
 
 export function Catalog() {
   const [q, setQuery] = useState("");
   const [cursor, setCursor] = useState("");
-  const loader = useCallback(() => mall<Page<Sku>>(`/catalog/search?q=${encodeURIComponent(q)}&cursor=${encodeURIComponent(cursor)}`), [q, cursor]);
+  const [sort, setSort] = useState("id");
+  const loader = useCallback(() => mall<Page<Sku>>(
+    `/catalog/search?q=${encodeURIComponent(q)}&cursor=${encodeURIComponent(cursor)}&sort=${sort}`
+  ), [q, cursor, sort]);
   const query = useLoad(loader);
-  return <Space direction="vertical" style={{ width: "100%" }}>
-    <Typography.Title level={2}>挑选心仪好物</Typography.Title>
-    <Input.Search placeholder="搜索商品" onSearch={(value) => { setQuery(value); setCursor(""); }} allowClear />
+  return <MallPage title="商品目录" description="查找商品、比较规格与价格，从这里开始。" className="af-catalog">
+    <div className="af-catalog-toolbar">
+      <Input.Search aria-label="搜索商品" placeholder="搜索商品名称或关键词"
+        onSearch={(value) => { setQuery(value); setCursor(""); }} allowClear />
+      <Select aria-label="商品排序" value={sort} onChange={(value) => { setSort(value); setCursor(""); }} options={[
+        { value: "id", label: "默认排序" }, { value: "price_asc", label: "价格从低到高" }, { value: "price_desc", label: "价格从高到低" },
+      ]} />
+    </div>
     <Feedback {...query} />
-    <Row gutter={GRID_GUTTER}>{query.data?.items.map((item) => <Col key={item.id} xs={MOBILE_COLUMNS} md={COLUMNS}>
-      <Card title={item.title} style={{ marginBlock: CARD_MARGIN }}>
-        <Typography.Paragraph>{money(item.price_cents, item.currency)}</Typography.Paragraph>
-        <Link to={`/shop/products/${item.spu_id}`}>查看商品</Link>
-      </Card>
-    </Col>)}</Row>
-    {query.data?.items.length === 0 && <Typography.Text>暂无符合条件的商品</Typography.Text>}
-    {query.data?.next_cursor && <Button onClick={() => setCursor(query.data!.next_cursor!)}>下一页</Button>}
-  </Space>;
-}
-
-export function ProductDetail() {
-  const { id } = useParams();
-  const [selected, setSelected] = useState<string>();
-  const [status, setStatus] = useState("");
-  const loader = useCallback(() => mall<Product>(`/catalog/products/${id}`), [id]);
-  const query = useLoad(loader);
-  async function add() {
-    const sku = selected ?? query.data?.skus[0]?.id;
-    if (!sku) return;
-    try { await write("/order/cart/items", { sku_id: sku, qty: 1 }, { method: "PUT" }); setStatus("已加入购物车"); }
-    catch (reason) { setStatus(reason instanceof Error ? reason.message : "添加失败"); }
-  }
-  return <Card title={query.data?.title ?? "商品详情"}>
-    <Feedback {...query} /><Typography.Paragraph>{query.data?.description}</Typography.Paragraph>
-    <Image.PreviewGroup>{query.data?.images.map((url) => <Image key={url} src={url} alt={query.data?.title} width="12em" />)}</Image.PreviewGroup>
-    <Space direction="vertical">
-      <Select placeholder="选择规格" style={{ minWidth: SELECT_WIDTH }} value={selected} onChange={setSelected}
-        options={query.data?.skus.map((sku) => ({ value: sku.id, label: `${sku.title} · ${money(sku.price_cents)}` }))} />
-      <Button onClick={add} disabled={!query.data?.skus.length}>加入购物车</Button>
-      <Typography.Text>{status}</Typography.Text><Link to="/shop/cart">前往购物车</Link>
-    </Space>
-  </Card>;
+    {q && <p className="af-mall-note">“{q}” 的搜索结果</p>}
+    <div className="af-catalog-grid">{query.data?.items.map((item) => <article key={item.id} className="af-product-card">
+      <Link to={`/shop/products/${item.spu_id}`} className="af-product-card-link">
+        <h2>{item.title}</h2><p className="af-product-price">{money(item.price_cents, item.currency)}</p>
+        <span className="af-product-card-action">查看商品与规格</span>
+      </Link>
+    </article>)}</div>
+    {!query.loading && !query.error && query.data?.items.length === 0 && <MallEmpty title="暂无符合条件的商品">
+      {q && <Button onClick={() => { setQuery(""); setCursor(""); }}>查看全部商品</Button>}
+    </MallEmpty>}
+    {query.data?.next_cursor && <div className="af-mall-pagination">
+      <Button onClick={() => setCursor(query.data!.next_cursor!)}>下一页商品</Button>
+    </div>}
+  </MallPage>;
 }

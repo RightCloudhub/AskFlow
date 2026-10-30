@@ -1,0 +1,84 @@
+/* ---------- User sub-pages (tickets) ---------- */
+.af-user-page {
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+.af-user-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.af-user-topbar-back,
+.af-user-topbar-spacer {
+  flex: 1;
+}
+
+.af-user-topbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.af-user-body {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+}
+
+.af-user-card.ant-card {
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.af-ticket-error { margin-bottom: 24px; }
+.af-user-card .ant-card-head { border-bottom: 0; }
+.af-user-card .ant-card-head-title { font-size: 16px; font-weight: 600; }
+
+.af-ticket-form {
+  display: grid;
+  gap: 16px;
+}
+
+.af-ticket-form .af-field {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+.af-ticket-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.af-ticket-card-tags .ant-tag {
+  margin: 0;
+}
+
+.af-count-pill {
+  display: inline-block;
+  min-width: 20px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--active);
+  color: var(--ink-2);
+  font-size: 12px;
+  text-align: center;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .af-user-body {
+    padding: 24px 20px 32px;
+  }
+  .af-user-topbar .ant-btn { min-height: 44px; }
+}

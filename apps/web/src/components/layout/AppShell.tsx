@@ -7,7 +7,7 @@ import { useFeatures } from "../../plugins/features";
 import { SiderPanel } from "./shell-sidebar";
 
 const DRAWER_WIDTH = 280;
-const SIDEBAR_WIDTH = 272;
+const SIDEBAR_WIDTH = 248;
 type AppShellProps = {
   me: User | null | undefined; conversations: Conversation[]; activeId: string | null;
   onSelectConversation: (id: string) => void; onNewChat: () => void; creating?: boolean;
@@ -18,7 +18,7 @@ function ChatHeader(props: AppShellProps & { mobile: boolean; openDrawer: () => 
   const { enabled } = useFeatures();
   return <Layout.Header className="af-app-header"><div className="af-app-header-title">
     {props.mobile && <Button type="text" icon={<MenuOutlined />} onClick={props.openDrawer} aria-label="打开会话列表" />}
-    <div className="af-app-header-text"><h2>{props.title ?? "智能客服"}</h2>
+    <div className="af-app-header-text"><h1 title={props.title}>{props.mobile && <span>AskFlow · </span>}{props.title ?? "智能客服"}</h1>
       {(props.subtitle ?? "基于知识库作答，可随时转人工") && <p>{props.subtitle ?? "基于知识库作答，可随时转人工"}</p>}</div></div>
     <div className="af-app-header-extra">{props.headerExtra}
       {enabled("ticket") && !props.mobile && <Link to="/tickets"><Button type="text" icon={<FormOutlined />}>我的工单</Button></Link>}
@@ -28,7 +28,7 @@ function ChatHeader(props: AppShellProps & { mobile: boolean; openDrawer: () => 
 
 export function AppShell(props: AppShellProps) {
   const screens = Grid.useBreakpoint();
-  const mobile = screens.md === false;
+  const mobile = screens.lg === false;
   const [drawer, setDrawer] = useState(false);
   const sidebar = <SiderPanel me={props.me} conversations={props.conversations} activeId={props.activeId}
     creating={props.creating ?? false} onNewChat={() => { props.onNewChat(); setDrawer(false); }}

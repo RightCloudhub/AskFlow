@@ -82,3 +82,7 @@ export function AdminForms({ module, permissions, reload }: { module: string; pe
     key: operation.title, label: operation.title, children: <OperationForm operation={operation} reload={reload} />,
   }))} />;
 }
+
+export function hasAdminOperations(module: string, permissions: string[]) {
+  return (OPERATIONS[module] ?? []).some((operation) => permissions.includes(operation.permission));
+}

@@ -6,6 +6,7 @@ import { setToken } from "../../api/client";
 import type { Conversation, User } from "../../api/types";
 import { useFeatures } from "../../plugins/features";
 import { logoutMallSession } from "../../mall/session";
+import { BrandMark } from "./BrandMark";
 
 const AVATAR_SIZE = 32;
 const AVATAR_FONT_SIZE = 13;
@@ -60,7 +61,7 @@ function UserFooter({ me }: { me: User | null | undefined }) {
 
 export function SiderPanel(props: SidebarProps) {
   return <div className="af-app-sider-inner"><div className="af-app-sider-head">
-    <span className="brand-mark sm">AF</span><div className="af-app-sider-brand">
+    <BrandMark /><div className="af-app-sider-brand">
       <strong>AskFlow</strong><span>智能客服对话台</span></div></div>
     <Button type="primary" block icon={<PlusOutlined />} onClick={props.onNewChat}
       loading={props.creating} className="af-app-new-chat">新建会话</Button>

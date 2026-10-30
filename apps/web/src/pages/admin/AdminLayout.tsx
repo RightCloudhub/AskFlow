@@ -13,7 +13,7 @@ export function AdminLayout() {
   const nav = useNavigate();
   const location = useLocation();
   const screens = Grid.useBreakpoint();
-  const mobile = screens.md === false;
+  const mobile = screens.lg === false;
   const { features, ready, profile } = useFeatures();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === "1");
   const [drawer, setDrawer] = useState(false);

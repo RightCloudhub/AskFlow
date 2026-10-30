@@ -15,7 +15,7 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   return (
     <div className="af-page-header">
       <div className="af-page-header-text">
-        <Title level={4} className="af-page-title">
+        <Title level={1} className="af-page-title">
           {title}
         </Title>
         {subtitle ? (

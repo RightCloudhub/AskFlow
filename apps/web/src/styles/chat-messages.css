@@ -1,0 +1,201 @@
+/* ---------- Messages ---------- */
+.af-message-list {
+  display: grid;
+  gap: 22px;
+  align-content: start;
+}
+
+.af-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.af-msg--user {
+  justify-content: flex-end;
+}
+
+.af-msg-col {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  max-width: min(680px, calc(100% - 44px));
+}
+
+.af-msg--user .af-msg-col {
+  justify-items: end;
+}
+
+.af-msg-name {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.af-msg-time {
+  color: var(--muted);
+}
+
+.af-msg-avatar.ant-avatar {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.af-msg-avatar--bot.ant-avatar {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.af-msg-avatar--user.ant-avatar {
+  background: var(--active);
+  color: var(--ink-2);
+}
+
+.af-msg-avatar--staff.ant-avatar {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.af-bubble {
+  max-width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.af-bubble--user {
+  background: var(--primary);
+  color: var(--brand-ink);
+  border-top-right-radius: 4px;
+}
+
+.af-bubble--bot {
+  background: var(--panel-2);
+  color: var(--ink);
+  border-top-left-radius: 4px;
+}
+
+.af-bubble--staff {
+  background: var(--warning-soft);
+  border: 1px solid var(--line-strong);
+  border-top-left-radius: 4px;
+}
+
+.af-bubble-plain {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.af-bubble-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.af-bubble-meta:empty {
+  display: none;
+}
+
+.af-chip-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.af-chip,
+.af-confidence,
+.af-cite-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.af-chip {
+  background: var(--active);
+  color: var(--ink-2);
+}
+
+.af-confidence {
+  background: var(--active);
+  color: var(--muted);
+}
+
+.af-confidence--ok {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.af-confidence--warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.af-confidence--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.af-cite-btn {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--brand);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.af-cite-btn:hover {
+  background: var(--brand-soft);
+  border-color: var(--line-strong);
+}
+
+.af-typing {
+  display: inline-flex;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+.af-typing i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: af-dot 1.2s infinite ease-in-out;
+}
+
+.af-typing i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.af-typing i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes af-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.af-handoff-banner {
+  border-radius: var(--radius) !important;
+}
+
+.af-msg-avatar--bot .af-brand-symbol { width: 22px; height: 22px; }

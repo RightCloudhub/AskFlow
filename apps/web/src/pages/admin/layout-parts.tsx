@@ -6,6 +6,7 @@ import { setToken } from "../../api/client";
 import { useMe } from "../../hooks/use-auth";
 import { useFeatures } from "../../plugins/features";
 import { logoutMallSession } from "../../mall/session";
+import { BrandMark } from "../../components/layout/BrandMark";
 
 const SIDEBAR_WIDTH = 236;
 const SIDEBAR_COLLAPSED = 68;
@@ -13,8 +14,8 @@ const DRAWER_WIDTH = 260;
 const AVATAR_SIZE = 28;
 
 function Brand({ collapsed }: { collapsed: boolean }) {
-  return <Link to="/admin" className={`af-pro-logo ${collapsed ? "collapsed" : ""}`}>
-    <span className="af-pro-logo-mark">AF</span>
+  return <Link to="/admin" aria-label="AskFlow 管理控制台" className={`af-pro-logo ${collapsed ? "collapsed" : ""}`}>
+    <BrandMark />
     {!collapsed && <span className="af-pro-logo-text"><strong>AskFlow</strong><span>管理控制台</span></span>}
   </Link>;
 }
@@ -62,6 +63,7 @@ export function AdminHeader(props: { mobile: boolean; profile: string;
     { title: props.crumb.group }, { title: props.crumb.page }] : [])];
   return <Layout.Header className="af-pro-header"><div className="af-pro-header-left">
     {props.mobile && <Button type="text" icon={<MenuOutlined />} onClick={props.openDrawer} aria-label="打开导航" />}
+    {props.mobile && <span className="af-pro-mobile-brand">AskFlow</span>}
     <Breadcrumb items={items} /></div><div className="af-pro-header-right">
     {!props.mobile && <><Tag variant="filled" color="processing" className="af-profile-tag">{props.profile}</Tag>
       <Link to="/"><Button type="text" icon={<MessageOutlined />}>对话台</Button></Link></>}

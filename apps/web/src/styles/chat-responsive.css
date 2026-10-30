@@ -1,0 +1,30 @@
+/* ---------- Responsive ---------- */
+@media (max-width: 767px) {
+  .af-app-header {
+    padding: 0 16px !important;
+  }
+
+  .af-chat-stage {
+    padding: 24px 20px 12px;
+  }
+
+  .af-composer-wrap {
+    padding: 8px 16px 16px;
+  }
+
+  .af-chat-error {
+    padding: 0 20px 12px;
+  }
+
+  .af-composer-hint {
+    display: none;
+  }
+
+  .af-suggest-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .af-chat-empty {
+    margin-top: 24px;
+  }
+}

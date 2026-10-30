@@ -2,22 +2,20 @@ import { useCallback, useState } from "react";
 import { Button, Input, Space, Table, Tabs } from "antd";
 import { mall } from "./client";
 import { Feedback, useLoad, type Page, type Row } from "./shared";
+import { recordColumns } from "./record-columns";
 
 export function Records({ path }: { path: string }) {
   const [cursor, setCursor] = useState("");
   const loader = useCallback(() => mall<Page<Row>>(
     "/api/v1/admin/mall" + path + "?cursor=" + encodeURIComponent(cursor)), [path, cursor]);
   const query = useLoad(loader);
-  const columns = Object.keys(query.data?.items[0] ?? {}).map((key) => ({
-    title: key, key, dataIndex: key,
-    render: (value: unknown) => typeof value === "object" ? JSON.stringify(value) : String(value ?? ""),
-  }));
-  return <Space direction="vertical" style={{ width: "100%" }}><Feedback {...query} />
+  const columns = recordColumns(query.data?.items ?? []);
+  return <div className="af-mall-admin-records"><Feedback {...query} />
     <Table rowKey={(row: Row) => String(row.id ?? row.key)} columns={columns}
-      dataSource={query.data?.items} pagination={false} scroll={{ x: true }} />
-    <Button onClick={() => { setCursor(""); void query.reload(); }}>刷新</Button>
+      dataSource={query.data?.items} pagination={false} scroll={{ x: true }} locale={{ emptyText: "暂无业务记录" }} />
+    <div className="af-mall-pagination"><Button loading={query.loading} onClick={() => { setCursor(""); void query.reload(); }}>刷新</Button>
     {query.data?.next_cursor && <Button onClick={() => setCursor(query.data!.next_cursor!)}>下一页</Button>}
-  </Space>;
+    </div></div>;
 }
 
 function Differences() {

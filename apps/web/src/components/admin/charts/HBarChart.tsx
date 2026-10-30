@@ -1,98 +1,33 @@
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatNumber, formatUsd } from "../labels";
-import { CHART_COLORS } from "../theme";
+import { BRAND } from "../theme";
 import { toRecharts, type ChartDatum } from "./types";
+import { CHART } from "./chart-theme";
 
-type HBarChartProps = {
-  data: ChartDatum[];
-  format?: "number" | "usd";
-  maxBars?: number;
-  height?: number;
-};
+type HBarChartProps = { data: ChartDatum[]; format?: "number" | "usd"; maxBars?: number; height?: number };
 
-export function HBarChart({
-  data,
-  format = "number",
-  maxBars = 8,
-  height = 260,
-}: HBarChartProps) {
-  const sorted = [...data]
-    .filter((d) => d.value > 0)
-    .sort((a, b) => b.value - a.value)
-    .slice(0, maxBars);
+function labelWidth(rows: ReturnType<typeof toRecharts>) {
+  const widths = rows.map((row) => [...String(row.name)].reduce(
+    (width, char) => width + (char.charCodeAt(0) > CHART.latinLimit ? CHART.wideWidth : CHART.latinWidth), CHART.labelPadding
+  ));
+  return Math.min(CHART.labelMax, Math.max(CHART.labelMin, ...widths));
+}
+
+export function HBarChart({ data, format = "number", maxBars = CHART.maxBars, height = CHART.horizontalHeight }: HBarChartProps) {
+  const sorted = [...data].filter((row) => row.value > 0).sort((a, b) => b.value - a.value).slice(0, maxBars);
   const rows = toRecharts(sorted);
-
-  if (!rows.length) {
-    return <div className="af-chart-empty">暂无数据</div>;
-  }
-
-  const h = Math.max(height, rows.length * 36 + 40);
-  const fmt = (v: number) =>
-    format === "usd" ? formatUsd(v) : formatNumber(v);
-
-  // Fit the category axis to the longest label (CJK glyphs ≈ 12px, latin ≈ 7px).
-  const labelWidth = Math.min(
-    160,
-    Math.max(
-      56,
-      ...rows.map((r) =>
-        [...String(r.name)].reduce(
-          (w, ch) => w + (ch.charCodeAt(0) > 255 ? 12 : 7),
-          12,
-        ),
-      ),
-    ),
-  );
-
-  return (
-    <div style={{ width: "100%", height: h }}>
-      <ResponsiveContainer>
-        <BarChart
-          data={rows}
-          layout="vertical"
-          margin={{ top: 4, right: 24, left: 8, bottom: 4 }}
-        >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            horizontal={false}
-            stroke="#eceff5"
-          />
-          <XAxis
-            type="number"
-            tick={{ fontSize: 12, fill: "#8a93a6" }}
-            axisLine={false}
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            width={labelWidth}
-            tick={{ fontSize: 12, fill: "#4b5567" }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            formatter={(v) => [fmt(Number(v ?? 0)), "数值"]}
-            contentStyle={{ borderRadius: 8, border: "1px solid #eceff5" }}
-          />
-          <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={16}>
-            {rows.map((r, i) => (
-              <Cell
-                key={r.key}
-                fill={r.fill || CHART_COLORS[i % CHART_COLORS.length]}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  if (!rows.length) return <div className="af-chart-empty">暂无费用或调用记录</div>;
+  const chartHeight = Math.max(height, rows.length * CHART.rowHeight + CHART.axisSpace);
+  const formatValue = (value: number) => format === "usd" ? formatUsd(value) : formatNumber(value);
+  return <div className="af-chart-region" style={{ height: chartHeight }} role="img"
+    aria-label={rows.map((row) => `${row.name}：${formatValue(row.value)}`).join("，")}>
+    <ResponsiveContainer><BarChart data={rows} layout="vertical" margin={CHART.horizontalMargin}>
+      <CartesianGrid horizontal={false} stroke={BRAND.line} />
+      <XAxis type="number" tick={CHART.tick} axisLine={false} tickLine={false} allowDecimals={format === "usd"} />
+      <YAxis type="category" dataKey="name" width={labelWidth(rows)} tick={CHART.tick} axisLine={false} tickLine={false} />
+      <Tooltip formatter={(value) => [formatValue(Number(value ?? 0)), format === "usd" ? "费用" : "调用次数"]}
+        contentStyle={CHART.tooltip} />
+      <Bar dataKey="value" fill={BRAND.accent} barSize={CHART.barSize} isAnimationActive={false} />
+    </BarChart></ResponsiveContainer>
+  </div>;
 }

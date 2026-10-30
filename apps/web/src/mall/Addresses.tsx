@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Button, List, Popconfirm, Space, Tag } from "antd";
+import { Button, List, Popconfirm, Tag } from "antd";
 import { mall, write } from "./client";
 import { ActionForm, Feedback, useLoad, type Page, type Row } from "./shared";
 
@@ -26,15 +26,17 @@ export function Addresses() {
     catch (reason) { setError(reason instanceof Error ? reason.message : "地址操作失败"); }
   }
   return <><Feedback error={error || query.error} loading={query.loading} />
-    <List dataSource={query.data?.items} renderItem={(row) => <List.Item>
-      <Space wrap>{row.name} · {row.address}{row.is_default && <Tag>默认</Tag>}
+    <List className="af-address-list" dataSource={query.data?.items} locale={{ emptyText: "暂无收货地址，请添加一条。" }} renderItem={(row) => <List.Item>
+      <div className="af-address-identity"><strong>{row.name} {row.is_default && <Tag>默认</Tag>}</strong>
+        <p>{row.phone}</p><p>{row.address}</p></div><div className="af-address-actions">
         <Button onClick={() => setEditing(row)}>编辑</Button>
         <Button disabled={row.is_default} onClick={() => act(row)}>设为默认</Button>
         <Popconfirm title="删除此收货地址？" onConfirm={() => act(row, true)}><Button danger>删除</Button></Popconfirm>
-      </Space></List.Item>} />
+      </div></List.Item>} />
     {query.data?.next_cursor && <Button onClick={() => setCursor(query.data!.next_cursor!)}>下一页</Button>}
+    <section className="af-address-form"><h3>{editing ? "编辑地址" : "添加收货地址"}</h3>
     <ActionForm key={editing ? editing.id + editing.version : "new"} label={editing ? "保存地址" : "添加地址"}
       initial={editing ? { name: editing.name, phone: editing.phone, address: editing.address } : undefined} fields={FIELDS} submit={save} />
-    {editing && <Button onClick={() => setEditing(undefined)}>取消编辑</Button>}
+    {editing && <Button onClick={() => setEditing(undefined)}>取消编辑</Button>}</section>
   </>;
 }
