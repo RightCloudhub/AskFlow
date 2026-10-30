@@ -15,6 +15,7 @@ import {
 } from "./query-keys";
 
 const HANDOFF_POLL_MS = 15_000;
+const HANDOFF_MESSAGES_POLL_MS = 8_000;
 
 export function useIntents() {
   return useQuery({
@@ -86,7 +87,7 @@ export function useHandoffMessages(handoffId: string | null) {
     queryKey: HandoffKeys.messages(handoffId ?? ""),
     queryFn: () => handoffService.messages(handoffId!),
     enabled: Boolean(handoffId),
-    refetchInterval: 8_000,
+    refetchInterval: HANDOFF_MESSAGES_POLL_MS,
   });
 }
 
@@ -116,6 +117,7 @@ export function useUpdateAdminTicket() {
       adminTicketService.updateStatus(p.id, p.status),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TicketKeys.adminList() });
+      void qc.invalidateQueries({ queryKey: TicketKeys.list() });
     },
   });
 }

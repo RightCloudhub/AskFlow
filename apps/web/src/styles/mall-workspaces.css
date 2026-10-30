@@ -16,6 +16,11 @@
 .af-order-items li > div { display: grid; gap: var(--space-sm); min-width: 0; }
 .af-order-items li strong { font-size: var(--fs-body); font-weight: 500; }
 .af-order-items li span { color: var(--muted); font-size: var(--fs-meta); }
+.af-order-actions { display: grid; gap: var(--space-xl); min-width: 0; }
+.af-order-actions .af-field { display: grid; gap: var(--space-sm); min-width: 0; }
+.af-order-actions .af-field > small { color: var(--muted); line-height: 1.6; }
+.af-order-actions .ant-input-number, .af-order-actions .ant-select { width: 100%; }
+.af-order-actions .af-flow-success > .ant-typography { margin: 0; overflow-wrap: anywhere; }
 .af-wallet-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr); align-items: start; gap: var(--space-xl); }
 .af-wallet-main { display: grid; gap: var(--space-xl); min-width: 0; }
 .af-wallet-overview { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); margin: 0; }

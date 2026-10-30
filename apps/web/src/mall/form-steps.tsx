@@ -6,7 +6,7 @@ export const LONG_FORM_FIELDS = 4;
 
 export function FormFields({ fields }: { fields: Field[] }) {
   return <>{fields.map((field) => <Form.Item key={field.name} name={field.name} label={field.label}
-    extra={field.hint} rules={fieldRules(field)} hidden={field.hidden}>
+    extra={field.hint} rules={fieldRules(field)} hidden={field.hidden} dependencies={field.dependencies}>
     <FieldInput field={field} />
   </Form.Item>)}</>;
 }

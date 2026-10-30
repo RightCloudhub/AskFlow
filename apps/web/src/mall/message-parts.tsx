@@ -21,7 +21,7 @@ export function ServiceLinks({ row }: { row: Row }) {
   </div>;
 }
 
-export function SupportRequest({ reload }: { reload: () => Promise<void> }) {
+function SupportRequestForm({ reload }: { reload: () => Promise<void> }) {
   const [params] = useSearchParams();
   const { enabled } = useFeatures();
   const [created, setCreated] = useState<Row>();
@@ -29,7 +29,9 @@ export function SupportRequest({ reload }: { reload: () => Promise<void> }) {
     { name: "资金流水", value: params.get("wallet_journal_id") }].filter((item) => item.value);
   return <MallPanel title="联系商城客服" description="概括需要解决的问题，提交后可继续在客服会话中补充。">
     {context.length > 0 && <dl className="af-support-context">{context.map((item) => <div key={item.name}><dt>关联{item.name}</dt><dd>{item.value}</dd></div>)}</dl>}
-    <ActionForm label="提交客服问题" resetOnSuccess onChange={() => setCreated(undefined)}
+    <ActionForm label="提交客服问题" guided resetOnSuccess onChange={() => setCreated(undefined)}
+      reviewContext={context.length > 0 && <dl>{context.map((item) => <div key={item.name}><dt>关联{item.name}</dt><dd>{item.value}</dd></div>)}</dl>}
+      result={created && <ServiceLinks row={created} />} restartLabel="提交另一个问题"
       successMessage="问题已提交，可打开客服会话继续沟通。" fields={[{ name: "title", label: "需要什么帮助？",
         placeholder: "例如：订单已付款，但还未收到发货通知", hint: context.length ? "客服会同时收到上方关联的业务记录。" : "可从订单、售后或资金流水中联系对应客服。",
         rules: [{ max: SUPPORT_TITLE_LIMIT, message: `请将问题概括在 ${SUPPORT_TITLE_LIMIT} 字以内。` }],
@@ -38,8 +40,12 @@ export function SupportRequest({ reload }: { reload: () => Promise<void> }) {
           order_id: params.get("order_id"), wallet_journal_id: params.get("wallet_journal_id"), refund_id: params.get("refund_id"),
         }); setCreated(result); await reload();
       }} />
-    {created && <div className="af-support-created"><ServiceLinks row={created} /></div>}
   </MallPanel>;
+}
+
+export function SupportRequest({ reload }: { reload: () => Promise<void> }) {
+  const [params] = useSearchParams();
+  return <SupportRequestForm key={params.toString()} reload={reload} />;
 }
 
 export function ServiceRecords({ query, paging }: {

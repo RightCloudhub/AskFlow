@@ -8,13 +8,15 @@ import sys
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, text
 
+from app.core import database
+from app.core.config import get_settings
+# Register the ORM models before commerce services load their dependencies.
+from app.models.user import User
+
 from app.commerce.account.hooks import password_policy
 from app.commerce.account.identity import initialize_extensions
 from app.commerce.admin.permissions import seed_roles
 from app.commerce.core.audit import audit
-from app.core import database
-from app.core.config import get_settings
-from app.models.user import User
 from app.services.auth.password import hash_password
 
 BOOTSTRAP_LOCK = 1095976519

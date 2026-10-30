@@ -5,7 +5,7 @@ export const ticketService = {
   list: () => api<Ticket[]>("/api/v1/tickets"),
 
   create: (title: string, description: string) =>
-    api("/api/v1/tickets", {
+    api<Ticket>("/api/v1/tickets", {
       method: "POST",
       body: JSON.stringify({
         title,

@@ -1,55 +1,13 @@
-import { useCallback, useState } from "react";
-import { Alert, Button, Checkbox, Collapse, List, Popconfirm, Tag, Typography } from "antd";
-import { setToken } from "../api/client";
+import { useCallback } from "react";
+import { Button, List, Popconfirm, Tag } from "antd";
 import { mall, write } from "./client";
-import { ActionForm, useLoad, type Page, type Row } from "./shared";
+import { useLoad, type Page } from "./shared";
 import { ActionFeedback, useActionFeedback } from "../components/common/action-feedback";
 import { CursorNav, MallQuery, QueryRefresh, useCursor } from "./query-view";
 import { formatDate } from "./presentation";
+import { MfaSettings, securitySignOut as signedOut } from "./MfaSettings";
 
 type Device = { id: string; device: string; user_agent: string; revoked_at: string | null; last_active?: string };
-function signedOut() { setToken(null); window.location.assign("/shop/account"); }
-
-function RecoveryCodes({ codes }: { codes: string[] }) {
-  const [saved, setSaved] = useState(false);
-  return <section className="af-security-block"><h3>保存恢复码</h3>
-    <Alert type="warning" showIcon title="恢复码仅展示一次" description="每个恢复码仅可使用一次。请离线保存，验证器不可用时可用于登录。" />
-    <div className="af-recovery-codes">{codes.map((code) => <Typography.Paragraph key={code} copyable={{ text: code }}><code>{code}</code></Typography.Paragraph>)}</div>
-    <Checkbox checked={saved} onChange={(event) => setSaved(event.target.checked)}>我已保存恢复码</Checkbox>
-    <Button type="primary" disabled={!saved} onClick={signedOut}>完成设置，重新登录</Button>
-  </section>;
-}
-
-function MfaSettings({ enabled }: { enabled: boolean }) {
-  const [secret, setSecret] = useState("");
-  const [codes, setCodes] = useState<string[]>([]);
-  const feedback = useActionFeedback();
-  async function setup() {
-    const data = await write<{ secret: string }>("/account/mfa/setup", {});
-    setSecret(data.secret);
-  }
-  async function disable(values: Row) {
-    if (!values.totp && !values.recovery_code) throw new Error("请输入验证器验证码或一个恢复码。");
-    await write("/account/mfa/disable", values); signedOut();
-  }
-  if (codes.length) return <RecoveryCodes codes={codes} />;
-  return <section className="af-security-block"><div className="af-security-heading"><h3>二步验证</h3><Tag>{enabled ? "已开启" : "未开启"}</Tag></div>
-    <p className="af-mall-note">开启后，登录需要密码和验证器验证码。请保留恢复码以备验证器不可用。</p>
-    <ActionFeedback state={feedback} />
-    {!enabled && !secret && <Button loading={feedback.busy} onClick={() => void feedback.run(setup)}>设置二步验证</Button>}
-    {secret && <div className="af-security-setup"><p className="af-mall-note">将下方密钥添加至验证器，再填写生成的验证码。</p>
-      <Typography.Paragraph copyable={{ text: secret }}><code>{secret}</code></Typography.Paragraph>
-      <ActionForm label="启用二步验证" fields={[{ name: "totp", label: "验证器验证码", inputMode: "numeric", autoComplete: "one-time-code" }]}
-        submit={async (values) => { const data = await write<{ recovery_codes: string[] }>("/account/mfa/enable", values); setCodes(data.recovery_codes); setSecret(""); }} />
-    </div>}
-    {enabled && <Collapse ghost items={[{ key: "disable", label: "关闭二步验证", children:
-      <><p className="af-mall-note">关闭后将退出全部设备，恢复码也会失效。</p><ActionForm label="关闭验证并退出全部设备" fields={[
-        { name: "totp", label: "验证器验证码", required: false, inputMode: "numeric", autoComplete: "one-time-code" },
-        { name: "recovery_code", label: "恢复码", kind: "password", required: false, autoComplete: "off", hint: "验证码与恢复码任选一项。" },
-      ]} submit={disable} /></> }]} />}
-  </section>;
-}
-
 function DeviceSessions() {
   const paging = useCursor();
   const loader = useCallback(() => mall<Page<Device>>(`/account/sessions?cursor=${encodeURIComponent(paging.cursor)}`), [paging.cursor]);

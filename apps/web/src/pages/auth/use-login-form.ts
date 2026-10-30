@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { setToken } from "../../api/client";
 import { authService } from "../../services/auth-service";
@@ -11,7 +11,7 @@ const KNOWN_ERRORS: Array<[string, string]> = [
   ["Local registration disabled", "当前环境未开放自助注册，请使用企业 SSO 登录"],
 ];
 
-function readError(error: unknown, mode: "login" | "register") {
+export function readAuthError(error: unknown, mode: "login" | "register") {
   let raw = error instanceof Error ? error.message : "";
   try {
     const parsed = JSON.parse(raw) as { detail?: unknown };
@@ -26,18 +26,19 @@ export function useLoginForm() {
   const [params] = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [email, setEmail] = useState("");
   const [mode, setMode] = useState<"login" | "register">("login");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const locked = useRef(false);
   async function submit(event: FormEvent) {
-    event.preventDefault(); setError(null); setLoading(true);
+    event.preventDefault();
+    if (locked.current) return;
+    locked.current = true; setError(null); setLoading(true);
     try {
-      if (mode === "register") await authService.register(username, email, password);
       const token = await authService.login(username, password);
       setToken(token.access_token); navigate(loginReturnPath(params.get("next"), "/"), { replace: true });
-    } catch (reason) { setError(readError(reason, mode)); }
-    finally { setLoading(false); }
+    } catch (reason) { setError(readAuthError(reason, mode)); }
+    finally { locked.current = false; setLoading(false); }
   }
-  return { username, setUsername, password, setPassword, email, setEmail, mode, setMode, error, setError, loading, submit };
+  return { username, setUsername, password, setPassword, mode, setMode, error, setError, loading, submit };
 }

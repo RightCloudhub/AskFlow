@@ -21,9 +21,18 @@ export type Field = {
   hint?: string; placeholder?: string; autoComplete?: string;
   inputMode?: "text" | "tel" | "email" | "numeric";
   min?: number; max?: number; rules?: Rule[];
+  dependencies?: string[];
   options?: Array<{ value: string; label: string }>;
   currency?: string;
 };
+
+export function confirmPasswordField(name: string): Field {
+  return { name: "confirm_password", label: "确认密码", kind: "password", autoComplete: "new-password",
+    dependencies: [name], rules: [({ getFieldValue }) => ({
+      validator: (_, value) => !value || value === getFieldValue(name)
+        ? Promise.resolve() : Promise.reject(new Error("两次输入的密码不一致。")),
+    })] };
+}
 
 type InputProps = { field: Field; id?: string; value?: unknown; onChange?: (value: unknown) => void; "aria-describedby"?: string };
 

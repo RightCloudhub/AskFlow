@@ -40,6 +40,7 @@ export function DocumentsPage() {
   const remove = useDeleteDocument();
   const feedback = useActionFeedback();
   const [selected, setSelected] = useState<DocumentRow | null>(null);
+  const current = query.data?.find((doc) => doc.id === selected?.id) ?? selected;
   const filter = useRecordFilter({ rows: query.data ?? [], fields: ["title", "filename"], statusField: "status" });
   const columns = documentColumns({ busy: feedback.busy, open: setSelected,
     remove: (id) => feedback.run(() => remove.mutateAsync(id), "文档及索引已删除。") });
@@ -52,6 +53,6 @@ export function DocumentsPage() {
         <DataTable query={query} dataSource={filter.rows} columns={columns} emptyTitle={filter.filtered ? "没有匹配的文档" : "知识库还没有文档"}
           emptyDescription={filter.filtered ? "调整关键词或状态后重试。" : "上传一份文字资料，建立客服回答的依据。"} />
       </WorkspacePanel>
-    </ConfigurationWorkspace><DocumentRevisionDrawer doc={selected} open={Boolean(selected)} onClose={() => setSelected(null)} />
+    </ConfigurationWorkspace><DocumentRevisionDrawer doc={current} open={Boolean(selected)} onClose={() => setSelected(null)} />
   </div>;
 }

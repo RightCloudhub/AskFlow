@@ -1,4 +1,4 @@
-import { Button, Popconfirm, Space } from "antd";
+import { Button, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { StatusBadge, formatWaiting, intentLabel } from "../../admin";
 import { DataTable, type QueryPresentation } from "../../admin/workspace";
@@ -7,20 +7,13 @@ import { handoffActions } from "../actions";
 
 type HandoffInboxProps = {
   rows: Handoff[]; loading?: boolean; query?: QueryPresentation; currentUserId?: string | null;
-  claimingId?: string | null; returningId?: string | null;
-  onClaim: (id: string) => void; onReturn: (id: string) => void; onSelect?: (row: Handoff) => void;
+  onSelect: (row: Handoff) => void;
 };
 
 function HandoffActions({ row, props }: { row: Handoff; props: HandoffInboxProps }) {
   const can = handoffActions(row, props.currentUserId);
-  const busy = Boolean(props.claimingId || props.returningId);
-  return <Space>
-    {props.onSelect && <Button size="small" onClick={() => props.onSelect?.(row)}>查看会话</Button>}
-    {can.claim && <Button size="small" disabled={busy} loading={props.claimingId === row.id}
-      onClick={() => props.onClaim(row.id)}>认领</Button>}
-    {can.ret && <Popconfirm title="交还智能助手继续服务？" description="交还后，您将不再以认领座席身份回复这个会话。"
-      okText="交还智能助手" cancelText="继续服务" onConfirm={() => props.onReturn(row.id)}>
-      <Button size="small" disabled={busy} loading={props.returningId === row.id}>交还助手</Button></Popconfirm>}
+  return <Space><Button size="small" onClick={() => props.onSelect(row)}>
+    {can.claim ? "核对并认领" : can.ret ? "继续服务" : "查看会话"}</Button>
     {can.claimedByOther && <span className="af-record-secondary">其他座席处理中</span>}
   </Space>;
 }

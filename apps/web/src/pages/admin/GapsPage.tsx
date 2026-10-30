@@ -1,15 +1,17 @@
 import { RecordWorkspace } from "../../components/admin/record-workspace";
-import { Button, Popconfirm, Space } from "antd";
+import { useState } from "react";
+import { Button, Drawer, Popconfirm, Space } from "antd";
 import { Link } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
 import { PageHeader, StatusBadge, gapReason } from "../../components/admin";
 import { DataTable, FilterBar, RefreshButton, WorkspacePanel } from "../../components/admin/workspace";
 import { useRecordFilter } from "../../components/admin/use-record-filter";
 import { ActionFeedback, useActionFeedback } from "../../components/common/action-feedback";
-import { useDismissGap, useGaps, usePromoteGap } from "../../hooks/use-knowledge";
+import { useDismissGap, useGaps } from "../../hooks/use-knowledge";
+import { GapDraftFlow } from "./gap-draft-flow";
 import type { Gap } from "../../api/types";
 
-type GapActions = { busy: boolean; promote: (row: Gap) => Promise<unknown>; dismiss: (id: string) => Promise<unknown> };
+type GapActions = { busy: boolean; promote: (row: Gap) => void; dismiss: (id: string) => Promise<unknown> };
 
 function gapColumns(actions: GapActions): ColumnsType<Gap> {
   return [
@@ -21,7 +23,7 @@ function gapColumns(actions: GapActions): ColumnsType<Gap> {
     } },
     { title: "状态", dataIndex: "status", render: (value) => <StatusBadge value={value} /> },
     { title: "操作", key: "actions", render: (_, row) => <Space>
-      <Button size="small" disabled={actions.busy} onClick={() => void actions.promote(row)}>生成草稿</Button>
+      <Button size="small" disabled={actions.busy} onClick={() => actions.promote(row)}>补充知识草稿</Button>
       <Popconfirm title="忽略这条知识缺口？" description="记录将标记为已忽略，可继续在列表中查看。" okText="确认忽略" cancelText="保留"
         onConfirm={() => actions.dismiss(row.id)}><Button size="small" disabled={actions.busy}>忽略</Button></Popconfirm>
     </Space> },
@@ -31,11 +33,11 @@ function gapColumns(actions: GapActions): ColumnsType<Gap> {
 export function GapsPage() {
   const query = useGaps();
   const dismiss = useDismissGap();
-  const promote = usePromoteGap();
+  const [selected, setSelected] = useState<Gap>();
+  const [busy, setBusy] = useState(false);
   const feedback = useActionFeedback();
   const filter = useRecordFilter({ rows: query.data ?? [], fields: ["question", "reason"], statusField: "status" });
-  const columns = gapColumns({ busy: feedback.busy,
-    promote: (row) => feedback.run(() => promote.mutateAsync(row), "草稿已生成，请到知识草稿中审核。"),
+  const columns = gapColumns({ busy: feedback.busy || busy, promote: setSelected,
     dismiss: (id) => feedback.run(() => dismiss.mutateAsync(id), "知识缺口已标记为忽略。") });
   return <div className="af-page"><PageHeader title="知识缺口" subtitle="从客户未得到回答的问题中，确定下一份知识资料。"
     actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
@@ -47,6 +49,10 @@ export function GapsPage() {
       <DataTable query={query} dataSource={filter.rows} columns={columns} emptyTitle={filter.filtered ? "没有匹配的问题" : "暂无知识缺口"}
         emptyDescription={filter.filtered ? "尝试调整关键词或清除筛选。" : "未覆盖的问题会在客服对话后沉淀到这里。"} />
     </WorkspacePanel>
-    </RecordWorkspace>
+    </RecordWorkspace><Drawer title="从知识缺口补充答案" open={Boolean(selected)} onClose={() => { if (!busy) setSelected(undefined); }}
+      closable={!busy} keyboard={!busy} mask={{ closable: !busy }} size="min(600px, 100vw)" destroyOnHidden>
+      {selected && <GapDraftFlow key={selected.id} gap={selected} onBusyChange={setBusy}
+        onClose={() => { if (!busy) setSelected(undefined); }} />}
+    </Drawer>
   </div>;
 }

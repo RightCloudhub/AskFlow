@@ -33,7 +33,9 @@ function PreferenceReview({ values }: { values: Row }) {
     <div><dt>接收时间</dt><dd>{quietLabel(values)}</dd></div></dl>;
 }
 
-export function NotificationPreferenceForm({ initial, reload }: { initial?: Row; reload: () => Promise<void> }) {
+export function NotificationPreferenceForm({ initial, reload, onBusyChange }: {
+  initial?: Row; reload: () => Promise<void>; onBusyChange?: (busy: boolean) => void;
+}) {
   const [form] = Form.useForm();
   const feedback = useActionFeedback();
   const timezone = String(initial?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -45,6 +47,7 @@ export function NotificationPreferenceForm({ initial, reload }: { initial?: Row;
     }, "通知偏好已保存。");
   }
   return <GuidedForm form={form} initialValues={{ ...INITIAL_PREFERENCE, ...initial }} onFinish={save}
+    onBusyChange={onBusyChange}
     submitLabel="保存通知偏好" onValuesChange={feedback.clear} feedback={<ActionFeedback state={feedback} />}
     steps={[
       { title: "接收内容", fields: ["event_type", "channel", "enabled"], content: <>

@@ -1,6 +1,6 @@
 import { assertSession, getSessionVersion, getToken, setToken } from "../api/client.ts";
 import { refreshMallSession } from "./session.ts";
-import { readableError } from "../components/common/error-text.ts";
+import { MallRequestError } from "./request-error.ts";
 
 const PREFIX = "/api/v1/mall";
 const UNAUTHORIZED = 401;
@@ -23,7 +23,7 @@ export async function mall<T>(path: string, options: RequestInit = {}): Promise<
   if (response.status === 204) return undefined as T;
   const data = await response.json();
   assertSession(version);
-  if (!response.ok) throw new Error(readableError(data));
+  if (!response.ok) throw new MallRequestError(data, response.status);
   return data as T;
 }
 

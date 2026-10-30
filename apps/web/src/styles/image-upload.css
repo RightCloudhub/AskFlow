@@ -1,0 +1,10 @@
+.af-image-picker { display: grid; gap: var(--space-sm); width: 100%; min-height: 120px; padding: var(--space-xl); border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); background: var(--panel-2); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.af-image-picker strong { font-weight: 500; overflow-wrap: anywhere; }
+.af-image-picker span { color: var(--muted); font-size: var(--fs-meta); }
+.af-image-picker:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.af-image-picker:disabled { cursor: wait; }
+.af-image-file-input { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); border: 0; }
+.af-image-preview { display: grid; justify-items: center; gap: var(--space-md); margin: 0; padding: var(--space-lg); background: var(--panel-2); border-radius: var(--radius-sm); }
+.af-image-preview img { display: block; max-width: 100%; max-height: 280px; object-fit: contain; }
+.af-image-preview--avatar img { width: 120px; height: 120px; object-fit: cover; border-radius: 50%; }
+.af-image-preview figcaption { color: var(--muted); font-size: var(--fs-meta); }

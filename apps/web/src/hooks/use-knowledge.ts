@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { gapService } from "../services/gap-service";
+import { gapService, type GapPromotion } from "../services/gap-service";
 import { draftService } from "../services/draft-service";
-import type { Gap } from "../api/types";
-import { DraftKeys, GapKeys } from "./query-keys";
+import { DocumentKeys, DraftKeys, GapKeys } from "./query-keys";
 
 export function useGaps() {
   return useQuery({
@@ -24,7 +23,7 @@ export function useDismissGap() {
 export function usePromoteGap() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (g: Gap) => gapService.promote(g),
+    mutationFn: (draft: GapPromotion) => gapService.promote(draft),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: GapKeys.list() });
       void qc.invalidateQueries({ queryKey: DraftKeys.list() });
@@ -56,6 +55,8 @@ export function useApproveDraft() {
     mutationFn: (id: string) => draftService.approve(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: DraftKeys.list() });
+      void qc.invalidateQueries({ queryKey: DocumentKeys.list() });
+      void qc.invalidateQueries({ queryKey: GapKeys.list() });
     },
   });
 }

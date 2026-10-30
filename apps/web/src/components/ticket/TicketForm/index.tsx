@@ -1,12 +1,16 @@
 import { Form, Input } from "antd";
 import { ActionFeedback, useActionFeedback } from "../../common/action-feedback";
 import { GuidedForm } from "../../common/GuidedForm";
+import type { ReactNode } from "react";
 
 const TITLE_MAX = 80;
 const DESCRIPTION_ROWS = { minRows: 4, maxRows: 8 };
-type TicketFormProps = { loading?: boolean; onSubmit: (payload: { title: string; description: string }) => void | Promise<void> };
+type TicketFormProps = {
+  loading?: boolean; onSubmit: (payload: { title: string; description: string }) => void | Promise<void>;
+  onBusyChange?: (busy: boolean) => void; result?: ReactNode; onRestart?: () => void;
+};
 
-export function TicketForm({ loading, onSubmit }: TicketFormProps) {
+export function TicketForm({ loading, onSubmit, onBusyChange, result, onRestart }: TicketFormProps) {
   const [form] = Form.useForm();
   const feedback = useActionFeedback();
   async function submit(values: Record<string, unknown>) {
@@ -15,6 +19,7 @@ export function TicketForm({ loading, onSubmit }: TicketFormProps) {
     }, "工单已提交，客服会在工单中继续跟进。");
   }
   return <GuidedForm form={form} submitLabel="提交工单" onFinish={submit} disabled={loading} resetOnSuccess
+    onBusyChange={onBusyChange} result={result} onRestart={onRestart} restartLabel="提交另一个问题"
     onValuesChange={feedback.clear} feedback={<ActionFeedback state={feedback} />} steps={[
       { title: "问题概况", fields: ["title"], content: <Form.Item name="title" label="问题标题"
         rules={[{ required: true, whitespace: true, message: "请填写问题标题。" }]}>

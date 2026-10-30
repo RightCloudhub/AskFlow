@@ -1,15 +1,26 @@
 .af-guided-form { min-width: 0; }
+.af-flow-frame { min-width: 0; }
+.af-flow-stage > .ant-typography { overflow-wrap: anywhere; }
+.af-flow-position { display: flex; justify-content: space-between; gap: var(--space-lg); margin: 0 0 var(--space-sm); color: var(--muted); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+.af-flow-description { margin: 0 0 var(--space-xl); color: var(--ink-2); font-size: var(--fs-body); }
 .af-form-progress { display: flex; flex-wrap: wrap; gap: var(--space-sm); list-style: none; margin: 0 0 var(--space-xl); padding: 0; }
 .af-form-progress li { flex: 1; min-width: 0; border-bottom: 2px solid var(--line); }
-.af-form-progress button { width: 100%; min-height: 44px; text-align: left; border: 0; padding: var(--space-sm) 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-meta); cursor: pointer; }
+.af-form-progress button { display: flex; align-items: center; gap: var(--space-xs); width: 100%; min-height: 44px; text-align: left; border: 0; padding: var(--space-sm) 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-meta); cursor: pointer; }
 .af-form-progress [aria-current="step"] { border-color: var(--ink); }
 .af-form-progress [aria-current="step"] button { color: var(--ink); font-weight: 600; }
 .af-form-progress button:disabled { cursor: default; }
 .af-form-progress button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .af-form-progress .complete button:hover { color: var(--brand); }
+.af-form-progress .complete { border-color: var(--brand); }
 .af-form-step-title { margin: 0 0 var(--space-lg); font-size: var(--fs-section); font-weight: 500; }
 .af-form-step-title:focus { outline: none; }
 .af-form-flow-actions { display: flex; flex-wrap: wrap; gap: var(--space-md); margin-top: var(--space-xl); }
+.af-form-flow-actions > .ant-btn-primary { margin-left: auto; }
+.af-flow-contact { display: flex; align-items: start; justify-content: space-between; gap: var(--space-md); margin-bottom: var(--space-xl); padding: var(--space-lg); background: var(--panel-2); border-radius: var(--radius-sm); }
+.af-flow-contact p { margin: 0; color: var(--ink-2); font-size: var(--fs-body); overflow-wrap: anywhere; }
+.af-flow-contact strong { display: block; color: var(--ink); font-weight: 500; }
+.af-flow-success { display: grid; gap: var(--space-lg); }
+.af-flow-success p { margin: 0; color: var(--ink-2); }
 .af-form-review dl { margin: 0; display: grid; gap: var(--space-lg); }
 .af-form-review dl > div { display: grid; gap: var(--space-xs); }
 .af-form-review dt { color: var(--muted); font-size: var(--fs-meta); }
@@ -17,7 +28,9 @@
 .af-form-review { padding: var(--space-lg); background: var(--panel-2); border-radius: var(--radius-sm); }
 @media (max-width: 767px) {
   .af-form-flow-actions > .ant-btn { min-height: 44px; }
-  .af-form-progress { flex-wrap: nowrap; overflow-x: auto; padding-bottom: var(--space-xs); }
-  .af-form-progress li { flex: 0 0 auto; }
-  .af-form-progress button { padding-inline: var(--space-sm); white-space: nowrap; }
+  .af-form-progress { gap: var(--space-sm); }
+  .af-form-progress li { flex: 1 1 64px; }
+  .af-form-progress button { align-items: start; line-height: 1.6; }
+  .af-form-progress .anticon { display: none; }
+  .af-form-flow-actions > .ant-btn { flex: 1; }
 }

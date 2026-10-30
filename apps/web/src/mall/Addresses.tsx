@@ -17,6 +17,7 @@ export function Addresses() {
   const paging = useCursor();
   const [editing, setEditing] = useState<Address>();
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const feedback = useActionFeedback();
   const loader = useCallback(() => mall<Page<Address>>(`/account/addresses?cursor=${encodeURIComponent(paging.cursor)}`), [paging.cursor]);
   const query = useLoad(loader);
@@ -24,7 +25,7 @@ export function Addresses() {
     const path = "/account/addresses" + (editing ? "/" + editing.id : "");
     const body = editing ? { ...values, expected_version: editing.version } : values;
     await write(path, body, { method: editing ? "PATCH" : "POST" });
-    setOpen(false); setEditing(undefined); await query.reload(); feedback.succeed("收货地址已保存。");
+    await query.reload(); feedback.succeed("收货地址已保存。");
   }
   async function act(row: Address, remove = false) {
     const { id, version, ...fields } = row;
@@ -45,9 +46,12 @@ export function Addresses() {
             onConfirm={() => act(row, true)}><Button type="text" danger disabled={feedback.busy}>删除</Button></Popconfirm>
         </div></List.Item>} />
     </MallQuery><CursorNav paging={paging} nextCursor={query.data?.next_cursor} loading={query.loading} />
-    <Modal title={editing ? "编辑收货地址" : "添加收货地址"} open={open} footer={null} destroyOnHidden onCancel={() => setOpen(false)}>
+    <Modal title={editing ? "编辑收货地址" : "添加收货地址"} open={open} footer={null} destroyOnHidden
+      onCancel={() => { if (!saving) setOpen(false); }} closable={!saving} keyboard={!saving} mask={{ closable: !saving }}>
       <ActionForm key={editing ? `${editing.id}:${editing.version}` : "new"} label="保存地址" fields={FIELDS} submit={save}
-        initial={editing ?? { is_default: false }} />
+        initial={editing ?? { is_default: false }} onBusyChange={setSaving}
+        restartLabel="添加另一个地址" onRestart={() => setEditing(undefined)} resetOnSuccess
+        result={<Button type="primary" onClick={() => setOpen(false)}>返回地址列表</Button>} />
     </Modal>
   </>;
 }
