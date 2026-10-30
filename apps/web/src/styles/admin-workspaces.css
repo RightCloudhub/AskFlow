@@ -1,0 +1,11 @@
+.af-workspace-areas, .af-workspace-destinations { display: grid; gap: var(--space-lg); }
+.af-workspace-areas > a, .af-workspace-destinations > a { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xl); padding: var(--space-xl); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); }
+.af-workspace-areas > a:hover, .af-workspace-destinations > a:hover { border-color: var(--line-strong); background: var(--panel-2); }
+.af-workspace-areas h2 { margin: 0 0 var(--space-sm); font-size: var(--fs-section); }
+.af-workspace-areas p { margin: 0 0 var(--space-md); }
+.af-workspace-areas span, .af-workspace-destinations small { color: var(--muted); font-size: var(--fs-meta); line-height: 1.8; }
+.af-workspace-destinations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.af-workspace-destinations > a > span { display: grid; gap: var(--space-sm); }
+.af-workspace-destinations > a:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.af-workspace-areas a:focus-visible, .af-workspace-destinations a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (max-width: 767px) { .af-workspace-destinations { grid-template-columns: minmax(0, 1fr); } }

@@ -7,10 +7,10 @@ import { CursorNav, MallQuery, QueryRefresh, useCursor } from "./query-view";
 
 type Address = { id: string; name: string; phone: string; address: string; is_default: boolean; version: number };
 const FIELDS: Field[] = [
-  { name: "name", label: "收货人", autoComplete: "shipping name" },
-  { name: "phone", label: "联系电话", inputMode: "tel", autoComplete: "shipping tel" },
-  { name: "address", label: "详细地址", kind: "textarea", autoComplete: "shipping street-address", hint: "请填写省市区、街道与门牌号，方便配送。" },
-  { name: "is_default", label: "设为默认收货地址", kind: "boolean" },
+  { name: "name", label: "收货人", autoComplete: "shipping name", step: "联系信息" },
+  { name: "phone", label: "联系电话", inputMode: "tel", autoComplete: "shipping tel", step: "联系信息" },
+  { name: "address", label: "详细地址", kind: "textarea", autoComplete: "shipping street-address", step: "配送地址", hint: "请填写省市区、街道与门牌号，方便配送。" },
+  { name: "is_default", label: "设为默认收货地址", kind: "boolean", step: "配送地址" },
 ];
 
 export function Addresses() {

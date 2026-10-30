@@ -6,6 +6,7 @@ import { useFeatures } from "../../plugins/features";
 import { useAdminMenu } from "./layout-menu";
 import { AdminHeader, Sidebar } from "./layout-parts";
 import { NavigationSearch } from "./navigation-search";
+import { AdminAccessGate } from "../../admin/AdminAccessGate";
 
 const COLLAPSE_KEY = "askflow_admin_sider_collapsed";
 const PLACEHOLDER_ROWS = 8;
@@ -25,10 +26,10 @@ export function AdminLayout() {
   const location = useLocation();
   const screens = Grid.useBreakpoint();
   const mobile = screens.lg === false;
-  const { features, ready, profile } = useFeatures();
+  const { ready } = useFeatures();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [drawer, setDrawer] = useState(false);
-  const { items, selected, crumb, sections, activeGroup } = useAdminMenu(features, location.pathname);
+  const { items, selected, crumb, workspace, sections, activeGroup } = useAdminMenu(location.pathname);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   useEffect(() => { rememberCollapsed(collapsed); }, [collapsed]);
   useEffect(() => { setDrawer(false); }, [location.pathname]);
@@ -40,8 +41,8 @@ export function AdminLayout() {
     <div className="af-pro-loading"><Skeleton paragraph={{ rows: PLACEHOLDER_ROWS }} title={false} /></div>;
   return <Layout className="af-pro-layout">
     <Sidebar {...{ mobile, collapsed, drawer, menu, setCollapsed, setDrawer }} />
-    <Layout className="af-pro-main"><AdminHeader {...{ mobile, profile, crumb }}
+    <Layout className="af-pro-main"><AdminHeader {...{ mobile, workspace, crumb }}
       search={<NavigationSearch sections={sections} />} openDrawer={() => setDrawer(true)} />
-      <Layout.Content className="af-pro-content"><Outlet /></Layout.Content></Layout>
+      <Layout.Content className="af-pro-content"><AdminAccessGate><Outlet /></AdminAccessGate></Layout.Content></Layout>
   </Layout>;
 }

@@ -1,9 +1,12 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Spin } from "antd";
 import { getToken } from "./api/client";
 import { useFeatures } from "./plugins/features";
 import { filterRoutes } from "./plugins/registry";
+import { ADMIN_WORKSPACES, canonicalRoute } from "./admin/access-policy";
+import { WorkspacePage } from "./admin/WorkspacePage";
+import { LegacyAdminRedirect } from "./admin/LegacyAdminRedirect";
 const Shop = lazy(() => import("./mall/Shop").then((m) => ({ default: m.Shop })));
 const MallAdmin = lazy(() => import("./mall/Admin").then((m) => ({ default: m.MallAdmin })));
 const InfraPage = lazy(() => import("./mall/Admin").then((m) => ({ default: m.InfraPage })));
@@ -116,7 +119,9 @@ const PAGE_MAP: Record<string, React.ReactNode> = {
 };
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  if (!getToken()) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  const next = encodeURIComponent(location.pathname + location.search + location.hash);
+  if (!getToken()) return <Navigate to={`/login?next=${next}`} replace />;
   return <>{children}</>;
 }
 
@@ -135,6 +140,13 @@ function HomePage() {
   return <RequireAuth><ChatPage /></RequireAuth>;
 }
 
+function LoginEntry() {
+  const { enabled, ready } = useFeatures();
+  const location = useLocation();
+  if (!ready) return <PageFallback />;
+  return enabled("mall_account") ? <Navigate to={`/shop/account${location.search}`} replace /> : <LoginPage />;
+}
+
 function AppRoutes() {
   const { features, enabled, ready } = useFeatures();
   const adminRoutes = filterRoutes(features);
@@ -146,25 +158,26 @@ function AppRoutes() {
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>
-        <Route path="/login" element={!ready ? <PageFallback /> : enabled("mall_account") ? <Navigate to="/shop/account" replace /> : <LoginPage />} />
+        <Route path="/login" element={<LoginEntry />} />
         {enabled("mall_core") && <Route path="/shop/*" element={<Shop />} />}
         <Route path="/widget" element={<WidgetPage />} />
         <Route path="/" element={<HomePage />} />
         {showTickets ? (
           <Route path="/tickets" element={<RequireAuth><TicketsPage /></RequireAuth>} />
         ) : null}
+        {adminRoutes.filter((route) => route.path).map((route) => <Route key={`legacy:${route.path}`}
+          path={`/admin/${route.path}`} element={<LegacyAdminRedirect path={route.path} />} />)}
         <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
-          {enabled("mall_admin") && !adminRoutes.some((route) => route.path === "") &&
-            <Route index element={<Navigate to="mall/dashboard" replace />} />}
+          <Route index element={<WorkspacePage />} />
+          {ADMIN_WORKSPACES.map((workspace) => <Route key={workspace.id} path={workspace.id} element={<WorkspacePage />} />)}
           {adminRoutes.map((r) => (
             <Route
               key={r.path || "index"}
-              index={r.path === ""}
-              path={r.path || undefined}
+              path={canonicalRoute(r)}
               element={PAGE_MAP[r.page] ?? <Navigate to="/admin" replace />}
             />
           ))}
-          {!ready ? <Route path="*" element={<PageFallback />} /> : null}
+          <Route path="*" element={<PageFallback />} />
         </Route>
         <Route path="*" element={unknownRoute} />
       </Routes>

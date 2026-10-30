@@ -4,7 +4,7 @@ from typing import Literal
 
 from fastapi import APIRouter
 from pydantic import Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.commerce.admin.permissions import require
 from app.commerce.core.commands import command
@@ -26,6 +26,22 @@ class Template(Schema):
     body: str = Field(max_length=BODY_LIMIT)
     channels: list[Literal["email", "sms"]] = Field(default_factory=list)
     expected_version: int = Field(default=0, ge=0)
+
+
+@router.get("/templates")
+async def templates(cursor: str = "", ctx=NOTIFY_WRITE):
+    latest = select(NotificationTemplate.event_type, NotificationTemplate.locale,
+                    func.max(NotificationTemplate.version).label("version")).group_by(
+                        NotificationTemplate.event_type, NotificationTemplate.locale).subquery()
+    query = select(NotificationTemplate).join(latest,
+        (NotificationTemplate.event_type == latest.c.event_type)
+        & (NotificationTemplate.locale == latest.c.locale)
+        & (NotificationTemplate.version == latest.c.version))
+    rows = list(await ctx.db.scalars(query.where(NotificationTemplate.id > cursor)
+        .order_by(NotificationTemplate.id).limit(PAGE_SIZE + 1)))
+    fields = ("id", "event_type", "locale", "subject", "body", "channels", "version")
+    return {"items": [view(row, fields) for row in rows[:PAGE_SIZE]],
+            "next_cursor": rows[PAGE_SIZE - 1].id if len(rows) > PAGE_SIZE else None}
 
 
 @router.post("/templates")

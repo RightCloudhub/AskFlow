@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.commerce.admin.models import AdminRole, SettingRevision, UserRoleGrant
 from app.commerce.admin.permissions import require, seed_roles
 from app.commerce.admin.roles_api import router as roles_router
+from app.commerce.admin.role_directory import role_rows, router as directory_router
 from app.commerce.admin.settings_service import change, list_settings
 from app.commerce.core.commands import command
 from app.commerce.core.constants import PAGE_SIZE
@@ -21,6 +22,7 @@ SETTINGS_WRITE = require("settings:write")
 
 router = APIRouter()
 router.include_router(roles_router)
+router.include_router(directory_router)
 
 
 class SettingInput(Versioned):
@@ -49,9 +51,7 @@ async def setting(key: str, payload: SettingInput, ctx=SETTINGS_WRITE):
 
 @router.get("/roles")
 async def roles(ctx=RBAC_WRITE):
-    rows = await ctx.db.scalars(select(AdminRole).order_by(AdminRole.code))
-    return {"items": [{"id": row.id, "code": row.code, "name": row.name,
-                       "builtin": row.builtin, "version": row.version} for row in rows]}
+    return {"items": await role_rows(ctx.db)}
 
 
 @router.post("/roles/grant")

@@ -56,7 +56,7 @@ try {
   const page = await browser.newPage();
   await purchase(page, identity);
   await page.goto(baseURL + "/admin/mall/wallet");
-  await page.getByText("此操作需要相应商城权限。", { exact: true }).waitFor();
+  await page.getByRole("heading", { name: "暂无访问权限", exact: true }).waitFor();
   console.log("Mall browser purchase and financial permission smoke passed");
 } finally {
   await browser.close();

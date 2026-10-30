@@ -8,6 +8,7 @@ import { useFeatures } from "../../plugins/features";
 import { logoutMallSession } from "../../mall/session";
 import { BrandMark } from "./BrandMark";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
+import { useAdminAccess } from "../../admin/use-admin-access";
 
 const AVATAR_SIZE = 32;
 const AVATAR_FONT_SIZE = 13;
@@ -36,6 +37,7 @@ function ConversationList(props: Pick<SidebarProps, "conversations" | "activeId"
 function UserFooter({ me }: { me: User | null | undefined }) {
   const navigate = useNavigate();
   const { enabled } = useFeatures();
+  const access = useAdminAccess();
   const username = me?.username ?? "…";
   async function logout() {
     if (enabled("mall_account")) await logoutMallSession();
@@ -47,7 +49,8 @@ function UserFooter({ me }: { me: User | null | undefined }) {
     items: [
       ...(enabled("ticket") ? [{ key: "tickets", icon: <FormOutlined />, label: "我的工单" }] : []),
       ...(enabled("mall_core") ? [{ key: "shop", icon: <ShoppingOutlined />, label: "商城" }] : []),
-      { key: "admin", icon: <SettingOutlined />, label: "管理控制台" }, { type: "divider" },
+      ...(access.workspaces.length ? [{ key: "admin", icon: <SettingOutlined />, label: "管理工作区" }] : []),
+      { type: "divider" },
       { key: "logout", icon: <LogoutOutlined />, label: "退出登录", danger: true },
     ],
     onClick: ({ key }) => { if (key === "logout") void logout(); else navigate(destinations[key]); },

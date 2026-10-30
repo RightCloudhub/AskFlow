@@ -29,21 +29,24 @@ function teamColumns(actions: MemberActions): ColumnsType<Team> {
 
 function TeamCreate() {
   const [name, setName] = useState("");
-  const [scope, setScope] = useState("");
+  const [scope, setScope] = useState<string[]>([]);
   const mutation = useCreateTeam();
   const feedback = useActionFeedback();
   async function create() {
     if (!name.trim()) return;
-    const done = await feedback.run(() => mutation.mutateAsync({ name: name.trim(), scope: scope.trim() }), "技能组已创建。");
-    if (done) { setName(""); setScope(""); }
+    const done = await feedback.run(() => mutation.mutateAsync({ name: name.trim(), scope: scope.join(",") }), "技能组已创建。");
+    if (done) { setName(""); setScope([]); }
   }
   return <SettingsSection title="新建技能组" description="按业务能力组织座席，填写这个组负责的意图范围。">
     <ActionFeedback state={feedback} /><form onSubmit={(event) => { event.preventDefault(); void create(); }}>
       <label className="af-field"><span>技能组名称</span><Input value={name} onChange={(event) => setName(event.target.value)}
         placeholder="例如：售后支持" required disabled={feedback.busy} /></label>
-      <label className="af-field"><span>意图范围（可选）</span><Input value={scope} onChange={(event) => setScope(event.target.value)}
-        placeholder="例如：complaint,fault_report" disabled={feedback.busy} aria-describedby="af-team-scope-hint" />
-        <small id="af-team-scope-hint">多个意图代码用英文逗号分隔。</small></label>
+      <label className="af-field"><span>负责业务（可选）</span><Select aria-label="负责业务" mode="multiple"
+        value={scope} onChange={setScope} placeholder="选择业务范围" disabled={feedback.busy} options={[
+          { value: "faq", label: "常见问题" }, { value: "product", label: "商品咨询" },
+          { value: "order_query", label: "订单查询" }, { value: "fault_report", label: "故障报修" },
+          { value: "complaint", label: "投诉处理" }, { value: "handoff", label: "人工服务" },
+        ]} /></label>
       <Button type="primary" htmlType="submit" loading={feedback.busy} disabled={!name.trim()}>创建技能组</Button>
     </form>
   </SettingsSection>;

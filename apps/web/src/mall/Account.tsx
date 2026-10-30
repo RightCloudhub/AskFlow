@@ -8,6 +8,7 @@ import { AccountSettings } from "./AccountSettings";
 import { Verification, type Proof } from "./Verification";
 import { AuthFrame } from "../pages/auth/auth-frame";
 import { PASSWORD_HINT, PASSWORD_RULES } from "./form-fields";
+import { loginReturnPath } from "../pages/auth/return-path";
 
 const AUTH_COPY: Record<string, { title: string; description: string }> = {
   login: { title: "登录商城账号", description: "管理订单、钱包与售后服务。" },
@@ -23,12 +24,12 @@ export function Account() {
   const copy = AUTH_COPY[tab] ?? AUTH_COPY.login;
   async function login(values: Row) {
     const data = await write<{ access_token: string }>("/account/login", { ...values, device: deviceId() });
-    setToken(data.access_token); navigate("/shop");
+    setToken(data.access_token); navigate(loginReturnPath(params.get("next"), "/shop"), { replace: true });
   }
   if (getToken()) return <AccountSettings />;
   return <AuthFrame title={copy.title} description={copy.description} variant="commerce">
     <Tabs activeKey={tab} onChange={setTab} destroyOnHidden items={[
-    { key: "login", label: "登录", children: <ActionForm label="登录" submit={login} fields={[
+    { key: "login", label: "登录", children: <ActionForm label="登录" submit={login} guided={false} fields={[
       { name: "identifier", label: "用户名 / 邮箱 / 手机号", autoComplete: "username" },
       { name: "password", label: "密码", kind: "password", autoComplete: "current-password" },
       { name: "totp", label: "二步验证码", required: false, inputMode: "numeric", autoComplete: "one-time-code", hint: "开启二步验证后填写；与恢复码任选其一。" },

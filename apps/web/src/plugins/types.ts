@@ -26,6 +26,7 @@ export type NavGroupId =
   | "knowledge"
   | "intelligence"
   | "service"
+  | "commerce"
   | "system";
 
 export type AdminNavItem = {

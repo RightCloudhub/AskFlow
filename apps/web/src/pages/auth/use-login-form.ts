@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { setToken } from "../../api/client";
 import { authService } from "../../services/auth-service";
+import { loginReturnPath } from "./return-path";
 
 const KNOWN_ERRORS: Array<[string, string]> = [
   ["Invalid username or password", "用户名或密码错误"],
@@ -22,6 +23,7 @@ function readError(error: unknown, mode: "login" | "register") {
 
 export function useLoginForm() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -33,7 +35,7 @@ export function useLoginForm() {
     try {
       if (mode === "register") await authService.register(username, email, password);
       const token = await authService.login(username, password);
-      setToken(token.access_token); navigate("/");
+      setToken(token.access_token); navigate(loginReturnPath(params.get("next"), "/"), { replace: true });
     } catch (reason) { setError(readError(reason, mode)); }
     finally { setLoading(false); }
   }

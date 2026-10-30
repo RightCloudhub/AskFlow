@@ -13,6 +13,7 @@ export const NAV_GROUPS: NavGroupMeta[] = [
   { id: "knowledge", label: "知识中心", order: 20 },
   { id: "intelligence", label: "智能配置", order: 30 },
   { id: "service", label: "客服运营", order: 40 },
+  { id: "commerce", label: "商城业务", order: 45 },
   { id: "system", label: "系统治理", order: 50 },
 ];
 

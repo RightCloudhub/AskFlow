@@ -31,7 +31,7 @@ export function UserChip({ compact }: { compact: boolean }) {
     navigate("/login");
   }
   const menu = { items: [
-    ...(enabled("agent") ? [{ key: "chat", icon: <MessageOutlined />, label: "前往客服工作台" }] : []),
+    ...(enabled("agent") ? [{ key: "chat", icon: <MessageOutlined />, label: "前往在线咨询" }] : []),
     { key: "logout", icon: <LogoutOutlined />, label: "退出登录", danger: true }],
     onClick: ({ key }: { key: string }) => { if (key === "chat") navigate("/"); else void logout(); } };
   return <Dropdown menu={menu} trigger={["click"]} placement="bottomRight">
@@ -61,15 +61,15 @@ export function Sidebar(props: SidebarProps) {
   </Layout.Sider>;
 }
 
-export function AdminHeader(props: { mobile: boolean; profile: string; search: ReactNode;
+export function AdminHeader(props: { mobile: boolean; workspace?: { id: string; title: string }; search: ReactNode;
   crumb: { group: string; page: string } | null; openDrawer: () => void }) {
-  const items = [{ title: <Link to="/admin">控制台</Link> }, ...(props.crumb ? [
-    { title: props.crumb.group }, { title: props.crumb.page }] : [])];
+  const items = [{ title: <Link to="/admin">工作区</Link> }, ...(props.workspace ? [
+    { title: <Link to={`/admin/${props.workspace.id}`}>{props.workspace.title}</Link> }] : []),
+    ...(props.crumb ? [{ title: props.crumb.page }] : [])];
   return <Layout.Header className="af-pro-header"><div className="af-pro-header-left">
     {props.mobile && <Button type="text" icon={<MenuOutlined />} onClick={props.openDrawer} aria-label="打开导航" />}
     {props.mobile && <span className="af-pro-mobile-brand">AskFlow</span>}<Breadcrumb items={items} />
     </div><div className="af-pro-header-right">{props.search}
-      {!props.mobile && <span className="af-deployment-scope">{props.profile === "unknown" ? "当前工作区" : props.profile}</span>}
       {props.mobile && <UserChip compact />}
     </div></Layout.Header>;
 }

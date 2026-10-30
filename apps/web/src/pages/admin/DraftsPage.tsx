@@ -1,17 +1,16 @@
 import { ConfigurationWorkspace } from "../../components/admin/record-workspace";
 import { useState } from "react";
-import { Button, Drawer, Input, Popconfirm, Space } from "antd";
+import { Button, Drawer, Popconfirm, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageHeader, StatusBadge } from "../../components/admin";
 import { DataTable, FilterBar, RefreshButton, WorkspacePanel } from "../../components/admin/workspace";
 import { useRecordFilter } from "../../components/admin/use-record-filter";
 import { ActionFeedback, useActionFeedback } from "../../components/common/action-feedback";
-import { useApproveDraft, useCreateDraft, useDrafts, useRejectDraft } from "../../hooks/use-knowledge";
+import { useApproveDraft, useDrafts, useRejectDraft } from "../../hooks/use-knowledge";
+import { DraftEditor } from "./draft-editor";
 import type { Draft } from "../../api/types";
 
-const TITLE_LIMIT = 120;
 const SUMMARY_LENGTH = 80;
-const EDITOR_ROWS = { minRows: 6, maxRows: 14 };
 type DraftActions = { busy: boolean; open: (row: Draft) => void; approve: (id: string) => Promise<unknown>; reject: (id: string) => Promise<unknown> };
 
 function DraftButtons({ row, actions }: { row: Draft; actions: DraftActions }) {
@@ -33,27 +32,6 @@ function draftColumns(actions: DraftActions): ColumnsType<Draft> {
   ];
 }
 
-function CreateDraft() {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const create = useCreateDraft();
-  const feedback = useActionFeedback();
-  async function submit() {
-    if (!title.trim() || !content.trim()) return;
-    const done = await feedback.run(() => create.mutateAsync({ title: title.trim(), content: content.trim() }), "草稿已创建，审核通过后才能用于回答。");
-    if (done) { setTitle(""); setContent(""); }
-  }
-  return <WorkspacePanel title="编写标准答案" description="标题写客户的问题，正文写可核实的完整答案。">
-    <ActionFeedback state={feedback} /><form className="af-work-stack" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-      <label className="af-field"><span>问题标题</span><Input value={title} onChange={(event) => setTitle(event.target.value)}
-        maxLength={TITLE_LIMIT} showCount required disabled={feedback.busy} placeholder="例如：如何申请退货？" /></label>
-      <label className="af-field"><span>标准答案</span><Input.TextArea value={content} onChange={(event) => setContent(event.target.value)}
-        autoSize={EDITOR_ROWS} required disabled={feedback.busy} placeholder="包含适用条件、处理步骤和必要说明" /></label>
-      <Button type="primary" htmlType="submit" loading={feedback.busy} disabled={!title.trim() || !content.trim()}>创建待审核草稿</Button>
-    </form>
-  </WorkspacePanel>;
-}
-
 export function DraftsPage() {
   const query = useDrafts();
   const approve = useApproveDraft();
@@ -67,7 +45,7 @@ export function DraftsPage() {
   const current = query.data?.find((row) => row.id === selected?.id) ?? selected;
   return <div className="af-page"><PageHeader title="知识草稿" subtitle="核对答案再发布，让每一次知识补充有据可查。"
     actions={<RefreshButton query={query} />} /><ActionFeedback state={feedback} />
-    <ConfigurationWorkspace editor={<CreateDraft />}><WorkspacePanel title="草稿审核队列">
+    <ConfigurationWorkspace editor={<DraftEditor />}><WorkspacePanel title="草稿审核队列">
       <FilterBar {...filter} placeholder="搜索问题或答案" count={query.data ? filter.rows.length : undefined}
         options={[{ value: "all", label: "全部状态" }, { value: "draft", label: "待审核" },
           { value: "approved", label: "已通过" }, { value: "rejected", label: "已拒绝" }]} />

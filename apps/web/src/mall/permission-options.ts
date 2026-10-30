@@ -1,0 +1,18 @@
+export const PERMISSION_OPTIONS = [
+  { value: "catalog:write", label: "商品管理" },
+  { value: "inventory:write", label: "库存管理" },
+  { value: "order:read", label: "查看订单" },
+  { value: "order:write", label: "订单履约" },
+  { value: "order:refund", label: "退款审核" },
+  { value: "wallet:read", label: "查看财务" },
+  { value: "wallet:adjust", label: "发起调账" },
+  { value: "wallet:approve", label: "复核调账" },
+  { value: "finance:reconcile", label: "支付对账" },
+  { value: "settings:write", label: "系统配置" },
+  { value: "user:manage", label: "账号管理" },
+  { value: "rbac:write", label: "角色授权" },
+  { value: "notify:write", label: "通知管理" },
+  { value: "risk:review", label: "风控复核" },
+  { value: "support:read", label: "商城客服" },
+  { value: "audit:read", label: "查看商城审计" },
+];

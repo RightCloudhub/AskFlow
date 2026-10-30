@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Table } from "antd";
+import { Alert, Table } from "antd";
 import { useLocation } from "react-router-dom";
 import { mall } from "./client";
 import { Feedback, useLoad, type Row } from "./shared";
@@ -8,21 +8,33 @@ import { useMallPermissions } from "./permissions";
 import { MallDashboard } from "./mall-dashboard";
 import { MallEmpty, MallPage, MallPanel } from "./presentation";
 import { AdminResources } from "./admin-resources";
+import { mallModuleAllowed } from "./menu";
 import { DESIGN } from "../design/tokens";
 import "../styles/mall.css";
 
 export function MallAdmin() {
-  const [revision, setRevision] = useState(0);
   const module = useLocation().pathname.split("/").slice(-1)[0] ?? "settings";
+  return <MallModule key={module} module={module} />;
+}
+
+function MallModule({ module }: { module: string }) {
+  const [revision, setRevision] = useState(0);
+  const [notice, setNotice] = useState(false);
   const grants = useMallPermissions();
   const entry = MALL_ADMIN.find((item) => item.module === module);
-  const allowed = grants.permissions.includes(entry?.permission ?? "");
+  const allowed = mallModuleAllowed(module, grants.permissions);
+  async function reload() {
+    setRevision((value) => value + 1);
+    setNotice(true);
+    await grants.reload();
+  }
   if (module === "dashboard") return <MallDashboard />;
   if (!allowed) return <MallPage title={entry?.label ?? "商城管理"}><Feedback {...grants} />
     {!grants.loading && <MallEmpty title="此操作需要相应商城权限。" />}</MallPage>;
   return <MallPage title={entry?.label ?? "商城管理"} description="核对业务记录，再执行对应的管理操作。" className="af-mall-admin">
+    {notice && <Alert type="success" title="操作已完成。" showIcon closable onClose={() => setNotice(false)} />}
     <AdminResources module={module} revision={revision} permissions={grants.permissions}
-      reload={async () => setRevision((value) => value + 1)} />
+      reload={reload} />
   </MallPage>;
 }
 

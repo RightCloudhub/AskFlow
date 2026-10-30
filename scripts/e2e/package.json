@@ -2,6 +2,6 @@
   "name": "askflow-mall-e2e",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node mall.mjs" },
+  "scripts": { "test": "node mall.mjs", "preview:admin": "node admin-preview.mjs", "test:admin": "node admin-workspaces.mjs" },
   "devDependencies": { "playwright": "^1.56.1" }
 }

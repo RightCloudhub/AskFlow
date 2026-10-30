@@ -8,6 +8,7 @@ import { FilterBar } from "../components/admin/workspace";
 import { useRecordFilter } from "../components/admin/use-record-filter";
 import { JsonView } from "../components/common/json";
 import { DESIGN } from "../design/tokens";
+import { MallEmpty } from "./presentation";
 
 export function Records({ path }: { path: string }) {
   const paging = useCursor();
@@ -40,14 +41,14 @@ function Differences() {
 }
 
 export function FinanceRecords({ permissions }: { permissions: string[] }) {
-  const items = [
+  const items = permissions.includes("wallet:read") ? [
     { key: "accounts", label: "账户余额", children: <Records path="/wallet/accounts" /> },
     { key: "adjustments", label: "调账申请", children: <Records path="/wallet/adjustments" /> },
     { key: "reversals", label: "冲正申请", children: <Records path="/wallet/reversals" /> },
-  ];
+  ] : [];
   if (permissions.includes("finance:reconcile")) items.push(
     { key: "runs", label: "对账批次", children: <Records path="/wallet/reconciliation" /> },
     { key: "differences", label: "对账差异", children: <Differences /> },
   );
-  return <Tabs items={items} />;
+  return items.length ? <Tabs items={items} /> : <MallEmpty title="当前账号没有财务记录查看权限" />;
 }

@@ -8,11 +8,11 @@ from fastapi.responses import JSONResponse
 from app.commerce.infra.health import port_matrix
 from app.commerce.infra.matrix import capability_matrix
 from app.core.config import get_settings
-from app.core.deps import require_agent_or_admin
+from app.core.deps import require_admin
 
 router = APIRouter()
 health_router = APIRouter()
-ADMIN_USER = Depends(require_agent_or_admin)
+ADMIN_USER = Depends(require_admin)
 
 
 @router.get("")
