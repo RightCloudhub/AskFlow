@@ -1,46 +1,48 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button, Input } from "antd";
-import { EmptyState, QueryFeedback } from "../../admin/workspace";
+import { SendOutlined } from "@ant-design/icons";
+import { QueryFeedback } from "../../admin/workspace";
 import { ActionFeedback, useActionFeedback } from "../../common/action-feedback";
-import { MarkdownBody } from "../../chat/MarkdownBody";
-import type { Handoff, Message } from "../../../api/types";
+import type { Handoff } from "../../../api/types";
 import { useHandoffMessages, useStaffReply } from "../../../hooks/use-ops";
-import { formatDateTime } from "../../../utils";
+import { MessageThread } from "./message-thread";
 
-const REPLY_ROWS = { minRows: 3, maxRows: 8 };
-const ROLE_LABELS: Record<string, string> = { user: "客户", staff: "人工座席", assistant: "智能助手" };
+const REPLY_ROWS = { minRows: 3, maxRows: 6 };
+type Props = {
+  session: Handoff; canReply: boolean; disabled: boolean; draft: string;
+  onDraftChange: (text: string) => void; onBusyChange: (busy: boolean) => void;
+};
 
-function StaffMessage({ message }: { message: Message }) {
-  return <article className={"af-staff-msg af-staff-msg--" + message.role}>
-    <div className="af-staff-message-label"><strong>{ROLE_LABELS[message.role] ?? message.role}</strong>
-      <span>{formatDateTime(message.created_at, true)}</span></div>
-    {message.role === "user" ? <p className="af-record-copy">{message.content}</p> : <MarkdownBody content={message.content} />}
-  </article>;
-}
-
-export function StaffConversation({ session, onBusyChange }: { session: Handoff; onBusyChange: (busy: boolean) => void }) {
-  const query = useHandoffMessages(session.id);
+export function StaffConversation(props: Props) {
+  const query = useHandoffMessages(props.session.id);
   const reply = useStaffReply();
   const feedback = useActionFeedback();
-  const [text, setText] = useState("");
-  useEffect(() => { onBusyChange(feedback.busy); }, [feedback.busy, onBusyChange]);
-  useEffect(() => () => onBusyChange(false), [onBusyChange]);
+  const disabled = props.disabled || feedback.busy || query.isError;
+  useEffect(() => { props.onBusyChange(feedback.busy); }, [feedback.busy, props.onBusyChange]);
+  useEffect(() => () => props.onBusyChange(false), [props.onBusyChange]);
   async function send() {
-    if (!text.trim()) return;
-    const done = await feedback.run(() => reply.mutateAsync({ id: session.id, content: text.trim() }), "回复已发送。");
-    if (done) setText("");
+    if (!props.draft.trim() || disabled || !props.canReply) return;
+    const done = await feedback.run(() => reply.mutateAsync({ id: props.session.id, content: props.draft.trim() }), "回复已发送");
+    if (done) props.onDraftChange("");
   }
-  return <section className="af-work-stack"><h2 className="af-staff-heading">会话消息</h2><QueryFeedback query={query} />
-    <div className="af-staff-msgs">
-      {query.isLoading ? <p className="af-work-help">正在读取历史消息…</p> : query.data?.length ?
-        query.data.map((message) => <StaffMessage key={message.id} message={message} />) :
-        !query.isError && <EmptyState title="暂无会话消息" description="客户和座席的消息会显示在这里。" />}
-    </div>
-    <ActionFeedback state={feedback} /><form className="af-work-stack" onSubmit={(event) => { event.preventDefault(); void send(); }}>
-      <label className="af-field"><span>以人工座席身份回复</span><Input.TextArea value={text}
-        onChange={(event) => { setText(event.target.value); feedback.clear(); }} autoSize={REPLY_ROWS}
-        disabled={feedback.busy || query.isError} placeholder="填写给客户的回复" /></label>
-      <Button type="primary" htmlType="submit" loading={feedback.busy} disabled={!text.trim() || query.isError}>发送回复</Button>
-    </form>
-  </section>;
+  return <div className="af-service-conversation">
+    <div className="af-thread-heading"><h3>对话记录</h3><span role="status">{query.isError ? "同步中断，可重试" : "消息自动同步"}</span></div>
+    <QueryFeedback query={query} />
+    <MessageThread messages={query.data} loading={query.isLoading} />
+    {props.canReply && <form className="af-reply-composer" onSubmit={(event) => { event.preventDefault(); void send(); }}>
+      <ActionFeedback state={feedback} />
+      <label htmlFor="staff-reply">回复客户</label>
+      <Input.TextArea id="staff-reply" value={props.draft} autoSize={REPLY_ROWS}
+        disabled={disabled} placeholder="接续客户的问题，输入您的回复…"
+        onChange={(event) => { props.onDraftChange(event.target.value); feedback.clear(); }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
+            event.preventDefault(); void send();
+          }
+        }} />
+      <div className="af-reply-actions"><span>人工客服身份 · Ctrl / ⌘ + Enter 发送</span>
+        <Button type="primary" htmlType="submit" icon={<SendOutlined />} loading={feedback.busy}
+          disabled={disabled || !props.draft.trim()}>发送回复</Button></div>
+    </form>}
+  </div>;
 }

@@ -15,8 +15,8 @@ export const chatService = {
       body: JSON.stringify({ title }),
     }),
 
-  listMessages: (conversationId: string) =>
-    api<Message[]>(`/api/v1/chat/conversations/${conversationId}/messages`),
+  listMessages: (conversationId: string, signal?: AbortSignal) =>
+    api<Message[]>(`/api/v1/chat/conversations/${conversationId}/messages`, { signal }),
 
   sendMessage: (conversationId: string, content: string) =>
     api<SendMessageResult>(

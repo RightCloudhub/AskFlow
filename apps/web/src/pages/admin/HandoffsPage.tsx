@@ -1,32 +1,41 @@
-import { RecordWorkspace } from "../../components/admin/record-workspace";
-import { useState } from "react";
-import { PageHeader } from "../../components/admin";
-import { FilterBar, RefreshButton, WorkspacePanel } from "../../components/admin/workspace";
-import { useRecordFilter } from "../../components/admin/use-record-filter";
+import { useEffect, useState } from "react";
+import { ReloadOutlined } from "@ant-design/icons";
+import { Button } from "antd";
 import { HandoffInbox } from "../../components/handoff/Inbox";
 import { SessionDetail } from "../../components/handoff/SessionDetail";
 import { useHandoffs } from "../../hooks/use-ops";
 import { useMe } from "../../hooks/use-auth";
-import type { Handoff } from "../../api/types";
+import { QueryFeedback } from "../../components/admin/workspace";
+import "../../styles/handoff-workspace.css";
 
 export function HandoffsPage() {
   const query = useHandoffs();
   const me = useMe();
-  const [selected, setSelected] = useState<Handoff | null>(null);
-  const filter = useRecordFilter({ rows: query.data ?? [], fields: ["user_name", "summary", "conversation_id"], statusField: "status" });
-  const current = query.data?.find((row) => row.id === selected?.id) ?? selected;
-  return <div className="af-page"><PageHeader title="人工接管" subtitle="先认领，再回复。会话列表每 15 秒自动更新。"
-    actions={<RefreshButton query={query} />} />
-    <RecordWorkspace rows={query.data} field="status" states={[{ value: "queued", label: "等待认领" }, { value: "claimed", label: "已认领" }, { value: "timed_out", label: "已超时" }]}
-      selected={filter.status} onSelect={filter.onStatus}>
-      <WorkspacePanel title="人工服务队列" description="查看客户问题摘要，认领后可展开历史消息。">
-      <FilterBar {...filter} placeholder="搜索客户、问题摘要或会话编号" count={query.data ? filter.rows.length : undefined}
-        options={[{ value: "all", label: "全部状态" }, { value: "queued", label: "等待认领" },
-          { value: "claimed", label: "已认领" }, { value: "returned", label: "已交还" }, { value: "timed_out", label: "已超时" }]} />
-      <HandoffInbox rows={filter.rows} query={query} currentUserId={me.data?.id ?? null}
-        onSelect={setSelected} />
-    </WorkspacePanel>
-    </RecordWorkspace>
-    <SessionDetail open={Boolean(selected)} session={current} onClose={() => setSelected(null)} />
+  const [selected, setSelected] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!selected && query.data?.[0]) setSelected(query.data[0].id);
+  }, [selected, query.data]);
+  const current = query.data?.find((row) => row.id === selected) ?? (!selected ? query.data?.[0] : undefined);
+  const waiting = query.data?.filter((row) => row.status === "queued").length;
+  function setDraft(text: string) {
+    if (current) setDrafts((previous) => ({ ...previous, [current.id]: text }));
+  }
+  return <div className="af-handoff" data-detail-open={detailOpen}>
+    <header className="af-handoff-title"><div><h1>人工接管</h1>
+      <p>{waiting == null ? "正在读取服务队列" : waiting ? `${waiting} 位客户等待认领` : "当前没有等待认领的客户"}</p></div>
+      <div className="af-handoff-freshness"><span>{query.isError ? "队列同步暂不可用" : "队列自动更新"}</span>
+        <Button icon={<ReloadOutlined />} loading={query.isFetching} onClick={() => void query.refetch()}>刷新队列</Button></div>
+    </header>
+    <QueryFeedback query={me} />
+    <div className="af-handoff-grid">
+      <HandoffInbox rows={query.data ?? []} query={query} currentUserId={me.data?.id}
+        selectedId={current?.id} disabled={busy} onSelect={(row) => { setSelected(row.id); setDetailOpen(true); }} />
+      <SessionDetail session={current ?? null} currentUser={me.data} busy={busy} onBusyChange={setBusy}
+        draft={current ? drafts[current.id] ?? "" : ""} onDraftChange={setDraft}
+        onBack={() => setDetailOpen(false)} />
+    </div>
   </div>;
 }

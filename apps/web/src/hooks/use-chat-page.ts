@@ -15,9 +15,13 @@ export function useChatPage() {
   const appliedLink = useRef("");
   const meQ = useMe();
   const convQ = useConversations(meQ.isSuccess);
-  const msgQ = useMessages(activeId);
   const createConv = useCreateConversation();
   const transport = useChatTransport(setHandoffHint);
+  const msgQ = useMessages(activeId, transport.streaming);
+  const active = convQ.data?.find((row) => row.id === activeId);
+  useEffect(() => {
+    if (!transport.streaming && active?.status !== "transferred") setHandoffHint(null);
+  }, [transport.streaming, active?.status]);
   const requested = params.get("conversation_id") ?? "";
   useEffect(() => {
     if (meQ.isError) { setToken(null); nav("/login"); }
@@ -40,7 +44,6 @@ export function useChatPage() {
     setActiveId(id);
     await transport.send(content, id);
   }
-  const active = convQ.data?.find((row) => row.id === activeId);
   return { nav, meQ, convQ, msgQ, activeId, active, handoffHint, ...transport, select, create, suggest,
     creating: createConv.isPending, loading: meQ.isLoading || (meQ.isSuccess && convQ.isLoading) };
 }

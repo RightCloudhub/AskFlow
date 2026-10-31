@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clearWidgetSession, getWidgetSession, widgetFetch, WidgetRequestError, WIDGET_AUTH_FAILURES, type WidgetMessage, type WidgetSession } from "./widget-service";
+import { useWidgetSync } from "./use-widget-sync";
 
 function useWidgetConnection() {
   const [session, setSession] = useState<WidgetSession>();
@@ -32,6 +33,7 @@ export function useWidget() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
+  const syncError = useWidgetSync({ session, paused: busy || connecting, setMessages, locked, generation });
   async function deliver(message: WidgetMessage) {
     if (!session || locked.current || connecting) return;
     locked.current = true; setBusy(true); setError("");
@@ -39,11 +41,11 @@ export function useWidget() {
     setMessages((rows) => rows.some((row) => row.id === message.id)
       ? rows.map((row) => row.id === message.id ? { ...row, failed: false } : row) : [...rows, message]);
     try {
-      const response = await widgetFetch<{ assistant_message: WidgetMessage }>(`/widget/conversations/${session.conversation_id}/messages`, {
+      const response = await widgetFetch<{ user_message: WidgetMessage; assistant_message: WidgetMessage }>(`/widget/conversations/${session.conversation_id}/messages`, {
         method: "POST", token: session.access_token, body: JSON.stringify({ content: message.content }),
       });
       if (request !== generation.current) return;
-      setMessages((rows) => [...rows, response.assistant_message]);
+      setMessages((rows) => [...rows.filter((row) => row.id !== message.id), response.user_message, response.assistant_message]);
     } catch {
       if (request !== generation.current) return;
       setMessages((rows) => rows.map((row) => row.id === message.id ? { ...row, failed: true } : row));
@@ -55,6 +57,6 @@ export function useWidget() {
     if (!session || !content || locked.current || connecting) return;
     setText(""); await deliver({ id: crypto.randomUUID(), role: "user", content });
   }
-  return { ...connection, text, setText, busy, clearError: () => setError(""),
+  return { ...connection, text, setText, busy, syncError, clearError: () => setError(""),
     ready: Boolean(session) && !connecting, sendText, retry: deliver };
 }

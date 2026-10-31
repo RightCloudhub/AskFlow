@@ -10,8 +10,8 @@ export const handoffService = {
   returnToAi: (id: string) =>
     api<Handoff>(`/api/v1/admin/handoffs/${id}/return`, { method: "POST" }),
 
-  messages: (id: string) =>
-    api<Message[]>(`/api/v1/admin/handoffs/${id}/messages`),
+  messages: (id: string, signal?: AbortSignal) =>
+    api<Message[]>(`/api/v1/admin/handoffs/${id}/messages`, { signal }),
 
   reply: (id: string, content: string) =>
     api<Message>(`/api/v1/admin/handoffs/${id}/reply`, {

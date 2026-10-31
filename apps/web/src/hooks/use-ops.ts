@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Handoff, Message } from "../api/types";
 import { intentService } from "../services/intent-service";
 import { promptService } from "../services/prompt-service";
 import { handoffService } from "../services/handoff-service";
 import { adminTicketService } from "../services/admin-ticket-service";
 import { teamService } from "../services/team-service";
 import { slaService } from "../services/sla-service";
+import { messageSyncOptions } from "../services/message-sync";
 import {
   HandoffKeys,
   IntentKeys,
@@ -15,7 +17,6 @@ import {
 } from "./query-keys";
 
 const HANDOFF_POLL_MS = 15_000;
-const HANDOFF_MESSAGES_POLL_MS = 8_000;
 
 export function useIntents() {
   return useQuery({
@@ -59,6 +60,7 @@ export function useHandoffs() {
     queryKey: HandoffKeys.list(),
     queryFn: () => handoffService.list(),
     refetchInterval: HANDOFF_POLL_MS,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -66,7 +68,8 @@ export function useClaimHandoff() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => handoffService.claim(id),
-    onSuccess: () => {
+    onSuccess: (session) => {
+      qc.setQueryData<Handoff[]>(HandoffKeys.list(), (rows) => rows?.map((row) => row.id === session.id ? session : row));
       void qc.invalidateQueries({ queryKey: HandoffKeys.list() });
     },
   });
@@ -76,7 +79,8 @@ export function useReturnHandoff() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => handoffService.returnToAi(id),
-    onSuccess: () => {
+    onSuccess: (session) => {
+      qc.setQueryData<Handoff[]>(HandoffKeys.list(), (rows) => rows?.map((row) => row.id === session.id ? { ...row, ...session } : row));
       void qc.invalidateQueries({ queryKey: HandoffKeys.list() });
     },
   });
@@ -85,9 +89,9 @@ export function useReturnHandoff() {
 export function useHandoffMessages(handoffId: string | null) {
   return useQuery({
     queryKey: HandoffKeys.messages(handoffId ?? ""),
-    queryFn: () => handoffService.messages(handoffId!),
+    queryFn: ({ signal }) => handoffService.messages(handoffId!, signal),
     enabled: Boolean(handoffId),
-    refetchInterval: HANDOFF_MESSAGES_POLL_MS,
+    ...messageSyncOptions,
   });
 }
 
@@ -96,7 +100,10 @@ export function useStaffReply() {
   return useMutation({
     mutationFn: (p: { id: string; content: string }) =>
       handoffService.reply(p.id, p.content),
-    onSuccess: (_d, p) => {
+    onSuccess: async (message, p) => {
+      const queryKey = HandoffKeys.messages(p.id);
+      await qc.cancelQueries({ queryKey });
+      qc.setQueryData<Message[]>(queryKey, (rows) => [...(rows ?? []).filter((row) => row.id !== message.id), message]);
       void qc.invalidateQueries({ queryKey: HandoffKeys.messages(p.id) });
       void qc.invalidateQueries({ queryKey: HandoffKeys.list() });
     },

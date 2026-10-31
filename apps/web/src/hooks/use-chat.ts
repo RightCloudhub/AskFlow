@@ -1,20 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { chatService } from "../services/chat-service";
 import { ChatKeys } from "./query-keys";
+import { messageSyncOptions } from "../services/message-sync";
 
 export function useConversations(enabled = true) {
   return useQuery({
     queryKey: ChatKeys.conversations(),
     queryFn: () => chatService.listConversations(),
     enabled,
+    ...messageSyncOptions,
   });
 }
 
-export function useMessages(conversationId: string | null) {
+export function useMessages(conversationId: string | null, paused = false) {
   return useQuery({
     queryKey: ChatKeys.messages(conversationId ?? ""),
-    queryFn: () => chatService.listMessages(conversationId!),
-    enabled: Boolean(conversationId),
+    queryFn: ({ signal }) => chatService.listMessages(conversationId!, signal),
+    enabled: Boolean(conversationId) && !paused,
+    ...messageSyncOptions,
   });
 }
 

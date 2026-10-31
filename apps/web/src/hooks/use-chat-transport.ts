@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Message } from "../api/types";
 import { getToken } from "../api/client";
@@ -20,12 +20,15 @@ export function useChatTransport(onHandoff: (summary: string) => void) {
   const [streamText, setStreamText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const locked = useRef(false);
   async function send(content: string, conversationId: string | null) {
-    if (!conversationId || streaming) return;
+    if (!conversationId || locked.current) return;
+    locked.current = true;
     setSendError(null);
     setStreaming(true);
     setStreamText("");
     const key = ChatKeys.messages(conversationId);
+    await qc.cancelQueries({ queryKey: key });
     const previous = qc.getQueryData<Message[]>(key) ?? [];
     const message: Message = { id: `tmp-u-${Date.now()}`, role: "user", content,
       created_at: new Date().toISOString() };
@@ -43,6 +46,7 @@ export function useChatTransport(onHandoff: (summary: string) => void) {
       setSendError(error instanceof Error ? error.message : "发送失败");
       qc.setQueryData<Message[]>(key, previous);
     } finally {
+      locked.current = false;
       setStreaming(false);
       setStreamText("");
     }
